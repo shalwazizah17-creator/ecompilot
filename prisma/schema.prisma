@@ -1,0 +1,506 @@
+generator client {
+  provider        = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password_hash String
+  role          String    @default("SPECIALIST") // ADMIN, SPECIALIST, OWNER
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  sessions      Session[]
+  audit_logs    AuditLog[]
+}
+
+model Session {
+  id            String   @id @default(cuid())
+  session_token String   @unique
+  user_id       String
+  expires       DateTime
+  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model Brand {
+  id                 String               @id @default(cuid())
+  name               String               @unique
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @updatedAt
+  data_sources       DataSource[]
+  products           Product[]
+  campaigns          Campaign[]
+  daily_metrics      DailyMetric[]
+  budget_allocations BudgetAllocation[]
+  financial_settings FinancialSetting[]
+  reports            Report[]
+  action_items       ActionItem[]
+  targets            Target[]
+  
+  affiliates               Affiliate[]
+  affiliate_metrics        AffiliateMetric[]
+  audience_profile         BrandAudienceProfile?
+  affiliate_targets        AffiliateTarget[]
+  affiliate_recommendations AffiliateRecommendation[]
+  notifications            Notification[]
+  report_schedules         ReportSchedule[]
+  credentials              IntegrationCredential[]
+  audit_logs               AuditLog[]
+  import_mappings          ImportMappingMemory[]
+}
+
+// Replaces Marketplace. E.g. Shopee (BOTH), Meta (AD_CHANNEL), TikTok (BOTH)
+model Platform {
+  id                 String               @id @default(cuid())
+  name               String               @unique
+  is_marketplace     Boolean              @default(false)
+  is_ad_channel      Boolean              @default(false)
+  data_sources       DataSource[]
+  campaigns          Campaign[]
+  daily_metrics      DailyMetric[]
+  budget_allocations BudgetAllocation[]
+  
+  affiliates               Affiliate[]
+  affiliate_metrics        AffiliateMetric[]
+  credentials              IntegrationCredential[]
+  import_mappings          ImportMappingMemory[]
+}
+
+model DataSource {
+  id             String      @id @default(cuid())
+  brand_id       String
+  platform_id    String
+  source_type    String      @default("MARKETPLACE_SALES")
+  status         String      // DISCONNECTED, CONNECTING, CONNECTED, SYNCING, ERROR, EXPIRED
+  connection_type String     @default("MANUAL") // OAUTH, API_KEY, CSV, MANUAL
+  last_sync      DateTime?
+  last_successful_sync_at DateTime?
+  sync_frequency String      @default("MANUAL")
+  error_message  String?
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @updatedAt
+  
+  brand          Brand       @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  platform       Platform    @relation(fields: [platform_id], references: [id], onDelete: Cascade)
+  sync_jobs      SyncJob[]
+}
+
+model SyncJob {
+  id                String   @id @default(cuid())
+  data_source_id    String
+  brand_id          String?
+  platform_id       String?
+  source_type       String?
+  type              String   // INCREMENTAL, FULL, MANUAL
+  status            String   // QUEUED, RUNNING, COMPLETED, PARTIAL, FAILED, CANCELLED
+  started_at        DateTime @default(now())
+  completed_at      DateTime?
+  records_processed Int      @default(0)
+  records_created   Int      @default(0)
+  records_updated   Int      @default(0)
+  records_skipped   Int      @default(0)
+  records_failed    Int      @default(0)
+  errors            String?
+  error_message     String?
+  sync_start        DateTime?
+  sync_end          DateTime?
+  created_at        DateTime @default(now())
+
+  data_source       DataSource @relation(fields: [data_source_id], references: [id], onDelete: Cascade)
+  sync_errors       SyncError[]
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  brand_id      String
+  sku           String
+  name          String
+  category      String?
+  price         Float         @default(0)
+  cogs          Float         @default(0)
+  
+  brand         Brand         @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  campaigns     Campaign[]
+  daily_metrics DailyMetric[]
+  affiliate_metrics AffiliateMetric[]
+}
+
+model Campaign {
+  id             String        @id @default(cuid())
+  brand_id       String
+  platform_id    String
+  external_id    String?
+  product_id     String?
+  name           String
+  type           String        // Search, Discovery, Meta, etc.
+  objective      String?       // For Meta Ads
+  status         String        // ACTIVE, PAUSED, COMPLETED, NEEDS_ATTENTION
+  
+  brand          Brand         @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  platform       Platform      @relation(fields: [platform_id], references: [id], onDelete: Cascade)
+  product        Product?      @relation(fields: [product_id], references: [id], onDelete: SetNull)
+  ad_sets        AdSet[]
+  daily_metrics  DailyMetric[]
+
+  @@unique([brand_id, platform_id, external_id])
+}
+
+model AdSet {
+  id                 String        @id @default(cuid())
+  campaign_id        String
+  external_id        String?
+  name               String
+  audience           String?
+  placement          String?
+  optimization_event String?
+  budget             Float         @default(0)
+
+  campaign           Campaign      @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
+  ads                Ad[]
+  daily_metrics      DailyMetric[]
+
+  @@unique([campaign_id, external_id])
+}
+
+model Ad {
+  id             String        @id @default(cuid())
+  ad_set_id      String
+  external_id    String?
+  name           String
+  creative       String?
+  format         String?
+
+  ad_set         AdSet         @relation(fields: [ad_set_id], references: [id], onDelete: Cascade)
+  daily_metrics  DailyMetric[]
+
+  @@unique([ad_set_id, external_id])
+}
+
+model DailyMetric {
+  id              String      @id @default(cuid())
+  date            DateTime
+  brand_id        String
+  platform_id     String
+  source_type     String      @default("MARKETPLACE_SALES") // MARKETPLACE_SALES, AD_PERFORMANCE, META_CAMPAIGN, META_AD_SET, META_AD
+  campaign_id     String?
+  ad_set_id       String?
+  ad_id           String?
+  product_id      String?
+  
+  // Spend / Traffic (Both Marketplaces & Meta)
+  spend           Float       @default(0)
+  impressions     Int         @default(0)
+  clicks          Int         @default(0)
+  reach           Int         @default(0)
+  frequency       Float       @default(0)
+  
+  // Marketplace Specific
+  sales           Float       @default(0) // GMV
+  orders          Int         @default(0)
+  refunds         Float       @default(0)
+  cancellations   Float       @default(0)
+  marketplace_fee Float       @default(0)
+  affiliate_cost  Float       @default(0)
+  other_costs     Float       @default(0)
+
+  // Meta Ads / Ad Channel Specific
+  purchases          Int      @default(0)
+  attributed_revenue Float    @default(0) // Prevent double-counting with GMV
+
+  brand           Brand       @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  platform        Platform    @relation(fields: [platform_id], references: [id], onDelete: Cascade)
+  campaign        Campaign?   @relation(fields: [campaign_id], references: [id], onDelete: SetNull)
+  ad_set          AdSet?      @relation(fields: [ad_set_id], references: [id], onDelete: SetNull)
+  ad              Ad?         @relation(fields: [ad_id], references: [id], onDelete: SetNull)
+  product         Product?    @relation(fields: [product_id], references: [id], onDelete: SetNull)
+
+  @@index([date])
+  @@index([brand_id, date, platform_id, source_type])
+}
+
+model BudgetAllocation {
+  id             String      @id @default(cuid())
+  brand_id       String
+  platform_id    String      // Used as Channel ID
+  month          DateTime    // Store first day of month
+  amount         Float       @default(0)
+
+  brand          Brand       @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  platform       Platform    @relation(fields: [platform_id], references: [id], onDelete: Cascade)
+
+  @@unique([brand_id, platform_id, month])
+}
+
+model FinancialSetting {
+  id                  String   @id @default(cuid())
+  brand_id            String
+  marketplace_fee_pct Float    @default(0)
+  affiliate_pct       Float    @default(0)
+  
+  brand               Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id             String   @id @default(cuid())
+  brand_id       String
+  name           String   @default("Performance Report")
+  type           String   // DAILY, WEEKLY, MONTHLY, YEARLY, CUSTOM
+  status         String   @default("COMPLETE") // GENERATING, COMPLETE, PARTIAL_DATA, FAILED
+  data_coverage  Float    @default(100)
+  period_start   DateTime
+  period_end     DateTime
+  generated_date DateTime @default(now())
+  content        String   // JSON structured snapshot
+
+  
+  brand          Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+}
+
+model ActionItem {
+  id             String   @id @default(cuid())
+  brand_id       String
+  severity       String   // HIGH, MEDIUM, OPPORTUNITY
+  title          String
+  metric         String?
+  recommendation String
+  status         String   @default("OPEN") // OPEN, RESOLVED, DISMISSED
+  created_at     DateTime @default(now())
+  brand          Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+}
+
+model Target {
+  id             String   @id @default(cuid())
+  brand_id       String
+  type           String   // ROAS, CPA, GMV, PROFIT, CTR, CVR
+  value          Float
+  level          String   // BRAND, MARKETPLACE, AD_CHANNEL
+  level_id       String?  // Null means it applies to the whole brand
+  
+  brand          Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  
+  @@unique([brand_id, type, level, level_id])
+}
+
+// ==========================================
+// PHASE 6: AFFILIATE INTELLIGENCE
+// ==========================================
+
+model Affiliate {
+  id                String   @id @default(cuid())
+  brand_id          String
+  platform_id       String
+  external_id       String
+  username          String?
+  display_name      String?
+  profile_url       String?
+  category          String?
+  audience_summary  String?
+  followers         Int      @default(0)
+  engagement_rate   Float    @default(0)
+  location          String?
+  audience_age_min  Int?
+  audience_age_max  Int?
+  audience_gender   String?
+  status            String   @default("ACTIVE")
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  brand             Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  platform          Platform @relation(fields: [platform_id], references: [id], onDelete: Cascade)
+
+  metrics           AffiliateMetric[]
+  recommendations   AffiliateRecommendation[]
+
+  @@unique([brand_id, platform_id, external_id])
+}
+
+model AffiliateMetric {
+  id                String   @id @default(cuid())
+  brand_id          String
+  platform_id       String
+  affiliate_id      String
+  product_id        String?
+  date              DateTime
+
+  impressions       Int      @default(0)
+  reach             Int      @default(0)
+  clicks            Int      @default(0)
+  orders            Int      @default(0)
+  sales             Float    @default(0) // GMV
+
+  refunds           Float    @default(0)
+  cancellations     Float    @default(0)
+
+  commission        Float    @default(0)
+  commission_pct    Float    @default(0)
+
+  marketplace_fee   Float    @default(0)
+  other_costs       Float    @default(0)
+
+  conversion_rate   Float    @default(0)
+  attributed_revenue Float   @default(0)
+
+  source_type       String   // AFFILIATE_PERFORMANCE, AFFILIATE_ORDERS
+  
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  brand             Brand     @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  platform          Platform  @relation(fields: [platform_id], references: [id], onDelete: Cascade)
+  affiliate         Affiliate @relation(fields: [affiliate_id], references: [id], onDelete: Cascade)
+  product           Product?  @relation(fields: [product_id], references: [id], onDelete: SetNull)
+
+  @@index([brand_id, date])
+  @@index([platform_id, affiliate_id])
+  @@index([source_type])
+}
+
+model BrandAudienceProfile {
+  id                  String   @id @default(cuid())
+  brand_id            String   @unique
+  primary_age_min     Int?
+  primary_age_max     Int?
+  gender              String?
+  locations           String?
+  interests           String?
+  buying_behavior     String?
+  price_sensitivity   String?
+  income_level        String?
+  brand_positioning   String?
+  preferred_platforms String?
+  content_preferences String?
+
+  brand               Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+}
+
+model AffiliateTarget {
+  id                 String   @id @default(cuid())
+  brand_id           String
+  target_roi         Float    @default(5)
+  max_commission_pct Float    @default(15)
+  min_conversion_pct Float    @default(1)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  brand              Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+}
+
+model AffiliateRecommendation {
+  id                      String   @id @default(cuid())
+  brand_id                String
+  affiliate_id            String
+  score                   Float    @default(0)
+  audience_fit_score      Float    @default(0)
+  performance_score       Float    @default(0)
+  conversion_score        Float    @default(0)
+  roi_score               Float    @default(0)
+  product_fit_score       Float    @default(0)
+  cost_efficiency_score   Float    @default(0)
+  estimated_roi           Float    @default(0)
+  recommended_commission  String   @default("10%")
+  status                  String   @default("HIGH POTENTIAL")
+  reasoning               String
+  created_at              DateTime @default(now())
+
+  brand               Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  affiliate           Affiliate @relation(fields: [affiliate_id], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// PHASE 7: AUTOMATION & INTELLIGENCE
+// ==========================================
+
+model Notification {
+  id         String   @id @default(cuid())
+  brand_id   String
+  severity   String   // HIGH, MEDIUM, LOW, INFO
+  type       String   // DATA_HEALTH, ALERT, OPPORTUNITY
+  title      String
+  message    String
+  status     String   @default("UNREAD") // UNREAD, READ, ARCHIVED
+  created_at DateTime @default(now())
+
+  brand      Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+}
+
+model ReportSchedule {
+  id          String   @id @default(cuid())
+  brand_id    String
+  report_type String   // DAILY, WEEKLY, MONTHLY
+  frequency   String   // MON_0800
+  next_run_at DateTime?
+  active      Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  brand       Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// PHASE 8: PRODUCTION DATA PIPELINE
+// ==========================================
+
+model IntegrationCredential {
+  id                      String   @id @default(cuid())
+  brand_id                String
+  platform_id             String
+  access_token_encrypted  String
+  refresh_token_encrypted String?
+  token_expires_at        DateTime?
+  external_account_id     String?
+  external_account_name   String?
+  scopes                  String?
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
+
+  brand                   Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  platform                Platform @relation(fields: [platform_id], references: [id], onDelete: Cascade)
+}
+
+model SyncError {
+  id              String   @id @default(cuid())
+  sync_job_id     String
+  entity_type     String
+  external_id     String?
+  error_code      String?
+  error_message   String
+  raw_context     String?  // JSON string safely stripped of secrets
+  created_at      DateTime @default(now())
+
+  sync_job        SyncJob  @relation(fields: [sync_job_id], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  user_id     String?
+  brand_id    String?
+  action      String
+  platform_id String?
+  status      String   // SUCCESS, FAILURE
+  metadata    String?  // JSON string
+  timestamp   DateTime @default(now())
+
+  brand       Brand?   @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+}
+
+model ImportMappingMemory {
+  id              String   @id @default(cuid())
+  brand_id        String
+  platform_id     String?
+  report_type     String
+  source_column   String
+  mapped_field    String
+  created_at      DateTime @default(now())
+
+  brand           Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  platform        Platform? @relation(fields: [platform_id], references: [id], onDelete: Cascade)
+
+  @@unique([brand_id, platform_id, report_type, source_column])
+}
+

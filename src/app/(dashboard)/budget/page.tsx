@@ -1,0 +1,125 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useStore } from '@/store/useStore'
+import { Wallet, ArrowRight, CheckCircle, AlertTriangle, Lightbulb } from 'lucide-react'
+
+export default function BudgetManagerPage() {
+  const { selectedBrandId } = useStore()
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      if (!selectedBrandId) return
+      setLoading(true)
+      try {
+        const res = await fetch(`/api/budget/recommendations?brandId=${selectedBrandId}`)
+        const json = await res.json()
+        if (json.current) setData(json)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [selectedBrandId])
+
+  const formatCurrency = (val: number) => `Rp ${(val/1000000).toFixed(1)}M`
+
+  if (loading) return <div>Loading Budget Engine...</div>
+  if (!data) return <div>Failed to load budget data.</div>
+
+  const currentTotal = data.current.reduce((sum: number, c: any) => sum + c.spend, 0)
+  const recTotal = data.recommended.reduce((sum: number, c: any) => sum + c.spend, 0)
+  const isIncrease = recTotal > currentTotal
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '1000px' }}>
+      
+      <div>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>Budget Manager & Allocations</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Automated budget recommendations based on 30-day ROAS performance.</p>
+      </div>
+
+      <div style={{ padding: '12px 16px', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '8px', color: 'var(--primary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <AlertTriangle size={18} />
+        SIMULATION / RECOMMENDATION ONLY. Actual advertising platform budgets are not modified until explicitly approved.
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+        
+        {/* TOTAL SUMMARY */}
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Current 30-Day Budget</div>
+            <div style={{ fontSize: '2rem', fontWeight: 700 }}>{formatCurrency(currentTotal)}</div>
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-secondary)' }}><ArrowRight /></div>
+          
+          <div style={{ padding: '16px', backgroundColor: isIncrease ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Recommended Budget</div>
+            <div style={{ fontSize: '2rem', fontWeight: 700, color: isIncrease ? 'var(--danger)' : 'var(--success)' }}>
+              {formatCurrency(recTotal)}
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
+              Difference: {formatCurrency(Math.abs(recTotal - currentTotal))}
+            </div>
+          </div>
+
+          <button className="btn-primary" style={{ width: '100%', marginTop: 'auto' }}>Approve Changes</button>
+        </div>
+
+        {/* CHANNEL BREAKDOWN & INSIGHTS */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Channel Breakdown</h3>
+            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--surface-border)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                  <th style={{ padding: '8px 0', fontWeight: 600 }}>Channel</th>
+                  <th style={{ padding: '8px 0', fontWeight: 600 }}>ROAS (30d)</th>
+                  <th style={{ padding: '8px 0', fontWeight: 600 }}>Current</th>
+                  <th style={{ padding: '8px 0', fontWeight: 600 }}>Recommended</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.current.map((c: any, i: number) => {
+                  const rec = data.recommended.find((r: any) => r.channel === c.channel)
+                  return (
+                    <tr key={c.channel} style={{ borderBottom: '1px solid var(--surface-border)' }}>
+                      <td style={{ padding: '12px 0', fontWeight: 500 }}>{c.channel}</td>
+                      <td style={{ padding: '12px 0', color: c.roas >= 4 ? 'var(--success)' : c.roas < 2.5 ? 'var(--danger)' : 'var(--text-primary)' }}>{c.roas.toFixed(2)}x</td>
+                      <td style={{ padding: '12px 0' }}>{formatCurrency(c.spend)}</td>
+                      <td style={{ padding: '12px 0', fontWeight: 600, color: rec.spend > c.spend ? 'var(--danger)' : rec.spend < c.spend ? 'var(--success)' : 'var(--text-primary)' }}>
+                        {formatCurrency(rec.spend)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Lightbulb size={18} color="var(--primary)" /> AI Budget Insights
+            </h3>
+            <ul style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingLeft: '20px', margin: 0 }}>
+              {data.insights.map((insight: string, idx: number) => (
+                <li key={idx} style={{ fontSize: '0.95rem', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+                  {insight}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  )
+}
