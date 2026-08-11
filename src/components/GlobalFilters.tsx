@@ -32,7 +32,7 @@ export function GlobalFilters() {
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString())
     // Fallback to a seeded brand ID if none selected for MVP testing
-    params.set('brandId', selectedBrandId || 'cm0m2xxxx0000000000000000') 
+ 
     params.set('marketplace', selectedMarketplace)
     params.set('channel', selectedAdChannel)
     params.set('dateOption', dateRangeOption)

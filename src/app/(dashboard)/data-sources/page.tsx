@@ -1,14 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useStore } from '@/store/useStore'
 import { RefreshCw, AlertTriangle, CheckCircle, Clock, UploadCloud, ChevronRight, FileText, ShoppingCart, Store, Target, Activity } from 'lucide-react'
 import Link from 'next/link'
 import Papa from 'papaparse'
 import * as xlsx from 'xlsx'
 
 export default function DataSourcesPage() {
-  const { selectedBrandId } = useStore()
   const [dataSources, setDataSources] = useState<any[]>([])
   
   // Wizard State
@@ -24,11 +22,10 @@ export default function DataSourcesPage() {
 
   useEffect(() => {
     load()
-  }, [selectedBrandId])
+  }, [])
 
   async function load() {
-    if (!selectedBrandId) return
-    const res = await fetch(`/api/data-sources?brandId=${selectedBrandId}`)
+    const res = await fetch(`/api/data-sources`)
     const data = await res.json()
     if (data.dataSources) setDataSources(data.dataSources)
   }

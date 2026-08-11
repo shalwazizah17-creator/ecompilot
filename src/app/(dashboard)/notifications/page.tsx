@@ -1,24 +1,21 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useStore } from '@/store/useStore'
 import { Bell, AlertTriangle, Info, CheckCircle, Lightbulb, Check } from 'lucide-react'
 
 export default function NotificationsPage() {
-  const { selectedBrandId } = useStore()
   const [notifications, setNotifications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBrandId])
+  }, [])
 
   async function load() {
-    if (!selectedBrandId) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/notifications?brandId=${selectedBrandId}`)
+      const res = await fetch(`/api/notifications`)
       const data = await res.json()
       if (data.notifications) setNotifications(data.notifications)
     } catch (err) {

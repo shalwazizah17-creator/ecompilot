@@ -1,20 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useStore } from '@/store/useStore'
 import { Activity, Server, AlertCircle, CheckCircle, Database } from 'lucide-react'
 
 export default function DataHealthCenter() {
-  const { selectedBrandId } = useStore()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
-      if (!selectedBrandId) return
       setLoading(true)
       try {
-        const res = await fetch(`/api/data-health?brandId=${selectedBrandId}`)
+        const res = await fetch(`/api/data-health`)
         const json = await res.json()
         setData(json)
       } catch (err) {
@@ -24,7 +21,7 @@ export default function DataHealthCenter() {
       }
     }
     load()
-  }, [selectedBrandId])
+  }, [])
 
   if (loading) return <div>Loading Data Health Center...</div>
   if (!data) return <div>Failed to load data health.</div>

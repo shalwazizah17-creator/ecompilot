@@ -1,11 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useStore } from '@/store/useStore'
 import { BarChart2, TrendingUp, TrendingDown, DollarSign, Target, Activity } from 'lucide-react'
 
 export default function MarketingDecisionCenter() {
-  const { selectedBrandId } = useStore()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
@@ -15,10 +13,9 @@ export default function MarketingDecisionCenter() {
 
   useEffect(() => {
     async function load() {
-      if (!selectedBrandId) return
       setLoading(true)
       try {
-        const res = await fetch(`/api/budget/recommendations?brandId=${selectedBrandId}`)
+        const res = await fetch(`/api/budget/recommendations`)
         const json = await res.json()
         if (json.recommendations) {
           setData(json.recommendations)
@@ -37,7 +34,7 @@ export default function MarketingDecisionCenter() {
       }
     }
     load()
-  }, [selectedBrandId])
+  }, [])
 
   const formatCurrency = (val: number) => `Rp ${(val).toLocaleString('id-ID')}`
 

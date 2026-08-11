@@ -1,12 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useStore } from '@/store/useStore'
 import { Activity, ArrowUpRight, ArrowDownRight, TrendingUp, AlertTriangle, ShieldCheck, DollarSign, Target, ShoppingCart, Percent, Database } from 'lucide-react'
 import Link from 'next/link'
 
 export default function DashboardPage() {
-  const { selectedBrandId } = useStore()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
@@ -14,7 +12,7 @@ export default function DashboardPage() {
     async function load() {
       setLoading(true)
       try {
-        const url = selectedBrandId ? `/api/intelligence/daily?brandId=${selectedBrandId}` : '/api/intelligence/daily'
+        const url = '/api/intelligence/daily'
         const res = await fetch(url)
         const json = await res.json()
         if (json.score !== undefined) setData(json)
@@ -25,7 +23,7 @@ export default function DashboardPage() {
       }
     }
     load()
-  }, [selectedBrandId])
+  }, [])
 
   if (loading) return <div>Loading Executive Command Center...</div>
   if (!data) return <div>Failed to load data.</div>

@@ -7,19 +7,16 @@ import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 
 import { Suspense } from 'react'
 
-import { useStore } from '@/store/useStore'
 
 function DiscoveryContent() {
   const [candidates, setCandidates] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const { selectedBrandId } = useStore()
-  const brandId = selectedBrandId || 'cm0m2xxxx0000000000000000'
 
   useEffect(() => {
     async function load() {
       setLoading(true)
       try {
-        const res = await fetch(`/api/affiliates/discovery?brandId=${brandId}`)
+        const res = await fetch(`/api/affiliates/discovery`)
         const data = await res.json()
         setCandidates(data.candidates || [])
       } catch (err) {
@@ -29,7 +26,7 @@ function DiscoveryContent() {
       }
     }
     load()
-  }, [brandId])
+  }, [])
 
   const getLabelColor = (label: string) => {
     if (label === 'HIGH POTENTIAL') return { bg: 'rgba(16, 185, 129, 0.1)', text: 'var(--success)' }

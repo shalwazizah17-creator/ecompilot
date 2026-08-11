@@ -3,12 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileText, Plus } from 'lucide-react'
-import { useStore } from '@/store/useStore'
 
 export default function ReportsIndex() {
   const router = useRouter()
-  const { selectedBrandId } = useStore()
-  const brandId = selectedBrandId || 'cm0m2xxxx0000000000000000'
   
   const [reports, setReports] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -22,7 +19,7 @@ export default function ReportsIndex() {
 
   const loadReports = async () => {
     setLoading(true)
-    const res = await fetch(`/api/reports?brandId=${brandId}`)
+    const res = await fetch(`/api/reports`)
     if (res.ok) {
       const data = await res.json()
       setReports(data.reports || [])
@@ -30,7 +27,7 @@ export default function ReportsIndex() {
     setLoading(false)
   }
 
-  useEffect(() => { loadReports() }, [brandId])
+  useEffect(() => { loadReports() }, [])
 
   const generateReport = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,7 +57,7 @@ export default function ReportsIndex() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          brandId, 
+          
           type: reportType,
           periodStart: finalStart.toISOString(), 
           periodEnd: finalEnd.toISOString() 

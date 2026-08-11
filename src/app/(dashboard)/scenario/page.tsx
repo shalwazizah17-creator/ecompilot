@@ -1,11 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useStore } from '@/store/useStore'
 import { Calculator, ArrowRight, TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react'
 
 export default function ScenarioPlannerPage() {
-  const { selectedBrandId } = useStore()
   const [metaBudgetChange, setMetaBudgetChange] = useState(0) // percentage
   const [affiliateCommission, setAffiliateCommission] = useState(10) // percentage
   
@@ -13,14 +11,13 @@ export default function ScenarioPlannerPage() {
   const [loading, setLoading] = useState(false)
 
   const runSimulation = async () => {
-    if (!selectedBrandId) return
     setLoading(true)
     try {
       const res = await fetch('/api/scenario', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          brandId: selectedBrandId,
+          // brandId removed
           metaBudgetChangePct: metaBudgetChange,
           affiliateCommissionPct: affiliateCommission
         })
@@ -37,7 +34,7 @@ export default function ScenarioPlannerPage() {
   useEffect(() => {
     runSimulation()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBrandId, metaBudgetChange, affiliateCommission])
+  }, [metaBudgetChange, affiliateCommission])
 
   const formatCurrency = (val: number) => `Rp ${(val/1000000).toFixed(1)}M`
 

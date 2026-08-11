@@ -97,8 +97,11 @@ export async function GET(request: Request) {
         reason
       }
     })
+    const current = recommendations.map(r => ({ channel: r.channel, spend: r.currentMonthlyBudget, roas: r.roas30 }))
+    const recommended = recommendations.map(r => ({ channel: r.channel, spend: r.recommendedBudget }))
+    const insights = recommendations.map(r => r.reason)
 
-    return NextResponse.json({ recommendations })
+    return NextResponse.json({ current, recommended, insights })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

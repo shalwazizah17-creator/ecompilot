@@ -1,20 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useStore } from '@/store/useStore'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts'
 
 export default function MarketplaceIntelligence() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const { selectedBrandId } = useStore()
-  const brandId = selectedBrandId || 'cm0m2xxxx0000000000000000'
 
   useEffect(() => {
     async function load() {
       setLoading(true)
       try {
-        const res = await fetch(`/api/marketplace-intelligence?brandId=${brandId}`)
+        const res = await fetch(`/api/marketplace-intelligence`)
         const json = await res.json()
         setData(json)
       } catch (err) {
@@ -24,7 +21,7 @@ export default function MarketplaceIntelligence() {
       }
     }
     load()
-  }, [brandId])
+  }, [])
 
   if (loading) {
     return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Marketplace Intelligence...</div>

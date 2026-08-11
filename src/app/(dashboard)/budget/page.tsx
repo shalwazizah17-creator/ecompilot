@@ -1,34 +1,48 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useStore } from '@/store/useStore'
 import { Wallet, ArrowRight, CheckCircle, AlertTriangle, Lightbulb } from 'lucide-react'
 
 export default function BudgetManagerPage() {
-  const { selectedBrandId } = useStore()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
+  const [errorStatus, setErrorStatus] = useState<number | null>(null)
+
   useEffect(() => {
     async function load() {
-      if (!selectedBrandId) return
       setLoading(true)
       try {
-        const res = await fetch(`/api/budget/recommendations?brandId=${selectedBrandId}`)
+        const res = await fetch(`/api/budget/recommendations`)
+        if (!res.ok) {
+          if (res.status === 401) window.location.href = '/login'
+          setErrorStatus(res.status)
+          return
+        }
         const json = await res.json()
         if (json.current) setData(json)
       } catch (err) {
         console.error(err)
+        setErrorStatus(500)
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [selectedBrandId])
+  }, [])
 
   const formatCurrency = (val: number) => `Rp ${(val/1000000).toFixed(1)}M`
 
-  if (loading) return <div>Loading Budget Engine...</div>
+  if (loading) return <div>Loading...</div>
+  if (errorStatus === 403) return <div>Permission error: You do not have access to this workspace.</div>
+  if (errorStatus === 404) return (
+    <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+      <h3>Marketplace data required</h3>
+      <p>Import your marketplace data to calculate budgets.</p>
+      <a href="/data-sources" className="btn-primary" style={{ display: 'inline-block', marginTop: '16px' }}>Import Excel Marketplace Data</a>
+    </div>
+  )
+  if (errorStatus) return <div>Unable to load analytics</div>
   if (!data) return <div>Failed to load budget data.</div>
 
   const currentTotal = data.current.reduce((sum: number, c: any) => sum + c.spend, 0)

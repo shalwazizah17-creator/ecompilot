@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { AlertCircle, TrendingUp, HelpCircle, CheckCircle } from 'lucide-react'
 
-export function MarketingAdvisor({ brandId }: { brandId: string }) {
+export function MarketingAdvisor() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
@@ -11,7 +11,7 @@ export function MarketingAdvisor({ brandId }: { brandId: string }) {
     async function load() {
       setLoading(true)
       try {
-        const res = await fetch(`/api/marketing-advisor?brandId=${brandId}`)
+        const res = await fetch(`/api/marketing-advisor`)
         const json = await res.json()
         setData(json.advisor)
       } catch (err) {
@@ -21,7 +21,7 @@ export function MarketingAdvisor({ brandId }: { brandId: string }) {
       }
     }
     load()
-  }, [brandId])
+  }, [])
 
   if (loading) return <div className="card" style={{ padding: '40px', textAlign: 'center' }}>Running strategic analysis...</div>
   if (!data) return <div className="card" style={{ padding: '40px', textAlign: 'center' }}>Advisor data unavailable.</div>

@@ -2,17 +2,17 @@
 
 import { useEffect, useState } from 'react'
 
-export function MetaAdsAnalytics({ brandId }: { brandId: string }) {
+export function MetaAdsAnalytics() {
   const [campaigns, setCampaigns] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCampaign, setSelectedCampaign] = useState<any>(null)
 
   useEffect(() => {
     async function load() {
-      if (!brandId) return
+      // Removed brandId check
       setLoading(true)
       try {
-        const res = await fetch(`/api/meta-ads?brandId=${brandId}`)
+        const res = await fetch(`/api/meta-ads`)
         const data = await res.json()
         setCampaigns(data.campaigns || [])
       } catch (err) {
@@ -22,7 +22,7 @@ export function MetaAdsAnalytics({ brandId }: { brandId: string }) {
       }
     }
     load()
-  }, [brandId])
+  }, [])
 
   if (loading) {
     return <div className="card" style={{ height: '300px', animation: 'pulse 2s infinite', backgroundColor: 'var(--surface-border)' }}></div>

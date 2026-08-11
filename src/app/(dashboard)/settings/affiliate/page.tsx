@@ -1,11 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useStore } from '@/store/useStore'
 import { Target, Users, Settings } from 'lucide-react'
 
 export default function AffiliateSettingsPage() {
-  const { selectedBrandId } = useStore()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -18,12 +16,11 @@ export default function AffiliateSettingsPage() {
 
   useEffect(() => {
     load()
-  }, [selectedBrandId])
+  }, [])
 
   async function load() {
-    if (!selectedBrandId) return
     setLoading(true)
-    const res = await fetch(`/api/settings/affiliate?brandId=${selectedBrandId}`)
+    const res = await fetch(`/api/settings/affiliate`)
     const json = await res.json()
     if (res.ok) {
       setData(json)
@@ -41,7 +38,7 @@ export default function AffiliateSettingsPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        brandId: selectedBrandId,
+        // brandId removed
         targetRoi,
         maxCommissionPct,
         minConversionPct,

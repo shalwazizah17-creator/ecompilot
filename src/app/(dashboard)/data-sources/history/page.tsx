@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useStore } from '@/store/useStore'
 import { ArrowLeft, CheckCircle, XCircle, Clock } from 'lucide-react'
 import Link from 'next/link'
 
@@ -18,16 +17,14 @@ interface SyncHistoryItem {
 }
 
 export default function SyncHistoryPage() {
-  const { selectedBrandId } = useStore()
   const [history, setHistory] = useState<SyncHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
-      if (!selectedBrandId) return
       setLoading(true)
       try {
-        const res = await fetch(`/api/sync/history?brandId=${selectedBrandId}`)
+        const res = await fetch(`/api/sync/history`)
         const data = await res.json()
         if (data.history) setHistory(data.history)
       } catch (err) {
@@ -37,7 +34,7 @@ export default function SyncHistoryPage() {
       }
     }
     load()
-  }, [selectedBrandId])
+  }, [])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>

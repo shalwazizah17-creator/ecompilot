@@ -1,20 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useStore } from '@/store/useStore'
 import { Brain, TrendingUp, AlertTriangle, Lightbulb, Activity } from 'lucide-react'
 
 export default function DailyIntelligencePage() {
-  const { selectedBrandId } = useStore()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
-      if (!selectedBrandId) return
       setLoading(true)
       try {
-        const res = await fetch(`/api/intelligence/daily?brandId=${selectedBrandId}`)
+        const res = await fetch(`/api/intelligence/daily`)
         const json = await res.json()
         if (json.score !== undefined) setData(json)
       } catch (err) {
@@ -24,7 +21,7 @@ export default function DailyIntelligencePage() {
       }
     }
     load()
-  }, [selectedBrandId])
+  }, [])
 
   if (loading) return <div>Loading Intelligence Engine...</div>
   if (!data) return <div>Failed to load intelligence.</div>

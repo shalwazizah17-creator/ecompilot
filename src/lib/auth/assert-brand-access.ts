@@ -12,6 +12,12 @@ export async function assertBrandAccess(brandId?: string | null) {
   if (!brandId) {
     // If no brandId is provided, get the first brand associated with the user's workspace
     const workspaceId = (user as any).workspaceId
+    
+    console.log({
+      userId: user.id,
+      workspaceId: workspaceId
+    })
+    
     if (!workspaceId) return null
     
     const brand = await prisma.brand.findFirst({

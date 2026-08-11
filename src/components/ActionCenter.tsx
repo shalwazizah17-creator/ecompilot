@@ -3,17 +3,17 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, Info, Target, Zap } from 'lucide-react'
 
-export function ActionCenter({ brandId }: { brandId: string }) {
+export function ActionCenter() {
   const [actions, setActions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('ALL')
 
   useEffect(() => {
     async function load() {
-      if (!brandId) return
+      // Removed brandId check
       setLoading(true)
       try {
-        const res = await fetch(`/api/actions?brandId=${brandId}`)
+        const res = await fetch(`/api/actions`)
         const data = await res.json()
         setActions(data.actions || [])
       } catch (err) {
@@ -23,13 +23,13 @@ export function ActionCenter({ brandId }: { brandId: string }) {
       }
     }
     load()
-  }, [brandId])
+  }, [])
 
   const runEngine = async () => {
     try {
       setLoading(true)
-      await fetch(`/api/actions/generate?brandId=${brandId}`, { method: 'POST' })
-      const res = await fetch(`/api/actions?brandId=${brandId}`)
+      await fetch(`/api/actions/generate`, { method: 'POST' })
+      const res = await fetch(`/api/actions`)
       const data = await res.json()
       setActions(data.actions || [])
     } catch (err) {

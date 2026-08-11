@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from 'react'
 
-export function ProductAnalytics({ brandId }: { brandId: string }) {
+export function ProductAnalytics() {
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
-      if (!brandId) return
+      // Removed brandId check
       setLoading(true)
       try {
-        const res = await fetch(`/api/products?brandId=${brandId}`)
+        const res = await fetch(`/api/products`)
         const data = await res.json()
         setProducts(data.products || [])
       } catch (err) {
@@ -21,7 +21,7 @@ export function ProductAnalytics({ brandId }: { brandId: string }) {
       }
     }
     load()
-  }, [brandId])
+  }, [])
 
   if (loading) {
     return <div className="card" style={{ height: '300px', animation: 'pulse 2s infinite', backgroundColor: 'var(--surface-border)' }}></div>

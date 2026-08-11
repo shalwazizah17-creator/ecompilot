@@ -1,12 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useStore } from '@/store/useStore'
 import { TrendingUp, Users, DollarSign, Award, ChevronRight, Calculator } from 'lucide-react'
 import Link from 'next/link'
 
 export default function AffiliateDashboard() {
-  const { selectedBrandId } = useStore()
   const [data, setData] = useState<any>(null)
   const [recs, setRecs] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -18,14 +16,13 @@ export default function AffiliateDashboard() {
 
   useEffect(() => {
     load()
-  }, [selectedBrandId])
+  }, [])
 
   async function load() {
-    if (!selectedBrandId) return
     setLoading(true)
     const [resData, resRecs] = await Promise.all([
-      fetch(`/api/affiliate?brandId=${selectedBrandId}`),
-      fetch(`/api/affiliate/recommendations?brandId=${selectedBrandId}`)
+      fetch(`/api/affiliate`),
+      fetch(`/api/affiliate/recommendations`)
     ])
     
     if (resData.ok) setData(await resData.json())
