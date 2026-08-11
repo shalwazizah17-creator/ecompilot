@@ -24,7 +24,6 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
     { channel: 'Tokopedia Ads', allocated: 2000000, spent: 1800000, historicalRoas: 15.2 },
     { channel: 'Meta Ads', allocated: 5000000, spent: 2100000, historicalRoas: 4.4 },
   ]
-  ]
   
   const [totalBudget, setTotalBudget] = useState(defaultTotal)
   const [allocations, setAllocations] = useState<BudgetAllocation[]>(defaultAllocations)
