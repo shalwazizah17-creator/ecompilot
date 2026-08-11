@@ -78,21 +78,31 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Manajer Anggaran Interaktif</h2>
+        <div>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Total Anggaran Iklan</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>Atur batas pengeluaran untuk semua platform</p>
+        </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button 
-            className="btn-outline" 
-            disabled={!hasChanges || isApplying}
-            onClick={() => {
-              setAllocations(defaultAllocations)
-              setTotalBudget(defaultTotal)
-              setNotes('')
-              setHasChanges(false)
-            }}
-          >
-            Buang Perubahan
-          </button>
-          
+          <div style={{ position: 'relative' }}>
+            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>Rp</span>
+            <input 
+              type="text" 
+              className="input"
+              style={{ width: '200px', fontSize: '1.1rem', fontWeight: 600, padding: '8px 12px 8px 40px', border: '1px solid var(--surface-border)', borderRadius: '6px' }}
+              value={totalBudget.toLocaleString('id-ID')}
+              onChange={e => {
+                const rawValue = e.target.value.replace(/\./g, '')
+                const num = parseInt(rawValue, 10)
+                if (!isNaN(num)) {
+                  setTotalBudget(num)
+                  setHasChanges(true)
+                } else if (e.target.value === '' || e.target.value === 'Rp ') {
+                  setTotalBudget(0)
+                  setHasChanges(true)
+                }
+              }}
+            />
+          </div>
           <input 
             type="text" 
             placeholder="Catatan / Keterangan (Opsional)" 
@@ -121,16 +131,7 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', marginBottom: '24px' }}>
         <div style={{ padding: '16px', backgroundColor: 'var(--surface-border)', borderRadius: '8px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Anggaran Iklan</div>
-          <input 
-            type="number"
-            value={totalBudget}
-            onChange={(e) => handleTotalChange(Number(e.target.value))}
-            style={{ 
-              fontSize: '1.5rem', fontWeight: 700, background: 'transparent', 
-              border: 'none', borderBottom: '2px solid var(--primary)', 
-              outline: 'none', width: '100%', marginTop: '4px', color: 'var(--text-primary)'
-            }}
-          />
+          <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>Rp {(totalBudget/1000000).toFixed(1)} Juta</div>
           {recommendedTotal !== undefined && recommendedData && recommendedData.length > 0 && (
             <button 
               onClick={() => {
@@ -144,30 +145,30 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
                 border: 'none', borderRadius: '4px', cursor: 'pointer', width: '100%' 
               }}
             >
-              Gunakan Rekomendasi AI (Rp {(recommendedTotal/1000000).toFixed(1)}M)
+              Gunakan Rekomendasi AI (Rp {(recommendedTotal/1000000).toFixed(1)} Juta)
             </button>
           )}
         </div>
         <div style={{ padding: '16px', backgroundColor: 'var(--surface-border)', borderRadius: '8px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Alokasi Simulasi</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>Rp {(totalAllocated/1000000).toFixed(1)}M</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>Rp {(totalAllocated/1000000).toFixed(1)} Juta</div>
         </div>
         <div style={{ padding: '16px', backgroundColor: 'var(--surface-border)', borderRadius: '8px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Dihabiskan (S.Bulan)</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-            Rp {(allocations.reduce((sum, a) => sum + a.spent, 0)/1000000).toFixed(1)}M
+            Rp {(allocations.reduce((sum, a) => sum + a.spent, 0)/1000000).toFixed(1)} Juta
           </div>
         </div>
         <div style={{ padding: '16px', backgroundColor: isOverBudget ? 'var(--danger)' : 'var(--success)', color: 'white', borderRadius: '8px' }}>
           <div style={{ fontSize: '0.85rem' }}>Sisa Dana</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-            {isOverBudget ? '-' : ''}Rp {Math.abs(remaining/1000000).toFixed(1)}M
+            {isOverBudget ? '-' : ''}Rp {Math.abs(remaining/1000000).toFixed(1)} Juta
           </div>
         </div>
         <div style={{ padding: '16px', backgroundColor: 'var(--surface)', border: '1px solid var(--primary)', color: 'var(--primary)', borderRadius: '8px' }}>
           <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>Proyeksi Pend. Atribusi</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-            Rp {(allocations.reduce((sum, a) => sum + (a.allocated * a.historicalRoas), 0)/1000000).toFixed(1)}M
+            Rp {(allocations.reduce((sum, a) => sum + (a.allocated * a.historicalRoas), 0)/1000000).toFixed(1)} Juta
           </div>
           <div style={{ fontSize: '0.75rem', marginTop: '4px', opacity: 0.8 }}>*Berdasarkan ROAS 30 hari terakhir</div>
         </div>
@@ -191,7 +192,7 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                 <input 
                   type="range"
-                  min={alloc.spent} // Cannot allocate less than what's already spent
+                  min={alloc.spent}
                   max={totalBudget}
                   step={100000}
                   value={alloc.allocated}
@@ -199,14 +200,14 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
                   style={{ flex: 1, accentColor: 'var(--primary)' }}
                 />
                 <div style={{ width: '160px', textAlign: 'right' }}>
-                  <div style={{ fontWeight: 600, fontSize: '1rem' }}>Rp {(alloc.allocated/1000000).toFixed(1)}M</div>
+                  <div style={{ fontWeight: 600, fontSize: '1rem' }}>Rp {(alloc.allocated/1000000).toFixed(1)} Juta</div>
                   <div style={{ fontSize: '0.8rem', color: utilPct > 90 ? 'var(--danger)' : 'var(--text-muted)' }}>
                     {utilPct}% Digunakan
                   </div>
                 </div>
                 <div style={{ width: '160px', textAlign: 'right', paddingLeft: '16px', borderLeft: '1px solid var(--surface-border)' }}>
                   <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--primary)' }}>
-                    Rp {((alloc.allocated * alloc.historicalRoas)/1000000).toFixed(1)}M
+                    Rp {((alloc.allocated * alloc.historicalRoas)/1000000).toFixed(1)} Juta
                   </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Proyeksi Pend. Atribusi</div>
                 </div>

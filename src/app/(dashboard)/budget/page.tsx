@@ -53,7 +53,7 @@ export default function BudgetManagerPage() {
     load()
   }, [])
 
-  const formatCurrency = (val: number) => `Rp ${(val/1000000).toFixed(1)}M`
+  const formatCurrency = (val: number) => `Rp ${(val/1000000).toFixed(1)} Juta`
 
   if (loading) return <div>Memuat...</div>
   if (errorStatus === 403) return <div>Kesalahan izin: Anda tidak memiliki akses ke ruang kerja ini.</div>

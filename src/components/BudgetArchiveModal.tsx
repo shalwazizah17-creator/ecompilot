@@ -45,7 +45,7 @@ export function BudgetArchiveModal({ onClose, data }: { onClose: () => void, dat
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Total Disetujui</div>
                       <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--primary)' }}>
-                        Rp {(totalAmount / 1000000).toFixed(1)}M
+                        Rp {(totalAmount / 1000000).toFixed(1)} Juta
                       </div>
                     </div>
                   </div>
