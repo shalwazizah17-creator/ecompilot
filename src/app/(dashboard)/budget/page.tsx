@@ -96,7 +96,7 @@ export default function BudgetManagerPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '1000px' }}>
       
       <div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>Manajer & Alokasi Anggaran</h1>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>Manajer Anggaran & Simulasi AI</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Rekomendasi anggaran otomatis berdasarkan performa ROAS 30 hari.</p>
       </div>
 
