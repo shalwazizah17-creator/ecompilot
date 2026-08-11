@@ -6,69 +6,46 @@ import { Calculations } from '@/lib/calculations'
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
-    
     const brandIdParam = searchParams.get('brandId')
     
-    
     const brand = await assertBrandAccess(brandIdParam)
-    if (!brand) return NextResponse.json({ error: 'Forbidden. You do not have access to this workspace/brand.' }, { status: 403 })
+    if (!brand) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     
-    const brandId = brand.id
-
-    // Usually filter by dates, category, marketplace...
-    // For MVP we just fetch all product metrics for the brand
-    const metrics = await prisma.dailyMetric.findMany({
-      where: { brand_id: brandId, product_id: { not: null } },
-      include: { product: true }
+    const rawProducts = await prisma.product.findMany({
+      where: { brand_id: brand.id },
+      include: { daily_metrics: true },
+      orderBy: { name: 'asc' }
     })
 
-    const productMap = new Map<string, any>()
+    const products = rawProducts.map(p => {
+      let sales = 0, orders = 0, refunds = 0, cancellations = 0, spend = 0, attrRev = 0
 
-    for (const m of metrics) {
-      if (!m.product) continue
-      
-      const pid = m.product.id
-      if (!productMap.has(pid)) {
-        productMap.set(pid, {
-          id: pid,
-          sku: m.product.sku,
-          name: m.product.name,
-          category: m.product.category,
-          price: m.product.price,
-          cogs: m.product.cogs,
-          sales: 0,
-          orders: 0,
-          spend: 0,
-          attrRev: 0,
-          refunds: 0,
-          cancellations: 0,
-        })
+      for (const m of p.daily_metrics) {
+        if (m.source_type === 'MARKETPLACE_SALES') {
+          sales += m.sales
+          orders += m.orders
+          refunds += m.refunds
+          cancellations += m.cancellations
+        } else {
+          spend += m.spend
+          attrRev += m.attributed_revenue
+        }
       }
 
-      const entry = productMap.get(pid)
-      if (m.source_type === 'MARKETPLACE_SALES') {
-        entry.sales += m.sales
-        entry.orders += m.orders
-        entry.refunds += m.refunds
-        entry.cancellations += m.cancellations
-      } else {
-        entry.spend += m.spend
-        entry.attrRev += m.attributed_revenue
-      }
-    }
-
-    const products = Array.from(productMap.values()).map(p => {
-      const netSales = Calculations.netSales(p.sales, p.refunds, p.cancellations)
-      const profit = Calculations.profit(netSales, p.cogs * p.orders, 0, 0, p.spend, 0) // Mock fees
+      const netSales = Calculations.netSales(sales, refunds, cancellations)
+      const profit = Calculations.profit(netSales, p.cogs * orders, 0, 0, spend, 0)
       const margin = Calculations.profitMargin(profit, netSales)
-      const roas = Calculations.roas(p.attrRev, p.spend)
+      const roas = Calculations.roas(attrRev, spend)
 
       return {
-        ...p,
-        netSales,
-        profit,
-        margin,
-        roas
+        id: p.id,
+        sku: p.sku,
+        name: p.name,
+        category: p.category,
+        price: p.price,
+        cogs: p.cogs,
+        sales, orders, spend, attrRev, refunds, cancellations,
+        netSales, profit, margin, roas
       }
     })
 
@@ -77,5 +54,58 @@ export async function GET(req: Request) {
   } catch (error: any) {
     console.error('Products API Error:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const brandIdParam = searchParams.get('brandId')
+    const brand = await assertBrandAccess(brandIdParam)
+    if (!brand) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+    const { id, sku, name, category, price, cogs } = await req.json()
+
+    if (id) {
+      // Update existing
+      const updated = await prisma.product.update({
+        where: { id, brand_id: brand.id },
+        data: { sku, name, category, price: Number(price), cogs: Number(cogs) }
+      })
+      return NextResponse.json(updated)
+    } else {
+      // Create new
+      const created = await prisma.product.create({
+        data: {
+          brand_id: brand.id,
+          sku, name, category,
+          price: Number(price), cogs: Number(cogs)
+        }
+      })
+      return NextResponse.json(created)
+    }
+
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const brandIdParam = searchParams.get('brandId')
+    const brand = await assertBrandAccess(brandIdParam)
+    if (!brand) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+    const { id } = await req.json()
+    if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 })
+
+    await prisma.product.delete({
+      where: { id, brand_id: brand.id }
+    })
+    
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
