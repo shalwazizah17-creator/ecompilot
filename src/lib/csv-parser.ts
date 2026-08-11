@@ -108,6 +108,30 @@ export async function validateAndCheckDuplicates(
           let validRows = 0;
           let invalidRows = 0;
           let duplicateRows = 0;
+          
+          let detectedBrandName = null;
+          if (data.length > 0) {
+            const firstRow = data[0]
+            for (const key of Object.keys(firstRow)) {
+              const kl = key.toLowerCase()
+              if (kl.includes('store name') || kl.includes('shop name') || kl.includes('seller') || kl.includes('brand')) {
+                detectedBrandName = firstRow[key]
+                break
+              }
+            }
+          }
+
+          let workspaceMismatch = false
+          if (detectedBrandName) {
+            const brand = await prisma.brand.findUnique({ where: { id: brandId } })
+            if (brand) {
+              const b1 = detectedBrandName.toLowerCase()
+              const b2 = brand.name.toLowerCase()
+              if (!b1.includes(b2) && !b2.includes(b1)) {
+                workspaceMismatch = true
+              }
+            }
+          }
 
           const parsedRows: ParsedRowData[] = [];
 
@@ -122,7 +146,7 @@ export async function validateAndCheckDuplicates(
           }
 
           if (parsedRows.length === 0) {
-            return resolve({ totalRows: data.length, validRows, invalidRows, duplicateRows });
+            return resolve({ totalRows: data.length, validRows, invalidRows, duplicateRows, workspaceMismatch, detectedBrandName });
           }
 
           const dateStart = new Date(Math.min(...parsedRows.map(r => r.date.getTime())));
@@ -184,7 +208,9 @@ export async function validateAndCheckDuplicates(
             totalRows: data.length,
             validRows,
             invalidRows,
-            duplicateRows
+            duplicateRows,
+            workspaceMismatch,
+            detectedBrandName
           });
         } catch (error) {
           reject(error);

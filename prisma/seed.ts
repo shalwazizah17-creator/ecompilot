@@ -36,12 +36,22 @@ async function main() {
     },
   })
 
-  // Create a brand
-  const brand = await prisma.brand.upsert({
-    where: { name: 'Beauty Brand A' },
+  const workspace = await prisma.workspace.upsert({
+    where: { id: 'demo-workspace-1' },
     update: {},
     create: {
+      id: 'demo-workspace-1',
+      name: 'Demo Workspace',
+    }
+  })
+
+  // Create or Update Brand A
+  const brandA = await prisma.brand.upsert({
+    where: { name: 'Beauty Brand A' },
+    update: {},
+    create: { 
       name: 'Beauty Brand A',
+      workspace_id: workspace.id
     },
   })
 

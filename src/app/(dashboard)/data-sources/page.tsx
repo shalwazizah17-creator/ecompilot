@@ -99,10 +99,17 @@ export default function DataSourcesPage() {
       return newRow
     })
 
-    const res = await fetch('/api/import/validate', {
+    const res = await fetch('/api/import', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rows: mappedRows, platform: detectedPlatform, reportType: detectedType })
+      body: JSON.stringify({ 
+        action: 'validate',
+        fileContent: Papa.unparse(fileData.rows),
+        brandId: dataSources[0]?.brand_id, // Get brandId from loaded data sources
+        platformId: dataSources.find(d => d.platform.name.includes(detectedPlatform))?.platform_id,
+        sourceType: detectedType,
+        mapping: mappings
+      })
     })
     const data = await res.json()
     setValidation(data)
@@ -112,25 +119,23 @@ export default function DataSourcesPage() {
   const confirmImport = async () => {
     setImportStatus('UPLOADING')
     
-    const platformRec = dataSources.find(d => d.platform.name.includes(detectedPlatform))?.platform
-    
-    const mappedRows = fileData.rows.map((row: any) => {
-      const newRow: any = {}
-      for (const src in mappings) {
-        if (mappings[src]) newRow[mappings[src]] = row[src]
-      }
-      return newRow
-    })
+    const platformRec = dataSources.find(d => d.platform.name.includes(detectedPlatform))
+    if (!platformRec) {
+      setImportStatus('ERROR: Platform not configured')
+      return
+    }
 
-    const res = await fetch('/api/import/confirm', {
+    const res = await fetch('/api/import', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        brandId: selectedBrandId,
-        platformId: platformRec?.id || 'mock',
-        reportType: detectedType,
-        rows: mappedRows,
-        duplicateAction
+      body: JSON.stringify({ 
+        action: 'import',
+        fileContent: Papa.unparse(fileData.rows),
+        brandId: platformRec.brand_id,
+        platformId: platformRec.platform_id,
+        sourceType: detectedType,
+        mapping: mappings,
+        duplicateStrategy: duplicateAction
       })
     })
 
@@ -244,27 +249,39 @@ export default function DataSourcesPage() {
           <button className="btn-primary" style={{ alignSelf: 'flex-end' }} onClick={runValidation}>Validate Data</button>
         </div>
       )}
-
       {step === 4 && validation && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <h3>Validation & Deduplication</h3>
           
+          {validation.workspaceMismatch && (
+            <div style={{ padding: '16px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderRadius: '8px', border: '1px solid var(--danger)' }}>
+              <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={18} />
+                Potential Workspace Mismatch
+              </div>
+              <div style={{ marginTop: '4px', fontSize: '0.9rem' }}>
+                This file appears to belong to another brand or workspace (Detected: <strong>{validation.detectedBrandName}</strong>). 
+                It is highly recommended to cancel this import to prevent data contamination.
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', textAlign: 'center' }}>
             <div style={{ padding: '16px', backgroundColor: 'var(--background)', borderRadius: '8px' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 600 }}>{validation.summary.total}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 600 }}>{validation.totalRows}</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Total Rows</div>
             </div>
             <div style={{ padding: '16px', backgroundColor: 'var(--background)', borderRadius: '8px' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--success)' }}>{validation.summary.valid}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--success)' }}>{validation.validRows}</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Valid</div>
             </div>
             <div style={{ padding: '16px', backgroundColor: 'var(--background)', borderRadius: '8px' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--danger)' }}>{validation.summary.errors}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--danger)' }}>{validation.invalidRows}</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Errors</div>
             </div>
           </div>
 
-          {validation.summary.errors > 0 ? (
+          {validation.invalidRows > 0 ? (
             <div style={{ padding: '16px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderRadius: '8px' }}>
               Please fix the errors in your file before importing. (e.g. Missing dates, negative sales)
             </div>
@@ -281,18 +298,24 @@ export default function DataSourcesPage() {
                   <option value="REPLACE">Replace Existing</option>
                 </select>
               </div>
-              <button 
-                className="btn-primary" 
-                onClick={confirmImport}
-                disabled={importStatus === 'UPLOADING'}
-              >
-                {importStatus === 'UPLOADING' ? 'Importing securely...' : 'Confirm & Import'}
-              </button>
+              <div style={{ display: 'flex', gap: '16px', marginTop: '16px' }}>
+                <button className="btn-secondary" onClick={() => setStep(3)}>Back</button>
+                {validation.workspaceMismatch ? (
+                  <button className="btn-primary" disabled style={{ opacity: 0.5 }}>Import Blocked</button>
+                ) : (
+                  <button 
+                    className="btn-primary" 
+                    onClick={confirmImport}
+                    disabled={importStatus === 'UPLOADING'}
+                  >
+                    {importStatus === 'UPLOADING' ? 'Importing securely...' : 'Confirm & Import'}
+                  </button>
+                )}
+              </div>
             </>
           )}
         </div>
       )}
-
       {step === 5 && stats && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', textAlign: 'center' }}>
           <CheckCircle size={48} color="var(--success)" />

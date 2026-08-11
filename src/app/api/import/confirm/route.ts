@@ -9,12 +9,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required routing parameters' }, { status: 400 })
     }
 
+    const brand = await prisma.brand.findUnique({ where: { id: brandId } })
+    if (!brand) return NextResponse.json({ error: 'Brand not found' }, { status: 404 })
+
     // Process mapping memory saves
     if (savedMappings && savedMappings.length > 0) {
       for (const m of savedMappings) {
         await prisma.importMappingMemory.upsert({
           where: {
-            brand_id_platform_id_report_type_source_column: {
+            workspace_id_brand_id_platform_id_report_type_source_column: {
+              workspace_id: brand.workspace_id,
               brand_id: brandId,
               platform_id: platformId,
               report_type: reportType,
@@ -23,6 +27,7 @@ export async function POST(request: Request) {
           },
           update: { mapped_field: m.target },
           create: {
+            workspace_id: brand.workspace_id,
             brand_id: brandId,
             platform_id: platformId,
             report_type: reportType,
@@ -33,12 +38,10 @@ export async function POST(request: Request) {
       }
     }
 
-    // Deduplication Engine (Skip/Replace using Interactive Transaction)
-    let processed = 0
-    let created = 0
-    let updated = 0
-    let skipped = 0
-
+      let processed = 0
+      let created = 0
+      let updated = 0
+      let skipped = 0
     await prisma.$transaction(async (tx) => {
       for (const row of rows) {
         processed++

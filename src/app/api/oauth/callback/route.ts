@@ -9,11 +9,11 @@ export async function GET(request: Request) {
   const error = searchParams.get('error')
 
   if (error) {
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/data-sources?error=oauth_denied`)
+    return NextResponse.redirect(new URL(`/data-sources?error=oauth_denied`, request.url))
   }
 
   if (!code || !encodedState) {
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/data-sources?error=missing_params`)
+    return NextResponse.redirect(new URL(`/data-sources?error=missing_params`, request.url))
   }
 
   let stateObj: any
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const decoded = Buffer.from(encodedState, 'base64').toString('utf8')
     stateObj = JSON.parse(decoded)
   } catch (err) {
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/data-sources?error=invalid_state`)
+    return NextResponse.redirect(new URL(`/data-sources?error=invalid_state`, request.url))
   }
 
   const { brandId, platform } = stateObj
@@ -93,9 +93,9 @@ export async function GET(request: Request) {
       }
     })
 
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/data-sources?success=connected&platform=${platform}`)
-  } catch (error) {
+    return NextResponse.redirect(new URL(`/data-sources?success=connected&platform=${platform}`, request.url))
+  } catch (error: any) {
     console.error('OAuth Callback Error:', error)
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/data-sources?error=internal_server_error`)
+    return NextResponse.redirect(new URL(`/data-sources?error=internal_server_error`, request.url))
   }
 }

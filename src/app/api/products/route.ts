@@ -1,3 +1,4 @@
+import { assertBrandAccess } from "@/lib/auth/assert-brand-access"
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { Calculations } from '@/lib/calculations'
@@ -6,10 +7,13 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
     
-    const brandId = searchParams.get('brandId')
-    if (!brandId) {
-      return NextResponse.json({ error: 'brandId is required' }, { status: 400 })
-    }
+    const brandIdParam = searchParams.get('brandId')
+    
+    
+    const brand = await assertBrandAccess(brandIdParam)
+    if (!brand) return NextResponse.json({ error: 'Forbidden. You do not have access to this workspace/brand.' }, { status: 403 })
+    
+    const brandId = brand.id
 
     // Usually filter by dates, category, marketplace...
     // For MVP we just fetch all product metrics for the brand

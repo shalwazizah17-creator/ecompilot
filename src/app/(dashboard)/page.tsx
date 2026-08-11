@@ -12,10 +12,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function load() {
-      if (!selectedBrandId) return
       setLoading(true)
       try {
-        const res = await fetch(`/api/intelligence/daily?brandId=${selectedBrandId}`)
+        const url = selectedBrandId ? `/api/intelligence/daily?brandId=${selectedBrandId}` : '/api/intelligence/daily'
+        const res = await fetch(url)
         const json = await res.json()
         if (json.score !== undefined) setData(json)
       } catch (err) {
@@ -141,8 +141,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* RISKS & OPPORTUNITIES */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+      {(!data.metrics || (data.metrics.currGmv === 0 && data.metrics.currOrders === 0)) ? (
+        <div style={{ padding: '40px', backgroundColor: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--surface-border)', textAlign: 'center' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Your workspace is ready.</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Import your marketplace data to start analysis.</p>
+          <Link href="/data-sources" style={{ display: 'inline-block', backgroundColor: 'var(--primary)', color: 'white', padding: '10px 20px', borderRadius: '6px', fontWeight: 500, textDecoration: 'none' }}>
+            + IMPORT MARKETPLACE DATA
+          </Link>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '16px' }}>Supported: Shopee, TikTok Shop, Tokopedia</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
         
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '4px solid var(--danger)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--danger)', fontWeight: 600 }}>
@@ -187,11 +196,10 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-
       </div>
-        </>
       )}
-
+      </>
+      )}
     </div>
   )
 }

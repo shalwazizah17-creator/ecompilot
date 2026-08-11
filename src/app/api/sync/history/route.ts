@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { assertBrandAccess } from "@/lib/auth/assert-brand-access"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const brandId = searchParams.get('brandId')
+  const brandIdParam = searchParams.get('brandId')
   
-  if (!brandId) return NextResponse.json({ error: 'brandId required' }, { status: 400 })
+  
+  const brand = await assertBrandAccess(brandIdParam)
+  if (!brand) return NextResponse.json({ error: 'Forbidden. You do not have access to this workspace/brand.' }, { status: 403 })
+  
+  const brandId = brand.id
 
   try {
     const history = await prisma.syncJob.findMany({
