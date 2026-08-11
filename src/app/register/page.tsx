@@ -27,10 +27,10 @@ export default function RegisterPage() {
         router.push('/login?registered=true')
       } else {
         const data = await res.json()
-        setError(data.error || 'Registration failed')
+        setError(data.error || 'Pendaftaran gagal')
       }
     } catch (err) {
-      setError('An error occurred during registration')
+      setError('Terjadi kesalahan saat pendaftaran')
     } finally {
       setLoading(false)
     }
@@ -58,10 +58,10 @@ export default function RegisterPage() {
             <Store size={28} color="white" />
           </div>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-            Create your account
+            Buat akun Anda
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', textAlign: 'center' }}>
-            Turn Marketplace Data Into Better Ecommerce Decisions
+            Ubah Data Marketplace Menjadi Keputusan E-commerce yang Lebih Baik
           </p>
         </div>
 
@@ -83,7 +83,7 @@ export default function RegisterPage() {
           )}
           
           <div>
-            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 500, marginBottom: '8px', color: 'var(--text-primary)' }}>Full Name</label>
+            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 500, marginBottom: '8px', color: 'var(--text-primary)' }}>Nama Lengkap</label>
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', top: '10px', left: '12px', color: 'var(--text-muted)' }}>
                 <User size={18} />
@@ -107,7 +107,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 500, marginBottom: '8px', color: 'var(--text-primary)' }}>Email address</label>
+            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 500, marginBottom: '8px', color: 'var(--text-primary)' }}>Alamat Email</label>
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', top: '10px', left: '12px', color: 'var(--text-muted)' }}>
                 <Mail size={18} />
@@ -131,7 +131,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 500, marginBottom: '8px', color: 'var(--text-primary)' }}>Password</label>
+            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 500, marginBottom: '8px', color: 'var(--text-primary)' }}>Kata Sandi</label>
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', top: '10px', left: '12px', color: 'var(--text-muted)' }}>
                 <Lock size={18} />
@@ -170,7 +170,7 @@ export default function RegisterPage() {
               cursor: loading ? 'not-allowed' : 'pointer'
             }}
           >
-            {loading ? 'Creating Account...' : 'Create Account'}
+            {loading ? 'Membuat Akun...' : 'Buat Akun'}
             {!loading && <ArrowRight size={18} />}
           </button>
         </form>
@@ -181,9 +181,9 @@ export default function RegisterPage() {
           paddingTop: '24px', 
           textAlign: 'center' 
         }}>
-          <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Already have an account? </span>
+          <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Sudah punya akun? </span>
           <Link href="/login" style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}>
-            Sign in instead
+            Masuk ke akun
           </Link>
         </div>
 

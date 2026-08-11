@@ -82,9 +82,9 @@ export async function POST(req: Request) {
         newActions.push({
           brand_id: brandId,
           severity: 'OPPORTUNITY',
-          title: `Scale Campaign: ${stat.campaign.name}`,
-          metric: `30d ROAS: ${roas30.toFixed(2)}x | 7d ROAS: ${roas7.toFixed(2)}x (Target: ${targetRoas.toFixed(2)}x)`,
-          recommendation: `Campaign has strong ROAS with sufficient conversion volume and a stable/improving trend. Consider controlled budget scaling.`,
+          title: `Perbesar Kampanye: ${stat.campaign.name}`,
+          metric: `ROAS 30h: ${roas30.toFixed(2)}x | ROAS 7h: ${roas7.toFixed(2)}x (Target: ${targetRoas.toFixed(2)}x)`,
+          recommendation: `Kampanye memiliki ROAS kuat dengan volume konversi yang cukup dan tren yang stabil/meningkat. Pertimbangkan peningkatan anggaran yang terkontrol.`,
           status: 'OPEN'
         })
       }
@@ -94,9 +94,9 @@ export async function POST(req: Request) {
         newActions.push({
           brand_id: brandId,
           severity: spend30 > 5000000 ? 'HIGH' : 'MEDIUM',
-          title: `Underperforming Campaign: ${stat.campaign.name}`,
-          metric: `30d ROAS: ${roas30.toFixed(2)}x | 7d ROAS: ${roas7.toFixed(2)}x (Target: ${targetRoas.toFixed(2)}x)`,
-          recommendation: `Underperformance persists across multiple observations (30-day and 7-day). Review campaign before allocating additional budget.`,
+          title: `Kampanye Kurang Berperforma: ${stat.campaign.name}`,
+          metric: `ROAS 30h: ${roas30.toFixed(2)}x | ROAS 7h: ${roas7.toFixed(2)}x (Target: ${targetRoas.toFixed(2)}x)`,
+          recommendation: `Performa buruk bertahan di berbagai pengamatan (30 hari dan 7 hari). Tinjau kampanye sebelum mengalokasikan anggaran tambahan.`,
           status: 'OPEN'
         })
       }
@@ -129,18 +129,18 @@ export async function POST(req: Request) {
         newActions.push({
           brand_id: brandId,
           severity: 'HIGH',
-          title: `Top Performing Affiliate: @${aff.username}`,
+          title: `Afiliasi Performa Terbaik: @${aff.username}`,
           metric: `ROI: ${roi.toFixed(1)}x | GMV: Rp ${(totalSales/1000000).toFixed(1)}M`,
-          recommendation: `Affiliate is drastically outperforming ROI targets. Increase product allocation and test a higher commission to scale volume.`,
+          recommendation: `Afiliasi secara drastis melampaui target ROI. Tingkatkan alokasi produk dan uji komisi lebih tinggi untuk meningkatkan volume.`,
           status: 'OPEN'
         })
       } else if (roi < 3 && totalSales > 1000000) {
         newActions.push({
           brand_id: brandId,
           severity: 'MEDIUM',
-          title: `Underperforming Affiliate: @${aff.username}`,
+          title: `Afiliasi Kurang Berperforma: @${aff.username}`,
           metric: `ROI: ${roi.toFixed(1)}x | GMV: Rp ${(totalSales/1000000).toFixed(1)}M`,
-          recommendation: `Commission efficiency is poor. ROI is significantly below target. Consider renegotiating commission or suspending campaign.`,
+          recommendation: `Efisiensi komisi buruk. ROI secara signifikan di bawah target. Pertimbangkan negosiasi ulang komisi atau hentikan kampanye.`,
           status: 'OPEN'
         })
       }
@@ -156,9 +156,9 @@ export async function POST(req: Request) {
         newActions.push({
           brand_id: brandId,
           severity: 'OPPORTUNITY',
-          title: `Untested Affiliates Available`,
-          metric: `${untested.length} creators ready`,
-          recommendation: `You have multiple creators with strong audience fit but no historical performance data. Run a controlled test campaign.`,
+          title: `Tersedia Afiliasi Belum Diuji`,
+          metric: `${untested.length} kreator siap`,
+          recommendation: `Anda memiliki banyak kreator dengan kecocokan audiens yang kuat namun belum ada data performa historis. Jalankan kampanye pengujian terkontrol.`,
           status: 'OPEN'
         })
       }

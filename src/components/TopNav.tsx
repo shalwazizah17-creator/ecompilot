@@ -24,13 +24,13 @@ export default function TopNav({ onToggleSidebar }: { onToggleSidebar?: () => vo
   }, [dateRangeOption, pathname, router])
 
   const dateOptions: { value: DateRangeOption, label: string }[] = [
-    { value: 'TODAY', label: 'Today' },
-    { value: 'YESTERDAY', label: 'Yesterday' },
-    { value: 'LAST_7_DAYS', label: 'Last 7 Days' },
-    { value: 'LAST_30_DAYS', label: 'Last 30 Days' },
-    { value: 'THIS_MONTH', label: 'This Month' },
-    { value: 'LAST_MONTH', label: 'Previous Month' },
-    { value: 'THIS_YEAR', label: 'This Year' },
+    { value: 'TODAY', label: 'Hari Ini' },
+    { value: 'YESTERDAY', label: 'Kemarin' },
+    { value: 'LAST_7_DAYS', label: '7 Hari Terakhir' },
+    { value: 'LAST_30_DAYS', label: '30 Hari Terakhir' },
+    { value: 'THIS_MONTH', label: 'Bulan Ini' },
+    { value: 'LAST_MONTH', label: 'Bulan Lalu' },
+    { value: 'THIS_YEAR', label: 'Tahun Ini' },
   ]
 
   return (

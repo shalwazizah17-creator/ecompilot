@@ -26,45 +26,45 @@ type NavItem = {
 }
 
 const navTree: NavItem[] = [
-  { name: 'Dashboard Overview', href: '/', icon: LayoutDashboard },
+  { name: 'Ringkasan Dasbor', href: '/', icon: LayoutDashboard },
   { 
-    name: 'Analytics', icon: LineChart,
+    name: 'Analitik', icon: LineChart,
     children: [
-      { name: 'Marketplace Intelligence', href: '/marketplace-intelligence' },
-      { name: 'Products', href: '/products' },
-      { name: 'Meta Ads', href: '/campaigns/meta' },
-      { name: 'Advertising', href: '/marketing-intelligence' },
+      { name: 'Intelijen Marketplace', href: '/marketplace-intelligence' },
+      { name: 'Produk', href: '/products' },
+      { name: 'Iklan Meta', href: '/campaigns/meta' },
+      { name: 'Periklanan', href: '/marketing-intelligence' },
     ]
   },
   { 
-    name: 'Growth', icon: TrendingUp,
+    name: 'Pertumbuhan', icon: TrendingUp,
     children: [
-      { name: 'Budget Manager', href: '/budget' },
-      { name: 'Affiliate Intelligence', href: '/affiliate' },
-      { name: 'Marketing Advisor', href: '/marketing-advisor' },
+      { name: 'Manajer Anggaran', href: '/budget' },
+      { name: 'Intelijen Afiliasi', href: '/affiliate' },
+      { name: 'Penasihat Pemasaran', href: '/marketing-advisor' },
     ]
   },
   { 
-    name: 'Reports', icon: FileText,
+    name: 'Laporan', icon: FileText,
     children: [
-      { name: 'Reports', href: '/reports' },
+      { name: 'Laporan', href: '/reports' },
     ]
   },
   { 
-    name: 'Data Sources', icon: Database,
+    name: 'Sumber Data', icon: Database,
     href: '/data-sources'
   },
   { 
-    name: 'Tools', icon: Package,
+    name: 'Alat', icon: Package,
     children: [
-      { name: 'Action Center', href: '/actions' }
+      { name: 'Pusat Tindakan', href: '/actions' }
     ]
   }
 ]
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(['Marketplace', 'Advertising'])
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['Analitik', 'Pertumbuhan'])
 
   const toggleGroup = (name: string) => {
     setExpandedGroups(prev => 
@@ -175,7 +175,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
       
       <div style={{ padding: '20px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Logged in as Admin</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Masuk sebagai Admin</div>
       </div>
     </aside>
   )

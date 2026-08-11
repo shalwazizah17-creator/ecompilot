@@ -25,8 +25,8 @@ export default function DashboardPage() {
     load()
   }, [])
 
-  if (loading) return <div>Loading Executive Command Center...</div>
-  if (!data) return <div>Failed to load data.</div>
+  if (loading) return <div>Memuat Pusat Perintah Eksekutif...</div>
+  if (!data) return <div>Gagal memuat data.</div>
 
   const { score, healthStatus, metrics, risks, opportunities } = data
 
@@ -44,18 +44,18 @@ export default function DashboardPage() {
       {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>Executive Command Center</h1>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>Pusat Perintah Eksekutif</h1>
           <div style={{ display: 'flex', gap: '16px', color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
-            <span>Data Health: {data.dataHealthPct}%</span>
+            <span>Kesehatan Data: {data.dataHealthPct}%</span>
             <span>•</span>
-            <span>Last updated: {new Date(data.lastUpdated).toLocaleString()}</span>
+            <span>Terakhir diperbarui: {new Date(data.lastUpdated).toLocaleString()}</span>
           </div>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 24px', backgroundColor: 'var(--surface)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
           <Activity size={28} color={healthColor} />
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Business Health Score</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Skor Kesehatan Bisnis</div>
             <div style={{ fontSize: '1.5rem', fontWeight: 800, color: healthColor }}>{score} <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>/ 100</span></div>
             <div style={{ fontSize: '0.85rem', color: healthColor, fontWeight: 500 }}>{healthStatus}</div>
           </div>
@@ -65,12 +65,12 @@ export default function DashboardPage() {
       {!data.hasData ? (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 24px', textAlign: 'center', backgroundColor: 'var(--surface)' }}>
           <Database size={48} color="var(--primary)" style={{ marginBottom: '16px' }} />
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Data Required</h2>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Data Diperlukan</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', maxWidth: '500px', lineHeight: '1.6' }}>
-            No marketplace data has been imported yet. Upload your latest Seller Center report to start analysis.
+            Belum ada data marketplace yang diimpor. Unggah laporan Seller Center terbaru Anda untuk memulai analisis.
           </p>
           <Link href="/data-sources" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontSize: '1rem', fontWeight: 600, textDecoration: 'none' }}>
-            + Import Marketplace Data
+            + Impor Data Marketplace
           </Link>
         </div>
       ) : (
@@ -90,11 +90,11 @@ export default function DashboardPage() {
 
         <div className="card">
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <ShoppingCart size={16} /> Orders
+            <ShoppingCart size={16} /> Pesanan
           </div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{metrics.currOrders.toLocaleString()}</div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
-            Total processed transactions
+            Total transaksi diproses
           </div>
         </div>
 
@@ -110,11 +110,11 @@ export default function DashboardPage() {
 
         <div className="card">
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <DollarSign size={16} /> Net Sales
+            <DollarSign size={16} /> Penjualan Bersih
           </div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{formatCurrency(metrics.currNetSales)}</div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
-            After refunds/cancellations
+            Setelah pembatalan
           </div>
         </div>
 
@@ -141,19 +141,19 @@ export default function DashboardPage() {
 
       {(!data.metrics || (data.metrics.currGmv === 0 && data.metrics.currOrders === 0)) ? (
         <div style={{ padding: '40px', backgroundColor: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--surface-border)', textAlign: 'center' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Your workspace is ready.</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Import your marketplace data to start analysis.</p>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Ruang kerja Anda sudah siap.</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Impor data marketplace Anda untuk memulai analisis.</p>
           <Link href="/data-sources" style={{ display: 'inline-block', backgroundColor: 'var(--primary)', color: 'white', padding: '10px 20px', borderRadius: '6px', fontWeight: 500, textDecoration: 'none' }}>
-            + IMPORT MARKETPLACE DATA
+            + IMPOR DATA MARKETPLACE
           </Link>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '16px' }}>Supported: Shopee, TikTok Shop, Tokopedia</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '16px' }}>Didukung: Shopee, TikTok Shop, Tokopedia</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
         
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '4px solid var(--danger)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--danger)', fontWeight: 600 }}>
-            <AlertTriangle size={20} /> BIGGEST RISKS
+            <AlertTriangle size={20} /> RISIKO TERBESAR
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -164,12 +164,12 @@ export default function DashboardPage() {
                   <span style={{ fontSize: '0.8rem', color: r.severity === 'HIGH' ? 'var(--danger)' : 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>{r.severity}</span>
                 </div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '4px', fontWeight: 500 }}>
-                  Actual: {r.change} | Target: {r.target}
+                  Aktual: {r.change} | Target: {r.target}
                 </div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>{r.reason}</div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)' }}>Action: {r.action}</div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)' }}>Tindakan: {r.action}</div>
                 {r.impact && r.impact !== 'N/A' && (
-                  <div style={{ fontSize: '0.8rem', color: 'var(--success)', marginTop: '8px', fontWeight: 600 }}>Impact: {r.impact}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--success)', marginTop: '8px', fontWeight: 600 }}>Dampak: {r.impact}</div>
                 )}
               </div>
             ))}
@@ -178,7 +178,7 @@ export default function DashboardPage() {
 
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '4px solid var(--success)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success)', fontWeight: 600 }}>
-            <TrendingUp size={20} /> BIGGEST OPPORTUNITIES
+            <TrendingUp size={20} /> PELUANG TERBESAR
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -189,7 +189,7 @@ export default function DashboardPage() {
                   <span style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: 600 }}>{o.metrics}</span>
                 </div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>{o.impact}</div>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary)' }}>Action: {o.action}</div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary)' }}>Tindakan: {o.action}</div>
               </div>
             ))}
           </div>

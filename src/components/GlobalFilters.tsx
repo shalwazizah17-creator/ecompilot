@@ -41,14 +41,14 @@ export function GlobalFilters() {
   }, [selectedBrandId, selectedMarketplace, selectedAdChannel, dateRangeOption, pathname, router])
 
   const dateOptions: { value: DateRangeOption, label: string }[] = [
-    { value: 'TODAY', label: 'Today' },
-    { value: 'YESTERDAY', label: 'Yesterday' },
-    { value: 'LAST_7_DAYS', label: 'Last 7 Days' },
-    { value: 'LAST_30_DAYS', label: 'Last 30 Days' },
-    { value: 'THIS_MONTH', label: 'This Month' },
-    { value: 'LAST_MONTH', label: 'Last Month' },
-    { value: 'THIS_QUARTER', label: 'This Quarter' },
-    { value: 'THIS_YEAR', label: 'This Year' },
+    { value: 'TODAY', label: 'Hari Ini' },
+    { value: 'YESTERDAY', label: 'Kemarin' },
+    { value: 'LAST_7_DAYS', label: '7 Hari Terakhir' },
+    { value: 'LAST_30_DAYS', label: '30 Hari Terakhir' },
+    { value: 'THIS_MONTH', label: 'Bulan Ini' },
+    { value: 'LAST_MONTH', label: 'Bulan Lalu' },
+    { value: 'THIS_QUARTER', label: 'Kuartal Ini' },
+    { value: 'THIS_YEAR', label: 'Tahun Ini' },
   ]
 
   return (
@@ -63,7 +63,7 @@ export function GlobalFilters() {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '16px', color: 'var(--text-secondary)' }}>
         <Filter size={18} />
-        <span style={{ fontSize: '0.9rem', fontWeight: 600, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Global Filters</span>
+        <span style={{ fontSize: '0.9rem', fontWeight: 600, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Filter Global</span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -89,7 +89,7 @@ export function GlobalFilters() {
           onChange={(e) => setSelectedMarketplace(e.target.value)}
           style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.85rem', outline: 'none' }}
         >
-          <option value="ALL">All Marketplaces</option>
+          <option value="ALL">Semua Marketplace</option>
           <option value="Shopee">Shopee</option>
           <option value="TikTok Shop">TikTok Shop</option>
           <option value="Tokopedia">Tokopedia</option>
@@ -105,7 +105,7 @@ export function GlobalFilters() {
           onChange={(e) => setSelectedAdChannel(e.target.value)}
           style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.85rem', outline: 'none' }}
         >
-          <option value="ALL">All Ad Channels</option>
+          <option value="ALL">Semua Saluran Iklan</option>
           <option value="Meta Ads">Meta Ads</option>
           <option value="Shopee Ads">Shopee Ads</option>
           <option value="TikTok Ads">TikTok Ads</option>

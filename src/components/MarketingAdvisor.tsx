@@ -23,8 +23,8 @@ export function MarketingAdvisor() {
     load()
   }, [])
 
-  if (loading) return <div className="card" style={{ padding: '40px', textAlign: 'center' }}>Running strategic analysis...</div>
-  if (!data) return <div className="card" style={{ padding: '40px', textAlign: 'center' }}>Advisor data unavailable.</div>
+  if (loading) return <div className="card" style={{ padding: '40px', textAlign: 'center' }}>Menjalankan analisis strategis...</div>
+  if (!data) return <div className="card" style={{ padding: '40px', textAlign: 'center' }}>Data penasihat tidak tersedia.</div>
 
   return (
     <div className="card" style={{ background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)', border: '1px solid var(--surface-border)' }}>
@@ -33,8 +33,8 @@ export function MarketingAdvisor() {
           <TrendingUp size={24} />
         </div>
         <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary-navy)' }}>Premium Marketing Advisor</h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>AI-driven strategic analysis based on your 30-day cross-channel data.</p>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary-navy)' }}>Penasihat Pemasaran Premium</h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Analisis strategis berbasis AI berdasarkan data lintas saluran 30 hari Anda.</p>
         </div>
       </div>
 
@@ -43,7 +43,7 @@ export function MarketingAdvisor() {
         <div style={{ display: 'flex', gap: '16px' }}>
           <div style={{ color: 'var(--primary)', flexShrink: 0 }}><HelpCircle size={20} /></div>
           <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '4px' }}>What Happened?</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '4px' }}>Apa yang Terjadi?</h3>
             <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>{data.whatHappened}</p>
           </div>
         </div>
@@ -51,7 +51,7 @@ export function MarketingAdvisor() {
         <div style={{ display: 'flex', gap: '16px' }}>
           <div style={{ color: 'var(--primary)', flexShrink: 0 }}><HelpCircle size={20} /></div>
           <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '4px' }}>Why?</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '4px' }}>Mengapa?</h3>
             <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>{data.why}</p>
           </div>
         </div>
@@ -59,9 +59,9 @@ export function MarketingAdvisor() {
         <div style={{ display: 'flex', gap: '16px' }}>
           <div style={{ color: 'var(--warning)', flexShrink: 0 }}><AlertCircle size={20} /></div>
           <div style={{ width: '100%' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '12px' }}>What Needs Attention?</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '12px' }}>Apa yang Perlu Diperhatikan?</h3>
             {data.whatNeedsAttention.length === 0 ? (
-              <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>No critical issues detected.</p>
+              <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Tidak ada masalah kritis yang terdeteksi.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {data.whatNeedsAttention.map((item: any, idx: number) => (
@@ -83,7 +83,7 @@ export function MarketingAdvisor() {
         <div style={{ display: 'flex', gap: '16px' }}>
           <div style={{ color: 'var(--success)', flexShrink: 0 }}><CheckCircle size={20} /></div>
           <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '12px' }}>What Should We Do?</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '12px' }}>Apa yang Harus Kita Lakukan?</h3>
             <ul style={{ paddingLeft: '20px', margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {data.whatShouldWeDo.map((rec: string, idx: number) => (
                 <li key={idx}>{rec}</li>

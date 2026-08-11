@@ -27,10 +27,10 @@ export default function OnboardingPage() {
         window.location.href = '/dashboard'
       } else {
         const data = await res.json()
-        setError(data.error || 'Failed to complete onboarding')
+        setError(data.error || 'Gagal menyelesaikan onboarding')
       }
     } catch (err) {
-      setError('An error occurred during onboarding')
+      setError('Terjadi kesalahan saat onboarding')
     } finally {
       setLoading(false)
     }
@@ -50,10 +50,10 @@ export default function OnboardingPage() {
         
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h2 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-            Welcome to EcomPilot
+            Selamat Datang di EcomPilot
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
-            Let's set up your Ecommerce workspace
+            Mari siapkan Ruang Kerja Ecommerce Anda
           </p>
         </div>
 
@@ -78,10 +78,10 @@ export default function OnboardingPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', animation: 'fadeIn 0.3s ease-out' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.95rem', fontWeight: 600, marginBottom: '8px', color: 'var(--text-primary)' }}>
-                Brand / Company Name
+                Nama Merek / Perusahaan
               </label>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                Enter the name of your brand. This will be used to set up your primary workspace.
+                Masukkan nama merek Anda. Ini akan digunakan sebagai ruang kerja utama Anda.
               </p>
               <div style={{ position: 'relative' }}>
                 <div style={{ position: 'absolute', top: '10px', left: '12px', color: 'var(--text-muted)' }}>
@@ -121,9 +121,9 @@ export default function OnboardingPage() {
               }}
             >
               {loading ? (
-                <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Creating Workspace...</>
+                <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Membuat Ruang Kerja...</>
               ) : (
-                <><CheckCircle2 size={18} /> Complete Setup</>
+                <><CheckCircle2 size={18} /> Selesaikan Pengaturan</>
               )}
             </button>
           </div>

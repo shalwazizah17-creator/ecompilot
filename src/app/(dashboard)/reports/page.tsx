@@ -82,36 +82,36 @@ export default function ReportsIndex() {
       {showModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="card" style={{ width: '400px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '16px' }}>Generate Report</h3>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '16px' }}>Buat Laporan</h3>
             <form onSubmit={generateReport}>
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '8px' }}>Report Type</label>
+                <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '8px' }}>Jenis Laporan</label>
                 <select value={reportType} onChange={e => setReportType(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--surface-border)' }}>
-                  <option value="DAILY">Daily</option>
-                  <option value="WEEKLY">Weekly</option>
-                  <option value="MONTHLY">Monthly</option>
-                  <option value="YEARLY">Yearly</option>
-                  <option value="CUSTOM">Custom</option>
+                  <option value="DAILY">Harian</option>
+                  <option value="WEEKLY">Mingguan</option>
+                  <option value="MONTHLY">Bulanan</option>
+                  <option value="YEARLY">Tahunan</option>
+                  <option value="CUSTOM">Kustom</option>
                 </select>
               </div>
               
               {reportType === 'CUSTOM' && (
                 <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
                   <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '8px' }}>Start Date</label>
+                    <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '8px' }}>Tanggal Mulai</label>
                     <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--surface-border)' }} required />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '8px' }}>End Date</label>
+                    <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '8px' }}>Tanggal Selesai</label>
                     <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--surface-border)' }} required />
                   </div>
                 </div>
               )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '24px' }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--surface-border)', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
+                <button type="button" onClick={() => setShowModal(false)} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--surface-border)', borderRadius: '4px', cursor: 'pointer' }}>Batal</button>
                 <button type="submit" className="btn-primary" disabled={generating}>
-                  {generating ? 'Generating...' : 'Generate Snapshot'}
+                  {generating ? 'Membuat...' : 'Buat Snapshot'}
                 </button>
               </div>
             </form>
@@ -120,9 +120,9 @@ export default function ReportsIndex() {
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Reports</h1>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Laporan</h1>
         <button className="btn-primary" onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Plus size={18} /> Generate Report
+          <Plus size={18} /> Buat Laporan
         </button>
       </div>
 
@@ -133,17 +133,17 @@ export default function ReportsIndex() {
           <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid var(--surface-border)', color: 'var(--text-secondary)' }}>
-                <th style={{ padding: '12px' }}>Generated Date</th>
-                <th style={{ padding: '12px' }}>Report Type</th>
-                <th style={{ padding: '12px' }}>Period Covered</th>
-                <th style={{ padding: '12px' }}>Action</th>
+                <th style={{ padding: '12px' }}>Tanggal Dibuat</th>
+                <th style={{ padding: '12px' }}>Jenis Laporan</th>
+                <th style={{ padding: '12px' }}>Periode Cakupan</th>
+                <th style={{ padding: '12px' }}>Tindakan</th>
               </tr>
             </thead>
             <tbody>
               {reports.length === 0 && (
                 <tr>
                   <td colSpan={4} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                    No reports generated yet. Click above to create one.
+                    Belum ada laporan yang dibuat. Klik di atas untuk membuat laporan.
                   </td>
                 </tr>
               )}
@@ -159,7 +159,7 @@ export default function ReportsIndex() {
                       onClick={() => router.push(`/reports/${r.id}`)}
                       style={{ padding: '6px 12px', border: '1px solid var(--primary)', color: 'var(--primary)', borderRadius: '4px', background: 'transparent', cursor: 'pointer', fontWeight: 500 }}
                     >
-                      View Report
+                      Lihat Laporan
                     </button>
                   </td>
                 </tr>

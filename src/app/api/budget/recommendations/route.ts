@@ -61,23 +61,23 @@ export async function GET(request: Request) {
       let action = 'HOLD'
 
       if (ch.activeDays.size < 7) {
-        reason = 'Insufficient data to recommend scaling.'
-        action = 'HOLD'
+        reason = 'Data tidak cukup untuk merekomendasikan penambahan anggaran.'
+        action = 'TAHAN'
       } else if (roas30 > targetRoas && roas7 > targetRoas) {
         recommendation = 15 // +15%
-        action = 'INCREASE'
-        reason = `30-day ROAS is ${roas30.toFixed(1)}x vs target ${targetRoas.toFixed(1)}x. ROAS is stable across 7-day and 30-day windows.`
+        action = 'TAMBAH'
+        reason = `ROAS 30 hari adalah ${roas30.toFixed(1)}x vs target ${targetRoas.toFixed(1)}x. ROAS stabil pada periode 7 dan 30 hari.`
       } else if (roas30 < targetRoas && roas7 < roas30) {
         recommendation = -15 // -15%
-        action = 'DECREASE'
-        reason = `30-day ROAS is ${roas30.toFixed(1)}x vs target ${targetRoas.toFixed(1)}x. Spend increased while conversion efficiency declined recently (7-day ROAS ${roas7.toFixed(1)}x).`
+        action = 'KURANGI'
+        reason = `ROAS 30 hari adalah ${roas30.toFixed(1)}x vs target ${targetRoas.toFixed(1)}x. Pengeluaran meningkat namun efisiensi konversi menurun baru-baru ini (ROAS 7 hari ${roas7.toFixed(1)}x).`
       } else if (roas30 < targetRoas) {
         recommendation = -10 // -10%
-        action = 'DECREASE'
-        reason = `30-day ROAS is ${roas30.toFixed(1)}x vs target ${targetRoas.toFixed(1)}x. Consider shifting budget to more efficient channels.`
+        action = 'KURANGI'
+        reason = `ROAS 30 hari adalah ${roas30.toFixed(1)}x vs target ${targetRoas.toFixed(1)}x. Pertimbangkan untuk memindahkan anggaran ke saluran yang lebih efisien.`
       } else {
-        reason = `Performance is tracking optimally at ${roas30.toFixed(1)}x ROAS. Maintain current allocation.`
-        action = 'HOLD'
+        reason = `Performa berjalan optimal di ROAS ${roas30.toFixed(1)}x. Pertahankan alokasi saat ini.`
+        action = 'TAHAN'
       }
 
       // Current allocation simulation (assuming average daily spend * 30 as monthly budget)

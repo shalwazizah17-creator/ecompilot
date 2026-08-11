@@ -62,20 +62,20 @@ export function ActionCenter() {
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Action Center</h3>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Pusat Tindakan</h3>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <select 
             value={filter} 
             onChange={e => setFilter(e.target.value)}
             style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid var(--surface-border)' }}
           >
-            <option value="ALL">All Severities</option>
-            <option value="HIGH">High Priority</option>
-            <option value="MEDIUM">Medium Priority</option>
-            <option value="OPPORTUNITY">Opportunities</option>
+            <option value="ALL">Semua Keparahan</option>
+            <option value="HIGH">Prioritas Tinggi</option>
+            <option value="MEDIUM">Prioritas Sedang</option>
+            <option value="OPPORTUNITY">Peluang</option>
           </select>
           <button className="btn-primary" onClick={runEngine} disabled={loading} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
-            {loading ? 'Analyzing...' : 'Run Analysis Engine'}
+            {loading ? 'Menganalisis...' : 'Jalankan Mesin Analisis'}
           </button>
         </div>
       </div>
@@ -84,7 +84,7 @@ export function ActionCenter() {
         <div style={{ height: '100px', animation: 'pulse 2s infinite', backgroundColor: 'var(--surface-border)', borderRadius: '8px' }} />
       ) : filteredActions.length === 0 ? (
         <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          {filter === 'ALL' ? 'No actionable insights found.' : `No ${filter.toLowerCase()} insights found.`}
+          {filter === 'ALL' ? 'Tidak ada insight tindakan yang ditemukan.' : `Tidak ada insight ${filter.toLowerCase()} yang ditemukan.`}
         </div>
       ) : (
         filteredActions.map(action => (

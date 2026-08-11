@@ -21,14 +21,14 @@ export function PerformanceTables() {
       
       {/* MARKETPLACE TABLE */}
       <div className="card">
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px' }}>Marketplace Performance</h3>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px' }}>Performa Marketplace</h3>
         <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '2px solid var(--surface-border)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
               <th style={{ padding: '12px 8px' }}>Marketplace</th>
-              <th style={{ padding: '12px 8px' }}>GMV (Sales)</th>
-              <th style={{ padding: '12px 8px' }}>Orders</th>
-              <th style={{ padding: '12px 8px' }}>Ad Spend</th>
+              <th style={{ padding: '12px 8px' }}>GMV (Penjualan)</th>
+              <th style={{ padding: '12px 8px' }}>Pesanan</th>
+              <th style={{ padding: '12px 8px' }}>Pengeluaran Iklan</th>
               <th style={{ padding: '12px 8px' }}>ROAS</th>
               <th style={{ padding: '12px 8px' }}>CPA</th>
               <th style={{ padding: '12px 8px' }}></th>
@@ -44,7 +44,7 @@ export function PerformanceTables() {
                 <td style={{ padding: '12px 8px' }}>{row.roas}x</td>
                 <td style={{ padding: '12px 8px' }}>Rp {row.cpa.toLocaleString()}</td>
                 <td style={{ padding: '12px 8px', textAlign: 'right' }}>
-                  <Link href="#" style={{ color: 'var(--primary)', fontWeight: 500, fontSize: '0.85rem' }}>Deep Dive →</Link>
+                  <Link href="#" style={{ color: 'var(--primary)', fontWeight: 500, fontSize: '0.85rem' }}>Analisis Mendalam →</Link>
                 </td>
               </tr>
             ))}
@@ -55,17 +55,17 @@ export function PerformanceTables() {
       {/* AD CHANNEL TABLE */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Advertising Channel Performance</h3>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Performa Saluran Periklanan</h3>
           <span style={{ fontSize: '0.8rem', color: 'var(--warning)', backgroundColor: 'rgba(245, 158, 11, 0.1)', padding: '4px 8px', borderRadius: '4px' }}>
-            Attribution-based revenue (Avoid combining with GMV)
+            Pendapatan berbasis atribusi (Hindari menggabungkan dengan GMV)
           </span>
         </div>
         <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '2px solid var(--surface-border)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-              <th style={{ padding: '12px 8px' }}>Ad Channel</th>
-              <th style={{ padding: '12px 8px' }}>Spend</th>
-              <th style={{ padding: '12px 8px' }}>Attributed Revenue</th>
+              <th style={{ padding: '12px 8px' }}>Saluran Iklan</th>
+              <th style={{ padding: '12px 8px' }}>Pengeluaran</th>
+              <th style={{ padding: '12px 8px' }}>Pendapatan Atribusi</th>
               <th style={{ padding: '12px 8px' }}>ROAS</th>
               <th style={{ padding: '12px 8px' }}>CPA</th>
               <th style={{ padding: '12px 8px' }}>CTR</th>
@@ -82,7 +82,7 @@ export function PerformanceTables() {
                 <td style={{ padding: '12px 8px' }}>Rp {row.cpa.toLocaleString()}</td>
                 <td style={{ padding: '12px 8px' }}>{row.ctr}%</td>
                 <td style={{ padding: '12px 8px', textAlign: 'right' }}>
-                  <Link href="#" style={{ color: 'var(--primary)', fontWeight: 500, fontSize: '0.85rem' }}>View Campaigns →</Link>
+                  <Link href="#" style={{ color: 'var(--primary)', fontWeight: 500, fontSize: '0.85rem' }}>Lihat Kampanye →</Link>
                 </td>
               </tr>
             ))}

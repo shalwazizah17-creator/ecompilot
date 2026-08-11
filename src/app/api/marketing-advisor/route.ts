@@ -43,28 +43,28 @@ export async function GET(request: Request) {
     
     // Build the AI-like response using heuristics
     let whatHappened = ''
-    if (gmvGrowth > 5) whatHappened = `Total GMV grew by ${gmvGrowth.toFixed(1)}% compared to the previous period.`
-    else if (gmvGrowth < -5) whatHappened = `Total GMV declined by ${Math.abs(gmvGrowth).toFixed(1)}% compared to the previous period.`
-    else whatHappened = `Total GMV remained stable with a ${gmvGrowth.toFixed(1)}% variance.`
+    if (gmvGrowth > 5) whatHappened = `Total GMV tumbuh sebesar ${gmvGrowth.toFixed(1)}% dibandingkan periode sebelumnya.`
+    else if (gmvGrowth < -5) whatHappened = `Total GMV turun sebesar ${Math.abs(gmvGrowth).toFixed(1)}% dibandingkan periode sebelumnya.`
+    else whatHappened = `Total GMV stabil dengan selisih ${gmvGrowth.toFixed(1)}%.`
 
-    let why = []
-    if (roas > 5) why.push(`Meta Ads performed exceptionally well with a ${roas.toFixed(1)}x ROAS, driving strong acquisition.`)
-    else if (roas > 0 && roas < 3) why.push(`Meta Ads underperformed at ${roas.toFixed(1)}x ROAS, dragging down blended profitability.`)
+    let why: string[] = []
+    if (roas > 5) why.push(`Iklan Meta berkinerja sangat baik dengan ROAS ${roas.toFixed(1)}x, mendorong akuisisi yang kuat.`)
+    else if (roas > 0 && roas < 3) why.push(`Iklan Meta berkinerja di bawah target dengan ROAS ${roas.toFixed(1)}x, menurunkan profitabilitas gabungan.`)
 
-    if (curAffGMV > curGMV * 0.15) why.push(`Affiliates contributed significantly, driving ${((curAffGMV/curGMV)*100).toFixed(1)}% of total sales.`)
-    else if (curAffGMV > 0) why.push(`Affiliate contribution remains low at ${((curAffGMV/curGMV)*100).toFixed(1)}%, representing an untapped growth lever.`)
+    if (curAffGMV > curGMV * 0.15) why.push(`Afiliasi berkontribusi signifikan, menyumbang ${((curAffGMV/curGMV)*100).toFixed(1)}% dari total penjualan.`)
+    else if (curAffGMV > 0) why.push(`Kontribusi afiliasi masih rendah di ${((curAffGMV/curGMV)*100).toFixed(1)}%, mewakili peluang pertumbuhan yang belum dimanfaatkan.`)
 
-    let whatNeedsAttention = []
-    if (roas < 3) whatNeedsAttention.push({ issue: 'Advertising Efficiency', detail: 'ROAS is below the standard 3x threshold. Review creatives and targeting.', priority: 'HIGH' })
-    if (affROI > 0 && affROI < 4) whatNeedsAttention.push({ issue: 'Affiliate Margin', detail: 'Affiliate ROI is poor. Ensure commission structures are tied to target margins.', priority: 'MEDIUM' })
-    if (curAffGMV === 0) whatNeedsAttention.push({ issue: 'Affiliate Discovery', detail: 'No affiliate sales recorded. Check the Discovery Engine to find creators.', priority: 'OPPORTUNITY' })
+    let whatNeedsAttention: { issue: string; detail: string; priority: string }[] = []
+    if (roas < 3) whatNeedsAttention.push({ issue: 'Efisiensi Periklanan', detail: 'ROAS berada di bawah batas standar 3x. Tinjau materi iklan dan penargetan.', priority: 'HIGH' })
+    if (affROI > 0 && affROI < 4) whatNeedsAttention.push({ issue: 'Margin Afiliasi', detail: 'ROI afiliasi buruk. Pastikan struktur komisi terkait dengan target margin.', priority: 'MEDIUM' })
+    if (curAffGMV === 0) whatNeedsAttention.push({ issue: 'Penemuan Afiliasi', detail: 'Tidak ada penjualan afiliasi tercatat. Periksa Mesin Penemuan untuk menemukan kreator.', priority: 'OPPORTUNITY' })
 
-    let whatShouldWeDo = []
-    if (roas > 5) whatShouldWeDo.push('Scale Meta Ads budget by 15-20% on winning campaigns while ROAS is high.')
-    if (affROI > 5) whatShouldWeDo.push('Increase product allocations to top-performing affiliates.')
+    let whatShouldWeDo: string[] = []
+    if (roas > 5) whatShouldWeDo.push('Tingkatkan anggaran Iklan Meta sebesar 15-20% pada kampanye yang berhasil selama ROAS tinggi.')
+    if (affROI > 5) whatShouldWeDo.push('Tingkatkan alokasi produk untuk afiliasi dengan performa terbaik.')
 
-    if (why.length === 0) why.push('Growth is primarily organic with stable baseline conversion rates.')
-    if (whatShouldWeDo.length === 0) whatShouldWeDo.push('Maintain current budgets and monitor daily run rates closely.')
+    if (why.length === 0) why.push('Pertumbuhan utamanya organik dengan tingkat konversi dasar yang stabil.')
+    if (whatShouldWeDo.length === 0) whatShouldWeDo.push('Pertahankan anggaran saat ini dan pantau perkiraan harian dengan ketat.')
 
     return NextResponse.json({
       advisor: {

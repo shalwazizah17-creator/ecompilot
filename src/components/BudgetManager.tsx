@@ -37,7 +37,7 @@ export function BudgetManager() {
   const handleApply = () => {
     // API Call would go here
     setHasChanges(false)
-    alert('Budget allocations applied successfully.')
+    alert('Alokasi anggaran berhasil diterapkan.')
   }
 
   const handleDiscard = () => {
@@ -57,11 +57,11 @@ export function BudgetManager() {
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Interactive Budget Manager</h3>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Manajer Anggaran Interaktif</h3>
         <div style={{ display: 'flex', gap: '8px' }}>
           {hasChanges && (
             <button onClick={handleDiscard} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--surface-border)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
-              Discard Changes
+              Buang Perubahan
             </button>
           )}
           <button 
@@ -70,14 +70,14 @@ export function BudgetManager() {
             disabled={isOverBudget || !hasChanges}
             style={{ opacity: (!hasChanges || isOverBudget) ? 0.5 : 1 }}
           >
-            Apply Changes
+            Terapkan Perubahan
           </button>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', marginBottom: '24px' }}>
         <div style={{ padding: '16px', backgroundColor: 'var(--surface-border)', borderRadius: '8px' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Ads Budget</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Anggaran Iklan</div>
           <input 
             type="number"
             value={totalBudget}
@@ -90,27 +90,27 @@ export function BudgetManager() {
           />
         </div>
         <div style={{ padding: '16px', backgroundColor: 'var(--surface-border)', borderRadius: '8px' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Simulated Allocation</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Alokasi Simulasi</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>Rp {(totalAllocated/1000000).toFixed(1)}M</div>
         </div>
         <div style={{ padding: '16px', backgroundColor: 'var(--surface-border)', borderRadius: '8px' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Spent (MTD)</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Dihabiskan (S.Bulan)</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>
             Rp {(allocations.reduce((sum, a) => sum + a.spent, 0)/1000000).toFixed(1)}M
           </div>
         </div>
         <div style={{ padding: '16px', backgroundColor: isOverBudget ? 'var(--danger)' : 'var(--success)', color: 'white', borderRadius: '8px' }}>
-          <div style={{ fontSize: '0.85rem' }}>Remaining Pool</div>
+          <div style={{ fontSize: '0.85rem' }}>Sisa Dana</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>
             {isOverBudget ? '-' : ''}Rp {Math.abs(remaining/1000000).toFixed(1)}M
           </div>
         </div>
         <div style={{ padding: '16px', backgroundColor: 'var(--surface)', border: '1px solid var(--primary)', color: 'var(--primary)', borderRadius: '8px' }}>
-          <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>Projected Attributed Revenue</div>
+          <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>Proyeksi Pend. Atribusi</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>
             Rp {(allocations.reduce((sum, a) => sum + (a.allocated * a.historicalRoas), 0)/1000000).toFixed(1)}M
           </div>
-          <div style={{ fontSize: '0.75rem', marginTop: '4px', opacity: 0.8 }}>*Based on 30-day trailing ROAS</div>
+          <div style={{ fontSize: '0.75rem', marginTop: '4px', opacity: 0.8 }}>*Berdasarkan ROAS 30 hari terakhir</div>
         </div>
       </div>
 
@@ -126,7 +126,7 @@ export function BudgetManager() {
                 <span style={{ fontWeight: 600 }}>{alloc.channel}</span>
                 <div style={{ display: 'flex', gap: '16px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                   <span>30-Day ROAS: <strong style={{ color: 'var(--text-primary)' }}>{alloc.historicalRoas}x</strong></span>
-                  <span>Rec. Daily: <strong style={{ color: 'var(--text-primary)' }}>Rp {(recommendedDaily/1000).toFixed(0)}k</strong></span>
+                  <span>Rek. Harian: <strong style={{ color: 'var(--text-primary)' }}>Rp {(recommendedDaily/1000).toFixed(0)}k</strong></span>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
@@ -142,14 +142,14 @@ export function BudgetManager() {
                 <div style={{ width: '160px', textAlign: 'right' }}>
                   <div style={{ fontWeight: 600, fontSize: '1rem' }}>Rp {(alloc.allocated/1000000).toFixed(1)}M</div>
                   <div style={{ fontSize: '0.8rem', color: utilPct > 90 ? 'var(--danger)' : 'var(--text-muted)' }}>
-                    {utilPct}% Utilized
+                    {utilPct}% Digunakan
                   </div>
                 </div>
                 <div style={{ width: '160px', textAlign: 'right', paddingLeft: '16px', borderLeft: '1px solid var(--surface-border)' }}>
                   <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--primary)' }}>
                     Rp {((alloc.allocated * alloc.historicalRoas)/1000000).toFixed(1)}M
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Projected Attr. Rev.</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Proyeksi Pend. Atribusi</div>
                 </div>
               </div>
             </div>
@@ -159,7 +159,7 @@ export function BudgetManager() {
       
       {isOverBudget && (
         <div style={{ marginTop: '20px', padding: '12px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 500 }}>
-          Warning: Total channel allocations exceed the master Total Ads Budget. Please reduce channel budgets.
+          Peringatan: Total alokasi saluran melebihi Total Anggaran Iklan. Harap kurangi anggaran saluran.
         </div>
       )}
     </div>

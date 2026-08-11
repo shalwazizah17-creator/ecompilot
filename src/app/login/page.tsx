@@ -24,7 +24,7 @@ export default function LoginPage() {
     })
 
     if (res?.error) {
-      setError('Invalid credentials. Please try again.')
+      setError('Kredensial tidak valid. Silakan coba lagi.')
       setLoading(false)
     } else {
       router.push('/')
@@ -45,7 +45,7 @@ export default function LoginPage() {
           <div style={{ fontWeight: 700, fontSize: '1.75rem', letterSpacing: '-0.5px', marginBottom: '8px' }}>
             <span style={{ color: 'var(--primary)' }}>Ecom</span>Pilot
           </div>
-          <p style={{ color: 'var(--text-secondary)' }}>Sign in to your account</p>
+          <p style={{ color: 'var(--text-secondary)' }}>Masuk ke akun Anda</p>
         </div>
 
         {error && (
@@ -80,7 +80,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 500, marginBottom: '6px' }}>Password</label>
+            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 500, marginBottom: '6px' }}>Kata Sandi</label>
             <input 
               type="password" 
               value={password}
@@ -102,14 +102,14 @@ export default function LoginPage() {
             style={{ width: '100%', marginTop: '8px', padding: '10px' }}
             disabled={loading}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Masuk...' : 'Masuk'}
           </button>
         </form>
 
         <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-          Don't have an account?{' '}
+          Belum punya akun?{' '}
           <Link href="/register" style={{ color: 'var(--primary)', fontWeight: 500, textDecoration: 'none' }}>
-            Create an account
+            Buat akun
           </Link>
         </div>
       </div>
