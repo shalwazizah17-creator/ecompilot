@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Wallet, ArrowRight, CheckCircle, AlertTriangle, Lightbulb } from 'lucide-react'
+import { BudgetManager } from '@/components/BudgetManager'
 
 export default function BudgetManagerPage() {
   const [data, setData] = useState<any>(null)
@@ -134,6 +135,8 @@ export default function BudgetManagerPage() {
         </div>
 
       </div>
+      
+      <BudgetManager />
     </div>
   )
 }
