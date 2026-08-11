@@ -28,6 +28,7 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
   const [totalBudget, setTotalBudget] = useState(defaultTotal)
   const [allocations, setAllocations] = useState<BudgetAllocation[]>(defaultAllocations)
   const [hasChanges, setHasChanges] = useState(false)
+  const [notes, setNotes] = useState('')
 
   const handleAllocationChange = (channelName: string, newAllocated: number) => {
     setAllocations(prev => prev.map(a => 
@@ -54,7 +55,7 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
       const res = await fetch('/api/budget/recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ allocations })
+        body: JSON.stringify({ allocations, notes })
       })
 
       if (!res.ok) throw new Error('Gagal menyimpan anggaran')
@@ -85,11 +86,28 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
             onClick={() => {
               setAllocations(defaultAllocations)
               setTotalBudget(defaultTotal)
+              setNotes('')
               setHasChanges(false)
             }}
           >
             Buang Perubahan
           </button>
+          
+          <input 
+            type="text" 
+            placeholder="Catatan / Keterangan (Opsional)" 
+            value={notes}
+            onChange={e => {
+              setNotes(e.target.value)
+              setHasChanges(true)
+            }}
+            style={{ 
+              padding: '8px 12px', border: '1px solid var(--surface-border)', 
+              borderRadius: '6px', background: 'transparent', color: 'var(--text-primary)',
+              width: '250px', fontSize: '0.9rem'
+            }}
+          />
+
           <button 
             className="btn-primary"
             disabled={!hasChanges || isApplying}

@@ -1,12 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Wallet, ArrowRight, CheckCircle, AlertTriangle, Lightbulb } from 'lucide-react'
+import { Wallet, ArrowRight, CheckCircle, AlertTriangle, Lightbulb, Archive } from 'lucide-react'
 import { BudgetManager } from '@/components/BudgetManager'
+import { BudgetArchiveModal } from '@/components/BudgetArchiveModal'
 
 export default function BudgetManagerPage() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [showArchive, setShowArchive] = useState(false)
+  const [archiveData, setArchiveData] = useState<any[]>([])
+  const [loadingArchive, setLoadingArchive] = useState(false)
 
   const [errorStatus, setErrorStatus] = useState<number | null>(null)
 
@@ -109,12 +113,35 @@ export default function BudgetManagerPage() {
     }
   })
 
+  const fetchArchive = async () => {
+    setLoadingArchive(true)
+    setShowArchive(true)
+    try {
+      const res = await fetch('/api/budget/archive')
+      const json = await res.json()
+      if (json.archive) setArchiveData(json.archive)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingArchive(false)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '1000px' }}>
       
-      <div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>Manajer Anggaran & Simulasi AI</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Rekomendasi anggaran otomatis berdasarkan performa ROAS 30 hari.</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>Manajer Anggaran & Simulasi AI</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Rekomendasi anggaran otomatis berdasarkan performa ROAS 30 hari.</p>
+        </div>
+        <button 
+          className="btn-outline" 
+          onClick={fetchArchive}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
+          <Archive size={16} /> {loadingArchive ? 'Memuat...' : 'Lihat Arsip Anggaran'}
+        </button>
       </div>
 
       {data?.isApproved ? (
@@ -218,6 +245,13 @@ export default function BudgetManagerPage() {
           recommendedData={mappedRecommended}
         />
       </div>
+
+      {showArchive && (
+        <BudgetArchiveModal 
+          onClose={() => setShowArchive(false)} 
+          data={archiveData} 
+        />
+      )}
     </div>
   )
 }

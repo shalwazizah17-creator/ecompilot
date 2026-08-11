@@ -259,6 +259,9 @@ model BudgetAllocation {
   platform_id    String      // Used as Channel ID
   month          DateTime    // Store first day of month
   amount         Float       @default(0)
+  notes          String?
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @default(now()) @updatedAt
 
   brand          Brand       @relation(fields: [brand_id], references: [id], onDelete: Cascade)
   platform       Platform    @relation(fields: [platform_id], references: [id], onDelete: Cascade)

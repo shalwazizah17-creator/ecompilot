@@ -134,7 +134,7 @@ export async function POST(request: Request) {
   const brandId = brand.id
 
   try {
-    const { allocations } = await request.json()
+    const { allocations, notes } = await request.json()
     if (!allocations || !Array.isArray(allocations)) {
       return NextResponse.json({ error: 'Invalid data format' }, { status: 400 })
     }
@@ -163,13 +163,15 @@ export async function POST(request: Request) {
           }
         },
         update: {
-          amount: alloc.allocated
+          amount: alloc.allocated,
+          notes: notes || null
         },
         create: {
           brand_id: brandId,
           platform_id: platform.id,
           month: startOfMonth,
-          amount: alloc.allocated
+          amount: alloc.allocated,
+          notes: notes || null
         }
       })
     }
