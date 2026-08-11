@@ -9,17 +9,25 @@ interface BudgetAllocation {
   historicalRoas: number;
 }
 
-export function BudgetManager() {
-  const initialTotal = 25000000
-  const initialData = [
+interface BudgetManagerProps {
+  initialTotal?: number;
+  initialData?: BudgetAllocation[];
+  recommendedTotal?: number;
+  recommendedData?: BudgetAllocation[];
+}
+
+export function BudgetManager({ initialTotal, initialData, recommendedTotal, recommendedData }: BudgetManagerProps) {
+  const defaultTotal = initialTotal || 25000000
+  const defaultAllocations = initialData || [
     { channel: 'Shopee Ads', allocated: 10000000, spent: 4500000, historicalRoas: 10 },
     { channel: 'TikTok Ads', allocated: 8000000, spent: 3000000, historicalRoas: 17.3 },
     { channel: 'Tokopedia Ads', allocated: 2000000, spent: 1800000, historicalRoas: 15.2 },
     { channel: 'Meta Ads', allocated: 5000000, spent: 2100000, historicalRoas: 4.4 },
   ]
+  ]
   
-  const [totalBudget, setTotalBudget] = useState(initialTotal)
-  const [allocations, setAllocations] = useState<BudgetAllocation[]>(initialData)
+  const [totalBudget, setTotalBudget] = useState(defaultTotal)
+  const [allocations, setAllocations] = useState<BudgetAllocation[]>(defaultAllocations)
   const [hasChanges, setHasChanges] = useState(false)
 
   const handleAllocationChange = (channelName: string, newAllocated: number) => {
@@ -41,8 +49,8 @@ export function BudgetManager() {
   }
 
   const handleDiscard = () => {
-    setTotalBudget(initialTotal)
-    setAllocations(initialData)
+    setTotalBudget(defaultTotal)
+    setAllocations(defaultAllocations)
     setHasChanges(false)
   }
 
@@ -88,6 +96,22 @@ export function BudgetManager() {
               outline: 'none', width: '100%', marginTop: '4px', color: 'var(--text-primary)'
             }}
           />
+          {recommendedTotal && recommendedData && (
+            <button 
+              onClick={() => {
+                setTotalBudget(recommendedTotal)
+                setAllocations(recommendedData)
+                setHasChanges(true)
+              }}
+              style={{ 
+                marginTop: '12px', fontSize: '0.8rem', padding: '6px 12px', 
+                backgroundColor: 'var(--primary)', color: 'white', 
+                border: 'none', borderRadius: '4px', cursor: 'pointer', width: '100%' 
+              }}
+            >
+              Gunakan Rekomendasi AI (Rp {(recommendedTotal/1000000).toFixed(1)}M)
+            </button>
+          )}
         </div>
         <div style={{ padding: '16px', backgroundColor: 'var(--surface-border)', borderRadius: '8px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Alokasi Simulasi</div>

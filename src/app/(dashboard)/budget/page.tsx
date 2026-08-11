@@ -50,6 +50,23 @@ export default function BudgetManagerPage() {
   const recTotal = data.recommended.reduce((sum: number, c: any) => sum + c.spend, 0)
   const isIncrease = recTotal > currentTotal
 
+  const mappedCurrent = data.current.map((c: any) => ({
+    channel: c.channel,
+    allocated: c.spend,
+    spent: c.spend * 0.45,
+    historicalRoas: c.roas
+  }))
+
+  const mappedRecommended = data.recommended.map((r: any) => {
+    const curr = data.current.find((c: any) => c.channel === r.channel)
+    return {
+      channel: r.channel,
+      allocated: r.spend,
+      spent: curr ? curr.spend * 0.45 : 0,
+      historicalRoas: curr ? curr.roas : 0
+    }
+  })
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '1000px' }}>
       
@@ -84,7 +101,13 @@ export default function BudgetManagerPage() {
             </div>
           </div>
 
-          <button className="btn-primary" style={{ width: '100%', marginTop: 'auto' }}>Setujui Perubahan</button>
+          <button 
+            className="btn-primary" 
+            style={{ width: '100%', marginTop: 'auto' }}
+            onClick={() => alert('Perubahan anggaran disetujui dan diterapkan.')}
+          >
+            Setujui Perubahan
+          </button>
         </div>
 
         {/* CHANNEL BREAKDOWN & INSIGHTS */}
@@ -136,7 +159,12 @@ export default function BudgetManagerPage() {
 
       </div>
       
-      <BudgetManager />
+      <BudgetManager 
+        initialTotal={currentTotal}
+        initialData={mappedCurrent}
+        recommendedTotal={recTotal}
+        recommendedData={mappedRecommended}
+      />
     </div>
   )
 }
