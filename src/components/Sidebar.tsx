@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import { useSession, signOut } from 'next-auth/react'
 import { 
   LayoutDashboard, 
   Wallet, 
@@ -64,6 +65,7 @@ const navTree: NavItem[] = [
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
+  const { data: session } = useSession()
   const [expandedGroups, setExpandedGroups] = useState<string[]>(['Analitik', 'Pertumbuhan'])
 
   const toggleGroup = (name: string) => {
@@ -175,7 +177,27 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
       
       <div style={{ padding: '20px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Masuk sebagai Admin</div>
+        {session?.user ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'white' }}>{session.user.name || 'Pengguna'}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{session.user.email}</span>
+            </div>
+            <button 
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              style={{ 
+                marginTop: '8px', padding: '6px 0', fontSize: '0.8rem', 
+                backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', 
+                border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '4px', cursor: 'pointer',
+                transition: 'all 0.2s', width: '100%'
+              }}
+            >
+              Keluar
+            </button>
+          </div>
+        ) : (
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Masuk sebagai Admin</div>
+        )}
       </div>
     </aside>
   )
