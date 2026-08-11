@@ -46,19 +46,44 @@ export default function BudgetManagerPage() {
   if (errorStatus) return <div>Gagal memuat analitik</div>
   if (!data) return <div>Gagal memuat data anggaran.</div>
 
-  const currentTotal = data.current.reduce((sum: number, c: any) => sum + c.spend, 0)
-  const recTotal = data.recommended.reduce((sum: number, c: any) => sum + c.spend, 0)
+  let currentData = data.current || []
+  let recommendedData = data.recommended || []
+  let insightsData = data.insights || []
+
+  // If no data exists, inject mock data so user can simulate the features
+  if (currentData.length === 0) {
+    currentData = [
+      { channel: 'Shopee Ads', spend: 4500000, roas: 10 },
+      { channel: 'TikTok Ads', spend: 3000000, roas: 17.3 },
+      { channel: 'Tokopedia Ads', spend: 1800000, roas: 15.2 },
+      { channel: 'Meta Ads', spend: 2100000, roas: 4.4 }
+    ]
+    recommendedData = [
+      { channel: 'Shopee Ads', spend: 10000000 },
+      { channel: 'TikTok Ads', spend: 8000000 },
+      { channel: 'Tokopedia Ads', spend: 2000000 },
+      { channel: 'Meta Ads', spend: 5000000 }
+    ]
+    insightsData = [
+      'Shopee Ads dan TikTok Ads menunjukkan performa ROAS luar biasa. Disarankan untuk menaikkan anggaran secara signifikan.',
+      'Tokopedia Ads stabil, pertahankan anggaran saat ini.',
+      'Meta Ads perlu pemantauan lebih lanjut sebelum alokasi ditingkatkan.'
+    ]
+  }
+
+  const currentTotal = currentData.reduce((sum: number, c: any) => sum + c.spend, 0)
+  const recTotal = recommendedData.reduce((sum: number, c: any) => sum + c.spend, 0)
   const isIncrease = recTotal > currentTotal
 
-  const mappedCurrent = data.current.map((c: any) => ({
+  const mappedCurrent = currentData.map((c: any) => ({
     channel: c.channel,
     allocated: c.spend,
     spent: c.spend * 0.45,
     historicalRoas: c.roas
   }))
 
-  const mappedRecommended = data.recommended.map((r: any) => {
-    const curr = data.current.find((c: any) => c.channel === r.channel)
+  const mappedRecommended = recommendedData.map((r: any) => {
+    const curr = currentData.find((c: any) => c.channel === r.channel)
     return {
       channel: r.channel,
       allocated: r.spend,
@@ -125,8 +150,8 @@ export default function BudgetManagerPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.current.map((c: any, i: number) => {
-                  const rec = data.recommended.find((r: any) => r.channel === c.channel)
+                {currentData.map((c: any, i: number) => {
+                  const rec = recommendedData.find((r: any) => r.channel === c.channel)
                   return (
                     <tr key={c.channel} style={{ borderBottom: '1px solid var(--surface-border)' }}>
                       <td style={{ padding: '12px 0', fontWeight: 500 }}>{c.channel}</td>
@@ -147,7 +172,7 @@ export default function BudgetManagerPage() {
               <Lightbulb size={18} color="var(--primary)" /> Wawasan Anggaran AI
             </h3>
             <ul style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingLeft: '20px', margin: 0 }}>
-              {data.insights.map((insight: string, idx: number) => (
+              {insightsData.map((insight: string, idx: number) => (
                 <li key={idx} style={{ fontSize: '0.95rem', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
                   {insight}
                 </li>

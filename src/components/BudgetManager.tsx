@@ -96,7 +96,7 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
               outline: 'none', width: '100%', marginTop: '4px', color: 'var(--text-primary)'
             }}
           />
-          {recommendedTotal && recommendedData && (
+          {recommendedTotal !== undefined && recommendedData && recommendedData.length > 0 && (
             <button 
               onClick={() => {
                 setTotalBudget(recommendedTotal)
