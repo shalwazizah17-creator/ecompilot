@@ -41,43 +41,61 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
     setHasChanges(true)
   }
 
-  const handleApply = () => {
-    // API Call would go here
-    setHasChanges(false)
-    alert('Alokasi anggaran berhasil diterapkan.')
-  }
-
-  const handleDiscard = () => {
-    setTotalBudget(defaultTotal)
-    setAllocations(defaultAllocations)
-    setHasChanges(false)
-  }
-
   const totalAllocated = allocations.reduce((sum, a) => sum + a.allocated, 0)
   const remaining = totalBudget - totalAllocated
   const isOverBudget = remaining < 0
 
   const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()
+  const [isApplying, setIsApplying] = useState(false)
+
+  const handleApply = async () => {
+    setIsApplying(true)
+    try {
+      const res = await fetch('/api/budget/recommendations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ allocations })
+      })
+
+      if (!res.ok) throw new Error('Gagal menyimpan anggaran')
+      
+      alert('Perubahan anggaran disetujui dan diterapkan.')
+      setHasChanges(false)
+      window.location.reload()
+    } catch (err) {
+      alert('Terjadi kesalahan saat menyimpan anggaran.')
+      console.error(err)
+    } finally {
+      setIsApplying(false)
+    }
+  }
+
   const currentDay = new Date().getDate()
   const daysRemaining = daysInMonth - currentDay + 1
 
   return (
-    <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Manajer Anggaran Interaktif</h3>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {hasChanges && (
-            <button onClick={handleDiscard} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--surface-border)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
-              Buang Perubahan
-            </button>
-          )}
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Manajer Anggaran Interaktif</h2>
+        <div style={{ display: 'flex', gap: '12px' }}>
           <button 
-            className="btn-primary" 
-            onClick={handleApply}
-            disabled={isOverBudget || !hasChanges}
-            style={{ opacity: (!hasChanges || isOverBudget) ? 0.5 : 1 }}
+            className="btn-outline" 
+            disabled={!hasChanges || isApplying}
+            onClick={() => {
+              setAllocations(defaultAllocations)
+              setTotalBudget(defaultTotal)
+              setHasChanges(false)
+            }}
           >
-            Terapkan Perubahan
+            Buang Perubahan
+          </button>
+          <button 
+            className="btn-primary"
+            disabled={!hasChanges || isApplying}
+            onClick={handleApply}
+          >
+            {isApplying ? 'Menyimpan...' : 'Terapkan Perubahan'}
           </button>
         </div>
       </div>

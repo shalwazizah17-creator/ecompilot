@@ -20,8 +20,25 @@ export default function BudgetManagerPage() {
           setErrorStatus(res.status)
           return
         }
-        const json = await res.json()
-        if (json.current) setData(json)
+        const data = await res.json()
+
+        if (data.error) {
+          console.error(data.error)
+          setErrorStatus(403)
+          return
+        }
+
+        // If there are approved allocations, override the current spend
+        if (data.approvedAllocations && data.approvedAllocations.length > 0) {
+          const approvedMap = new Map(data.approvedAllocations.map((a: any) => [a.channel, a.amount]))
+          data.current = data.current.map((c: any) => ({
+            ...c,
+            spend: approvedMap.get(c.channel) || c.spend
+          }))
+          data.isApproved = true
+        }
+
+        setData(data)
       } catch (err) {
         console.error(err)
         setErrorStatus(500)
@@ -100,10 +117,17 @@ export default function BudgetManagerPage() {
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Rekomendasi anggaran otomatis berdasarkan performa ROAS 30 hari.</p>
       </div>
 
-      <div style={{ padding: '12px 16px', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '8px', color: 'var(--primary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <AlertTriangle size={18} />
-        HANYA SIMULASI / REKOMENDASI. Anggaran platform periklanan sebenarnya tidak dimodifikasi hingga disetujui secara eksplisit.
-      </div>
+      {data?.isApproved ? (
+        <div style={{ padding: '12px 16px', backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '8px', color: 'var(--success)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <CheckCircle size={18} />
+          Anggaran untuk bulan ini telah ditetapkan dan disimpan di sistem EcomPilot. Harap samakan angka ini di dashboard Meta/Shopee/TikTok asli.
+        </div>
+      ) : (
+        <div style={{ padding: '12px 16px', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '8px', color: 'var(--primary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <AlertTriangle size={18} />
+          HANYA SIMULASI / REKOMENDASI. Anggaran platform periklanan sebenarnya tidak dimodifikasi hingga disetujui secara eksplisit.
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
         
@@ -129,9 +153,12 @@ export default function BudgetManagerPage() {
           <button 
             className="btn-primary" 
             style={{ width: '100%', marginTop: 'auto' }}
-            onClick={() => alert('Perubahan anggaran disetujui dan diterapkan.')}
+            onClick={() => {
+              const el = document.getElementById('budget-manager-section')
+              if (el) el.scrollIntoView({ behavior: 'smooth' })
+            }}
           >
-            Setujui Perubahan
+            {data?.isApproved ? 'Ubah Anggaran Disetujui' : 'Mulai Simulasi & Setujui'}
           </button>
         </div>
 
@@ -183,13 +210,14 @@ export default function BudgetManagerPage() {
         </div>
 
       </div>
-      
-      <BudgetManager 
-        initialTotal={currentTotal}
-        initialData={mappedCurrent}
-        recommendedTotal={recTotal}
-        recommendedData={mappedRecommended}
-      />
+      <div id="budget-manager-section">
+        <BudgetManager 
+          initialTotal={currentTotal}
+          initialData={mappedCurrent}
+          recommendedTotal={recTotal}
+          recommendedData={mappedRecommended}
+        />
+      </div>
     </div>
   )
 }

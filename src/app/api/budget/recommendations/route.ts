@@ -101,7 +101,80 @@ export async function GET(request: Request) {
     const recommended = recommendations.map(r => ({ channel: r.channel, spend: r.recommendedBudget }))
     const insights = recommendations.map(r => r.reason)
 
-    return NextResponse.json({ current, recommended, insights })
+    const startOfMonth = new Date()
+    startOfMonth.setDate(1)
+    startOfMonth.setHours(0, 0, 0, 0)
+    
+    const allocationsDb = await prisma.budgetAllocation.findMany({
+      where: {
+        brand_id: brandId,
+        month: startOfMonth
+      },
+      include: { platform: true }
+    })
+    
+    const approvedAllocations = allocationsDb.map(a => ({
+      channel: a.platform.name,
+      amount: a.amount
+    }))
+
+    return NextResponse.json({ current, recommended, insights, approvedAllocations })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
+export async function POST(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const brandIdParam = searchParams.get('brandId')
+  
+  const brand = await assertBrandAccess(brandIdParam)
+  if (!brand) return NextResponse.json({ error: 'Forbidden. You do not have access to this workspace/brand.' }, { status: 403 })
+  
+  const brandId = brand.id
+
+  try {
+    const { allocations } = await request.json()
+    if (!allocations || !Array.isArray(allocations)) {
+      return NextResponse.json({ error: 'Invalid data format' }, { status: 400 })
+    }
+
+    const startOfMonth = new Date()
+    startOfMonth.setDate(1)
+    startOfMonth.setHours(0, 0, 0, 0)
+
+    for (const alloc of allocations) {
+      let platform = await prisma.platform.findUnique({
+        where: { name: alloc.channel }
+      })
+      
+      if (!platform) {
+        platform = await prisma.platform.create({
+          data: { name: alloc.channel, is_ad_channel: true }
+        })
+      }
+
+      await prisma.budgetAllocation.upsert({
+        where: {
+          brand_id_platform_id_month: {
+            brand_id: brandId,
+            platform_id: platform.id,
+            month: startOfMonth
+          }
+        },
+        update: {
+          amount: alloc.allocated
+        },
+        create: {
+          brand_id: brandId,
+          platform_id: platform.id,
+          month: startOfMonth,
+          amount: alloc.allocated
+        }
+      })
+    }
+
+    return NextResponse.json({ success: true })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
