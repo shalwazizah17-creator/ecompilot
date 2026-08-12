@@ -57,6 +57,12 @@ const navTree: NavItem[] = [
     href: '/data-sources'
   },
   { 
+    name: 'Pengaturan', icon: Target,
+    children: [
+      { name: 'Target Bisnis', href: '/settings/targets' }
+    ]
+  },
+  { 
     name: 'Alat', icon: Package,
     children: [
       { name: 'Pusat Tindakan', href: '/actions' }
