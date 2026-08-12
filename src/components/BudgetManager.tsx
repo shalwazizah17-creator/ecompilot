@@ -128,7 +128,7 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', marginBottom: '24px' }}>
+      <div className="responsive-grid-5" style={{ marginBottom: '24px' }}>
         <div style={{ padding: '16px', backgroundColor: 'var(--surface-border)', borderRadius: '8px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Anggaran Iklan</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>Rp {(totalBudget/1000000).toFixed(1)} Juta</div>

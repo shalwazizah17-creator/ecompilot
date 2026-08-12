@@ -69,6 +69,13 @@ button {
   padding: 24px;
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
   transition: all 0.3s ease;
+  overflow-x: auto; /* For responsive tables */
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: 16px; /* Smaller padding on mobile */
+  }
 }
 
 .card:hover {
@@ -151,6 +158,34 @@ table tbody tr:hover {
 .text-warning { color: var(--warning); }
 .text-muted { color: var(--text-muted); }
 
+/* Responsive Grids */
+.responsive-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.responsive-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.responsive-grid-5 {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .responsive-grid-2, .responsive-grid-4, .responsive-grid-5 {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Universal mobile fallback for inline grids to make them Android/iOS friendly */
+  div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* Responsive Layout */
 .app-container {
   display: flex;
@@ -192,6 +227,9 @@ table tbody tr:hover {
   }
   .menu-toggle {
     display: block;
+  }
+  .mobile-logo {
+    display: block !important;
   }
 }
 

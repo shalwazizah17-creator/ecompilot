@@ -127,7 +127,7 @@ export default function MarketingDecisionCenter() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px', padding: '12px', backgroundColor: 'var(--surface)', borderRadius: '6px' }}>
+                <div className="responsive-grid-4" style={{ marginBottom: '24px', padding: '12px', backgroundColor: 'var(--surface)', borderRadius: '6px' }}>
                   <div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Current Monthly Budget</div>
                     <div style={{ fontWeight: 600 }}>{formatCurrency(r.currentMonthlyBudget)}</div>

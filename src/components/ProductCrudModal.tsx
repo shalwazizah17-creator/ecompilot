@@ -111,7 +111,7 @@ export function ProductCrudModal({
             />
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="responsive-grid-2">
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 500 }}>Harga Jual (Rp)</label>
               <input 

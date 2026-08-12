@@ -65,7 +65,7 @@ export function ProductAnalytics() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {products.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+        <div className="responsive-grid-2">
           <div className="card">
             <h4 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>Top Revenue Products</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

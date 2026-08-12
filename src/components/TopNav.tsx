@@ -46,22 +46,29 @@ export default function TopNav({ onToggleSidebar }: { onToggleSidebar?: () => vo
       top: 0,
       zIndex: 9,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <button 
           className="menu-toggle" 
           onClick={onToggleSidebar}
-          style={{ padding: '8px', marginRight: '-8px', color: 'var(--text-secondary)' }}
+          style={{ padding: '8px', marginLeft: '-8px', color: 'var(--text-secondary)' }}
         >
           <Menu size={24} />
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--background)', padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--surface-border)' }}>
+        {/* EcomPilot Logo for mobile only */}
+        <div className="mobile-logo" style={{ fontWeight: 700, fontSize: '1.2rem', letterSpacing: '-0.5px', display: 'none' }}>
+          <span style={{ color: 'var(--primary)' }}>Ecom</span>Pilot
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--background)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
           <Calendar size={16} color="var(--text-muted)" />
           <select 
             value={dateRangeOption}
             onChange={(e) => setDateRangeOption(e.target.value as DateRangeOption)}
             style={{ 
-              padding: '4px 0', 
+              padding: '0', 
               border: 'none', 
               background: 'transparent',
               fontSize: '0.85rem', 
@@ -77,7 +84,7 @@ export default function TopNav({ onToggleSidebar }: { onToggleSidebar?: () => vo
           </select>
         </div>
 
-        <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+        <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
           <User size={18} />
         </div>
       </div>
