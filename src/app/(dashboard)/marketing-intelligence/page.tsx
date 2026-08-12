@@ -98,7 +98,7 @@ export default function MarketingDecisionCenter() {
   })
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
       
       <div>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>Marketing Decision Center</h1>

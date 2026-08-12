@@ -128,7 +128,7 @@ export default function BudgetManagerPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '1000px' }}>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '1000px' }}>
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
