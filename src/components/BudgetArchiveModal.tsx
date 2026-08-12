@@ -36,15 +36,29 @@ export function BudgetArchiveModal({ onClose, data }: { onClose: () => void, dat
               const totalAmount = group.allocations.reduce((sum: number, a: any) => sum + a.amount, 0)
               
               return (
-                <div key={idx} style={{ border: '1px solid var(--surface-border)', borderRadius: '8px', overflow: 'hidden' }}>
-                  <div style={{ padding: '16px 20px', backgroundColor: 'var(--background)', borderBottom: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div key={idx} style={{ 
+                  border: '1px solid var(--surface-border)', 
+                  borderRadius: '12px', 
+                  overflow: 'hidden',
+                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)',
+                  transition: 'transform 0.2s',
+                  animation: 'fadeIn 0.3s ease-out'
+                }}>
+                  <div style={{ 
+                    padding: '20px', 
+                    background: 'linear-gradient(135deg, rgba(26, 86, 219, 0.08) 0%, rgba(26, 86, 219, 0.01) 100%)',
+                    borderBottom: '1px solid var(--surface-border)', 
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+                  }}>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>Periode: {monthName}</div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Disetujui pada: {approvedStr} WIB</div>
+                      <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Periode: {monthName}</div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Calendar size={14} /> Disetujui pada: {approvedStr} WIB
+                      </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Total Disetujui</div>
-                      <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--primary)' }}>
+                    <div style={{ textAlign: 'right', backgroundColor: 'var(--surface)', padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--surface-border)', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Total Disetujui</div>
+                      <div style={{ fontWeight: 800, fontSize: '1.3rem', color: 'var(--primary)', marginTop: '2px' }}>
                         Rp {(totalAmount / 1000000).toFixed(1)} Juta
                       </div>
                     </div>

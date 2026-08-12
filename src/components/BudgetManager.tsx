@@ -128,10 +128,10 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
         </div>
       </div>
 
-      <div className="responsive-grid-5" style={{ marginBottom: '24px' }}>
-        <div style={{ padding: '16px', backgroundColor: 'var(--surface-border)', borderRadius: '8px' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Anggaran Iklan</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>Rp {(totalBudget/1000000).toFixed(1)} Juta</div>
+      <div className="responsive-grid-5" style={{ marginBottom: '32px' }}>
+        <div style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(26, 86, 219, 0.05) 0%, transparent 100%)', backgroundColor: 'var(--surface)', border: '1px solid var(--surface-border)', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>Total Anggaran Iklan</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>Rp {(totalBudget/1000000).toFixed(1)} Juta</div>
           {recommendedTotal !== undefined && recommendedData && recommendedData.length > 0 && (
             <button 
               onClick={() => {
@@ -140,37 +140,40 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
                 setHasChanges(true)
               }}
               style={{ 
-                marginTop: '12px', fontSize: '0.8rem', padding: '6px 12px', 
+                marginTop: '16px', fontSize: '0.8rem', padding: '8px 12px', fontWeight: 600,
                 backgroundColor: 'var(--primary)', color: 'white', 
-                border: 'none', borderRadius: '4px', cursor: 'pointer', width: '100%' 
+                border: 'none', borderRadius: '6px', cursor: 'pointer', width: '100%',
+                transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(26, 86, 219, 0.2)'
               }}
+              onMouseOver={e => e.currentTarget.style.transform = 'translateY(-1px)'}
+              onMouseOut={e => e.currentTarget.style.transform = 'none'}
             >
-              Gunakan Rekomendasi AI (Rp {(recommendedTotal/1000000).toFixed(1)} Juta)
+              Gunakan Rekomendasi AI
             </button>
           )}
         </div>
-        <div style={{ padding: '16px', backgroundColor: 'var(--surface-border)', borderRadius: '8px' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Alokasi Simulasi</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>Rp {(totalAllocated/1000000).toFixed(1)} Juta</div>
+        <div style={{ padding: '20px', backgroundColor: 'var(--surface)', border: '1px solid var(--surface-border)', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>Alokasi Simulasi</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: '4px' }}>Rp {(totalAllocated/1000000).toFixed(1)} Juta</div>
         </div>
-        <div style={{ padding: '16px', backgroundColor: 'var(--surface-border)', borderRadius: '8px' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Dihabiskan (S.Bulan)</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+        <div style={{ padding: '20px', backgroundColor: 'var(--surface)', border: '1px solid var(--surface-border)', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>Dihabiskan (Bulan Ini)</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: '4px' }}>
             Rp {(allocations.reduce((sum, a) => sum + a.spent, 0)/1000000).toFixed(1)} Juta
           </div>
         </div>
-        <div style={{ padding: '16px', backgroundColor: isOverBudget ? 'var(--danger)' : 'var(--success)', color: 'white', borderRadius: '8px' }}>
-          <div style={{ fontSize: '0.85rem' }}>Sisa Dana</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+        <div style={{ padding: '20px', background: isOverBudget ? 'linear-gradient(135deg, var(--danger) 0%, #b91c1c 100%)' : 'linear-gradient(135deg, var(--success) 0%, #047857 100%)', color: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700, opacity: 0.9 }}>Sisa Dana</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: '4px' }}>
             {isOverBudget ? '-' : ''}Rp {Math.abs(remaining/1000000).toFixed(1)} Juta
           </div>
         </div>
-        <div style={{ padding: '16px', backgroundColor: 'var(--surface)', border: '1px solid var(--primary)', color: 'var(--primary)', borderRadius: '8px' }}>
-          <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>Proyeksi Pend. Atribusi</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+        <div style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(26, 86, 219, 0.05) 0%, rgba(26, 86, 219, 0.02) 100%)', backgroundColor: 'var(--surface)', border: '1px solid var(--primary)', color: 'var(--primary)', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(26, 86, 219, 0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Proyeksi Pend. Atribusi</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: '4px' }}>
             Rp {(allocations.reduce((sum, a) => sum + (a.allocated * a.historicalRoas), 0)/1000000).toFixed(1)} Juta
           </div>
-          <div style={{ fontSize: '0.75rem', marginTop: '4px', opacity: 0.8 }}>*Berdasarkan ROAS 30 hari terakhir</div>
+          <div style={{ fontSize: '0.7rem', marginTop: '6px', opacity: 0.8, fontWeight: 500 }}>*Berdasarkan ROAS 30 Hari</div>
         </div>
       </div>
 
