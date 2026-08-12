@@ -33,6 +33,7 @@ const navTree: NavItem[] = [
     children: [
       { name: 'Intelijen Marketplace', href: '/marketplace-intelligence' },
       { name: 'Produk', href: '/products' },
+      { name: 'Manajemen Kampanye', href: '/campaigns' },
       { name: 'Iklan Meta', href: '/campaigns/meta' },
       { name: 'Periklanan', href: '/marketing-intelligence' },
     ]
