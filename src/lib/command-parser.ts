@@ -35,7 +35,13 @@ export class CommandParser {
       return { intent: 'ROAS_ANALYSIS', action, confidence: 0.85 }
     }
 
-    // 4. GMV Drop / Growth Analysis
+    // 4. Marketplace Growth Comparison — check BEFORE generic trend to avoid collision
+    if ((q.includes('marketplace') || q.includes('platform')) &&
+      (q.includes('grew') || q.includes('grow') || q.includes('most') || q.includes('tumbuh') || q.includes('terbesar') || q.includes('paling'))) {
+      return { intent: 'MARKETPLACE_COMPARISON', action: 'FIND_TOP_GROWTH', confidence: 0.85 }
+    }
+
+    // 5. GMV Drop / Growth Analysis
     if (q.includes('grew') || q.includes('drop') || q.includes('decline') || q.includes('caused') ||
       q.includes('turun') || q.includes('naik') || q.includes('kenapa') || q.includes('why did') || q.includes('why')) {
       let metric = 'GMV'
@@ -43,12 +49,6 @@ export class CommandParser {
       let action = 'ANALYZE_DROP'
       if (q.includes('grew') || q.includes('increase') || q.includes('naik')) action = 'ANALYZE_GROWTH'
       return { intent: 'TREND_ANALYSIS', metric, action, confidence: 0.8 }
-    }
-
-    // 5. Marketplace Growth Comparison
-    if ((q.includes('marketplace') || q.includes('platform')) &&
-      (q.includes('grew') || q.includes('grow') || q.includes('most') || q.includes('tumbuh') || q.includes('terbesar') || q.includes('paling'))) {
-      return { intent: 'MARKETPLACE_COMPARISON', action: 'FIND_TOP_GROWTH', confidence: 0.85 }
     }
 
     // 6. Margin / Profitability Intent (Phase 13)

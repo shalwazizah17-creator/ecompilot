@@ -11,8 +11,8 @@ function classifySentiment(rating: number, text: string): { sentiment: string; c
 
   // Negative — detect topic
   const t = (text ?? '').toLowerCase()
+  if (/kemasan|packaging|kotak|bungkus/.test(t)) return { sentiment: 'NEGATIVE', complaint_topic: 'Packaging' }
   if (/bocor|tumpah|rusak|pecah|cacat|leakage/.test(t)) return { sentiment: 'NEGATIVE', complaint_topic: 'Leakage' }
-  if (/kemasan|packaging|kotak|bungkus|packaging/.test(t)) return { sentiment: 'NEGATIVE', complaint_topic: 'Packaging' }
   if (/lambat|lama|telat|pengiriman|kurir|paket|kiriman|terlambat/.test(t)) return { sentiment: 'NEGATIVE', complaint_topic: 'Shipping' }
   if (/salah varian|warna salah|ukuran salah|beda produk|not as described/.test(t)) return { sentiment: 'NEGATIVE', complaint_topic: 'WrongVariant' }
   if (/kualitas|jelek|buruk|tidak bagus|murahan|quality/.test(t)) return { sentiment: 'NEGATIVE', complaint_topic: 'Quality' }
