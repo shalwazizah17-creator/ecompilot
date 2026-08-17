@@ -16,7 +16,8 @@ import {
   FileText, 
   Database,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  ShieldCheck
 } from 'lucide-react'
 
 type NavItem = {
@@ -36,6 +37,15 @@ const navTree: NavItem[] = [
       { name: 'Manajemen Kampanye', href: '/campaigns' },
       { name: 'Iklan Meta', href: '/campaigns/meta' },
       { name: 'Periklanan', href: '/marketing-intelligence' },
+    ]
+  },
+  { 
+    name: 'Intelijen Bisnis', icon: ShieldCheck,
+    children: [
+      { name: '🛡️ Margin Protection', href: '/margin-protection' },
+      { name: '🕵️ Kompetitor', href: '/competitors' },
+      { name: '📦 Intelijen Inventori', href: '/inventory-intelligence' },
+      { name: '💬 Intelijen Pelanggan', href: '/customer-intelligence' },
     ]
   },
   { 

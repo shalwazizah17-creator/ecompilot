@@ -79,6 +79,14 @@ model Brand {
   credentials              IntegrationCredential[]
   audit_logs               AuditLog[]
   import_mappings          ImportMappingMemory[]
+
+  // Phase 13-16 relations
+  product_costs      ProductCost[]
+  margin_rules       MarginRule[]
+  competitors        Competitor[]
+  inventory_records  InventoryRecord[]
+  customer_reviews   CustomerReview[]
+
   workspace                Workspace            @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 
   @@unique([workspace_id, name])
@@ -540,4 +548,154 @@ model ImportMappingMemory {
 
   @@unique([workspace_id, brand_id, platform_id, report_type, source_column])
 }
+
+// ==========================================
+// PHASE 13: MARGIN PROTECTION ENGINE
+// ==========================================
+
+model ProductCost {
+  id                     String   @id @default(cuid())
+  workspace_id           String
+  brand_id               String
+  product_id             String?
+  sku                    String
+  hpp                    Float    @default(0) // Harga Pokok Penjualan (COGS)
+  msrp                   Float    @default(0) // Manufacturer's Suggested Retail Price
+  minimum_margin_percent Float    @default(0)
+  target_margin_percent  Float    @default(20)
+  effective_from         DateTime @default(now())
+  effective_to           DateTime?
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  brand                  Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+
+  @@index([brand_id, sku])
+}
+
+model MarginRule {
+  id                          String   @id @default(cuid())
+  workspace_id                String
+  brand_id                    String
+  marketplace                 String   // shopee, tokopedia, tiktok, meta, etc.
+  marketplace_fee_percent     Float    @default(0)
+  payment_fee_percent         Float    @default(0)
+  affiliate_commission_percent Float   @default(0)
+  voucher_cost_percent        Float    @default(0)
+  shipping_subsidy_percent    Float    @default(0)
+  minimum_margin_percent      Float    @default(5)
+  target_margin_percent       Float    @default(20)
+  created_at                  DateTime @default(now())
+  updated_at                  DateTime @updatedAt
+
+  brand                       Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+
+  @@unique([brand_id, marketplace])
+  @@index([brand_id])
+}
+
+// ==========================================
+// PHASE 14: COMPETITOR INTELLIGENCE
+// ==========================================
+
+model Competitor {
+  id           String              @id @default(cuid())
+  workspace_id String
+  brand_id     String
+  name         String
+  marketplace  String
+  store_url    String?
+  status       String              @default("ACTIVE") // ACTIVE, PAUSED
+  created_at   DateTime            @default(now())
+  updated_at   DateTime            @updatedAt
+
+  brand        Brand               @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  products     CompetitorProduct[]
+
+  @@index([brand_id])
+}
+
+model CompetitorProduct {
+  id              String              @id @default(cuid())
+  competitor_id   String
+  product_name    String
+  sku_reference   String?
+  url             String?
+  current_price   Float               @default(0)
+  stock_status    String              @default("UNKNOWN") // IN_STOCK, OUT_OF_STOCK, UNKNOWN
+  last_checked_at DateTime?
+  created_at      DateTime            @default(now())
+  updated_at      DateTime            @updatedAt
+
+  competitor      Competitor          @relation(fields: [competitor_id], references: [id], onDelete: Cascade)
+  snapshots       CompetitorSnapshot[]
+
+  @@index([competitor_id])
+}
+
+model CompetitorSnapshot {
+  id                   String            @id @default(cuid())
+  competitor_product_id String
+  price                Float             @default(0)
+  stock_status         String            @default("UNKNOWN")
+  notes                String?
+  captured_at          DateTime          @default(now())
+
+  competitor_product   CompetitorProduct @relation(fields: [competitor_product_id], references: [id], onDelete: Cascade)
+
+  @@index([competitor_product_id, captured_at])
+}
+
+// ==========================================
+// PHASE 15: INVENTORY INTELLIGENCE
+// ==========================================
+
+model InventoryRecord {
+  id                  String   @id @default(cuid())
+  brand_id            String
+  workspace_id        String
+  product_id          String?
+  sku                 String
+  product_name        String
+  available_stock     Int      @default(0)
+  reserved_stock      Int      @default(0)
+  campaign_allocation Int      @default(0)
+  avg_daily_sales_7d  Float    @default(0)
+  avg_daily_sales_30d Float    @default(0)
+  last_updated_at     DateTime @default(now())
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  brand               Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+
+  @@index([brand_id, sku])
+}
+
+// ==========================================
+// PHASE 16: CUSTOMER SENTIMENT INTELLIGENCE
+// ==========================================
+
+model CustomerReview {
+  id              String   @id @default(cuid())
+  brand_id        String
+  workspace_id    String
+  product_id      String?
+  sku             String?
+  product_name    String?
+  rating          Int      @default(0) // 1-5
+  review_text     String?
+  sentiment       String   @default("NEUTRAL") // POSITIVE, NEUTRAL, NEGATIVE
+  complaint_topic String?  // Quality, Packaging, Shipping, WrongVariant, Leakage, Size, Color, CustomerService, Price, Other
+  variant         String?
+  courier         String?
+  review_date     DateTime @default(now())
+  source          String   @default("CSV") // CSV, MANUAL, API
+  created_at      DateTime @default(now())
+
+  brand           Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+
+  @@index([brand_id, review_date])
+  @@index([brand_id, sentiment])
+}
+
 
