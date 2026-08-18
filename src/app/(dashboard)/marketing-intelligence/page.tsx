@@ -147,69 +147,16 @@ export default function MarketingDecisionCenter() {
         </div>
       </div>
 
-      {/* BUDGET SIMULATOR */}
-      <div className="card">
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}><Target size={20} /> Budget Allocation Simulator</h3>
-        
-        <div style={{ display: 'flex', gap: '24px' }}>
-          
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: '8px' }}>Total Simulator Budget (Rp)</label>
-              <input 
-                type="number" 
-                className="input" 
-                value={simulatorTotal} 
-                onChange={e => setSimulatorTotal(Number(e.target.value))} 
-              />
-            </div>
-            
-            {data.map((r: any) => (
-              <div key={r.channel}>
-                <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 600, marginBottom: '8px' }}>
-                  <span>{r.channel}</span>
-                  <span style={{ color: 'var(--text-secondary)' }}>{r.roas30.toFixed(2)}x ROAS</span>
-                </label>
-                <input 
-                  type="number" 
-                  className="input" 
-                  value={allocations[r.channel] || 0} 
-                  onChange={e => setAllocations({...allocations, [r.channel]: Number(e.target.value)})} 
-                />
-              </div>
-            ))}
-          </div>
-
-          <div style={{ flex: 1, padding: '24px', backgroundColor: 'var(--surface)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h4 style={{ fontWeight: 600, borderBottom: '1px solid var(--surface-border)', paddingBottom: '12px' }}>Simulation Results</h4>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Total Allocated:</span>
-              <span style={{ fontWeight: 600, color: simTotalAllocated > simulatorTotal ? 'var(--danger)' : 'var(--text-primary)' }}>{formatCurrency(simTotalAllocated)}</span>
-            </div>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Remaining Budget:</span>
-              <span style={{ fontWeight: 600 }}>{formatCurrency(simulatorTotal - simTotalAllocated)}</span>
-            </div>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--surface-border)' }}>
-              <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Projected Revenue:</span>
-              <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--success)' }}>{formatCurrency(simExpectedRev)}</span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Projected Profit (15%):</span>
-              <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--success)' }}>{formatCurrency(simExpectedRev * 0.15)}</span>
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', paddingTop: '24px' }}>
-              <button className="btn-secondary" style={{ flex: 1 }} onClick={handleReset}>Reset</button>
-              <button className="btn-primary" style={{ flex: 2 }} onClick={handleSimulate}>Apply Simulation</button>
-            </div>
-          </div>
-          
-        </div>
+      {/* Redirect to Actual Budget Manager */}
+      <div className="card" style={{ marginTop: '32px', backgroundColor: 'rgba(26, 86, 219, 0.05)', border: '1px solid rgba(26, 86, 219, 0.2)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '40px 20px', gap: '16px' }}>
+        <Target size={48} color="var(--primary)" />
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Ingin Memutuskan Anggaran Iklan Final?</h3>
+        <p style={{ color: 'var(--text-secondary)', maxWidth: '600px', lineHeight: 1.6 }}>
+          Halaman ini khusus untuk melihat laporan dan wawasan performa masa lalu. Untuk melakukan simulasi cerdas dan menyimpan anggaran final, silakan buka fitur <strong>Manajer Anggaran</strong>.
+        </p>
+        <button className="btn-primary" onClick={() => window.location.href = '/budget'} style={{ padding: '12px 24px', fontSize: '1rem', marginTop: '8px' }}>
+          Buka Manajer Anggaran & Simulasi
+        </button>
       </div>
 
     </div>
