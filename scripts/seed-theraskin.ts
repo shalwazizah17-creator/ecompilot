@@ -89,6 +89,26 @@ async function main() {
     ]
   })
 
+  const comp4 = await prisma.competitor.create({
+    data: { brand_id: brand.id, workspace_id: workspace.id, name: 'Wardah', marketplace: 'tiktok', store_url: 'https://www.tiktok.com/@wardahofficial' }
+  })
+  await prisma.competitorProduct.createMany({
+    data: [
+      { competitor_id: comp4.id, product_name: 'Wardah UV Shield Essential Sunscreen', current_price: 35000, stock_status: 'IN_STOCK' },
+      { competitor_id: comp4.id, product_name: 'Wardah Lightening Day Cream', current_price: 45000, stock_status: 'IN_STOCK' }
+    ]
+  })
+
+  const comp5 = await prisma.competitor.create({
+    data: { brand_id: brand.id, workspace_id: workspace.id, name: 'Emina', marketplace: 'tiktok', store_url: 'https://www.tiktok.com/@eminacosmeticsid' }
+  })
+  await prisma.competitorProduct.createMany({
+    data: [
+      { competitor_id: comp5.id, product_name: 'Emina Sun Battle SPF 30', current_price: 29000, stock_status: 'IN_STOCK' },
+      { competitor_id: comp5.id, product_name: 'Emina Bright Stuff Face Wash', current_price: 25000, stock_status: 'IN_STOCK' }
+    ]
+  })
+
   await prisma.customerReview.createMany({
     data: [
       { brand_id: brand.id, workspace_id: workspace.id, sku: 'TH-GLOW-02', product_name: 'Theraskin Glowing Serum', rating: 5, review_text: 'Bagus banget bikin glowing parah dan ga lengket', sentiment: 'POSITIVE', complaint_topic: null },
