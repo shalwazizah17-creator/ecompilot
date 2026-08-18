@@ -5,16 +5,42 @@ import { Plus, Trash2, ExternalLink, TrendingDown } from 'lucide-react'
 
 const DUMMY_COMPETITORS = [
   {
-    id: 'd1', name: 'Rival Skincare XYZ', marketplace: 'shopee', store_url: 'https://shopee.co.id/rival-xyz',
+    id: 'd1', name: 'SKINTIFIC', marketplace: 'shopee', store_url: 'https://shopee.co.id/skintific.id',
     products: [
-      { id: 'p1', product_name: 'Serum Vitamin C 30ml', sku_reference: 'SRM-VC-001', current_price: 79000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 79000 }, { price: 85000 }] },
-      { id: 'p2', product_name: 'Toner AHA 100ml', sku_reference: 'TNR-AHA-02', current_price: 55000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 55000 }, { price: 60000 }] },
+      { id: 'p1', product_name: '5X Ceramide Barrier Repair Moisture Gel', sku_reference: 'SK-5X-GEL', current_price: 139000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 139000 }, { price: 159000 }] },
+      { id: 'p2', product_name: 'Mugwort Anti Pores & Acne Clay Mask', sku_reference: 'SK-MGW-MASK', current_price: 89000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 89000 }, { price: 95000 }] },
     ]
   },
   {
-    id: 'd2', name: 'Beauty Competitor Store', marketplace: 'tokopedia', store_url: '',
+    id: 'd2', name: 'GLAD2GLOW', marketplace: 'tokopedia', store_url: 'https://www.tokopedia.com/glad2glow',
     products: [
-      { id: 'p3', product_name: 'Eye Cream Retinol', sku_reference: 'EYE-RET-05', current_price: 95000, stock_status: 'OUT_OF_STOCK', url: '', snapshots: [{ price: 95000 }] },
+      { id: 'p3', product_name: 'Centella Allantoin Soothing Gel Moisturizer', sku_reference: 'G2G-CEN-GEL', current_price: 49000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 49000 }] },
+      { id: 'p4', product_name: 'Blueberry Ceramide 5% Barrier Repair', sku_reference: 'G2G-BLU-CER', current_price: 52000, stock_status: 'OUT_OF_STOCK', url: '', snapshots: [{ price: 52000 }, { price: 55000 }] },
+    ]
+  },
+  {
+    id: 'd3', name: 'TRUE TO SKIN', marketplace: 'tiktok', store_url: '',
+    products: [
+      { id: 'p5', product_name: 'Bakuchiol Anti-Aging Serum', sku_reference: 'TTS-BAK-SRM', current_price: 119000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 119000 }, { price: 119000 }] },
+      { id: 'p6', product_name: 'Mugwort Tripeptide Gel Cream', sku_reference: 'TTS-MUG-GEL', current_price: 115000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 105000 }, { price: 115000 }] },
+    ]
+  },
+  {
+    id: 'd4', name: 'EMINA', marketplace: 'shopee', store_url: 'https://shopee.co.id/eminaofficial',
+    products: [
+      { id: 'p7', product_name: 'Bright Stuff Face Wash', sku_reference: 'EM-BS-FW', current_price: 28500, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 28500 }, { price: 29000 }] },
+    ]
+  },
+  {
+    id: 'd5', name: 'WARDAH', marketplace: 'lazada', store_url: '',
+    products: [
+      { id: 'p8', product_name: 'Lightening Day Cream', sku_reference: 'WD-LGT-DAY', current_price: 45000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 45000 }] },
+    ]
+  },
+  {
+    id: 'd6', name: 'BECOMING', marketplace: 'shopee', store_url: '',
+    products: [
+      { id: 'p9', product_name: 'Glow Up Serum 20ml', sku_reference: 'BCM-GLW-SRM', current_price: 85000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 85000 }, { price: 89000 }] },
     ]
   },
 ]
