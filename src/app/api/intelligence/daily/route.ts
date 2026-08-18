@@ -116,10 +116,10 @@ export async function GET(request: Request) {
 
     score = Math.min(100, Math.max(0, Math.round(score)))
     
-    let healthStatus = 'EXCELLENT'
-    if (score <= 39) healthStatus = 'CRITICAL'
-    else if (score <= 59) healthStatus = 'NEEDS ATTENTION'
-    else if (score <= 79) healthStatus = 'HEALTHY'
+    let healthStatus = 'SANGAT BAIK'
+    if (score <= 39) healthStatus = 'KRITIS'
+    else if (score <= 59) healthStatus = 'BUTUH PERHATIAN'
+    else if (score <= 79) healthStatus = 'SEHAT'
 
     // Risks & Opportunities
     const risks = []
@@ -128,13 +128,13 @@ export async function GET(request: Request) {
     if (currRoas < 4.0 && currSpend > 0) {
       risks.push({
         severity: 'HIGH',
-        metric: 'Ads ROAS',
+        metric: 'ROAS Iklan',
         change: `${currRoas.toFixed(2)}x`,
         target: '4.0x',
-        title: 'ROAS below target',
-        reason: 'Advertising efficiency has dropped below the target healthy threshold, potentially impacting bottom-line profit.',
-        action: 'Reduce budget on lowest-performing campaigns by 15% and reallocate to organic or affiliate channels.',
-        impact: `Rp ${((currSpend * 0.15)).toLocaleString()} potential monthly savings`
+        title: 'ROAS di Bawah Target',
+        reason: 'Efisiensi iklan turun di bawah target, berpotensi mengurangi profit bersih.',
+        action: 'Kurangi budget pada kampanye dengan performa terburuk sebesar 15%.',
+        impact: `Potensi penghematan Rp ${((currSpend * 0.15)).toLocaleString()}/bulan`
       })
     }
 
@@ -144,42 +144,42 @@ export async function GET(request: Request) {
         metric: 'Total GMV',
         change: `${gmvGrowth.toFixed(1)}%`,
         target: '> 0%',
-        title: 'GMV Declining',
-        reason: 'Significant top-line revenue decline compared to the previous 30 days.',
-        action: 'Investigate ad frequency fatigue or marketplace listing issues.',
+        title: 'Penurunan GMV',
+        reason: 'Terjadi penurunan pendapatan yang signifikan dibanding 30 hari sebelumnya.',
+        action: 'Periksa performa iklan atau masalah pada halaman toko di marketplace.',
         impact: 'N/A'
       })
     }
 
     if (currRoas > 5.0 && currSpend > 0) {
       opportunities.push({
-        opportunity: 'High Advertising Efficiency',
-        metrics: `ROAS is ${currRoas.toFixed(2)}x (Target: 4.0x)`,
-        impact: `Projected additional revenue: Rp ${((currSpend * 0.1) * currRoas).toLocaleString()}`,
-        action: 'Increase advertising daily budget caps by 10% on top-performing campaigns.'
+        opportunity: 'Efisiensi Iklan Sangat Baik',
+        metrics: `ROAS saat ini ${currRoas.toFixed(2)}x (Target: 4.0x)`,
+        impact: `Proyeksi tambahan pendapatan: Rp ${((currSpend * 0.1) * currRoas).toLocaleString()}`,
+        action: 'Naikkan batas budget harian sebesar 10% pada kampanye terbaik.'
       })
     }
 
     if (risks.length === 0) {
-      risks.push({ severity: 'LOW', metric: 'Stability', change: 'Stable', target: 'Stable', title: 'No major risks', reason: 'No immediate critical risks detected across core channels.', action: 'Continue standard monitoring.', impact: 'N/A' })
+      risks.push({ severity: 'LOW', metric: 'Stabilitas', change: 'Stabil', target: 'Stabil', title: 'Tidak ada risiko serius', reason: 'Tidak terdeteksi adanya risiko kritis pada seluruh saluran penjualan.', action: 'Lanjutkan pemantauan standar.', impact: 'N/A' })
     }
 
     if (opportunities.length === 0) {
-      opportunities.push({ opportunity: 'Stable Operations', metrics: 'Metrics tracking nominally.', impact: 'Stable business baseline.', action: 'Focus on A/B testing creative assets.' })
+      opportunities.push({ opportunity: 'Operasional Stabil', metrics: 'Metrik berjalan normal.', impact: 'Bisnis dalam kondisi stabil.', action: 'Fokus pada A/B testing konten kreatif iklan.' })
     }
 
     // Finalize score and empty states
-    let finalStatus = 'Healthy'
-    if (score >= 80) finalStatus = 'Excellent'
-    else if (score >= 60) finalStatus = 'Healthy'
-    else if (score >= 40) finalStatus = 'Needs Attention'
-    else finalStatus = 'Critical'
+    let finalStatus = 'Sehat'
+    if (score >= 80) finalStatus = 'Sangat Baik'
+    else if (score >= 60) finalStatus = 'Sehat'
+    else if (score >= 40) finalStatus = 'Butuh Perhatian'
+    else finalStatus = 'Kritis'
 
     const hasData = dataSources.length > 0 || currGmv > 0 || currSpend > 0 || currOrders > 0
 
     if (!hasData) {
       score = 0
-      finalStatus = 'INSUFFICIENT DATA'
+      finalStatus = 'DATA TIDAK CUKUP'
       dataHealthPct = 0
     }
 

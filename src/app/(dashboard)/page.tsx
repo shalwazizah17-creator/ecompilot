@@ -33,10 +33,10 @@ export default function DashboardPage() {
   const formatCurrency = (val: number) => `Rp ${(val/1000000).toFixed(1)}M`
   
   let healthColor = 'var(--text-primary)'
-  if (healthStatus === 'Excellent') healthColor = 'var(--success)'
-  else if (healthStatus === 'Healthy') healthColor = 'var(--primary)'
-  else if (healthStatus === 'Needs Attention') healthColor = 'var(--warning)'
-  else if (healthStatus === 'Critical') healthColor = 'var(--danger)'
+  if (healthStatus === 'Sangat Baik' || healthStatus === 'Excellent') healthColor = 'var(--success)'
+  else if (healthStatus === 'Sehat' || healthStatus === 'Healthy') healthColor = 'var(--primary)'
+  else if (healthStatus === 'Butuh Perhatian' || healthStatus === 'Needs Attention') healthColor = 'var(--warning)'
+  else if (healthStatus === 'Kritis' || healthStatus === 'Critical') healthColor = 'var(--danger)'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -79,12 +79,12 @@ export default function DashboardPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
         <div className="card">
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <DollarSign size={16} /> Total GMV (30d)
+            <DollarSign size={16} /> Total GMV (30 Hari)
           </div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{formatCurrency(metrics.currGmv)}</div>
           <div style={{ fontSize: '0.8rem', color: metrics.gmvGrowth >= 0 ? 'var(--success)' : 'var(--danger)', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
             {metrics.gmvGrowth >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-            {Math.abs(metrics.gmvGrowth).toFixed(1)}% vs Prev
+            {Math.abs(metrics.gmvGrowth).toFixed(1)}% vs Bulan Lalu
           </div>
         </div>
 
@@ -100,7 +100,7 @@ export default function DashboardPage() {
 
         <div className="card">
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Target size={16} /> Ads ROAS
+            <Target size={16} /> ROAS Iklan
           </div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{metrics.currRoas.toFixed(2)}x</div>
           <div style={{ fontSize: '0.8rem', color: metrics.currRoas > 4 ? 'var(--success)' : (metrics.currRoas > 2 ? 'var(--warning)' : 'var(--danger)'), marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -120,7 +120,7 @@ export default function DashboardPage() {
 
         <div className="card">
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Percent size={16} /> Profit Est (15%)
+            <Percent size={16} /> Estimasi Profit (15%)
           </div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{formatCurrency(metrics.estProfit)}</div>
           <div style={{ fontSize: '0.8rem', color: 'var(--success)', marginTop: '8px' }}>
@@ -130,11 +130,11 @@ export default function DashboardPage() {
 
         <div className="card">
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <TrendingUp size={16} /> Affiliate GMV
+            <TrendingUp size={16} /> GMV Afiliasi
           </div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{formatCurrency(metrics.currAffGmv)}</div>
           <div style={{ fontSize: '0.8rem', color: 'var(--primary)', marginTop: '8px' }}>
-            {metrics.currGmv > 0 ? ((metrics.currAffGmv / metrics.currGmv) * 100).toFixed(1) : 0}% of Total GMV
+            {metrics.currGmv > 0 ? ((metrics.currAffGmv / metrics.currGmv) * 100).toFixed(1) : 0}% dari Total GMV
           </div>
         </div>
       </div>
