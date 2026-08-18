@@ -78,7 +78,7 @@ export function CampaignCrudModal({
           {error && <div style={{ padding: '12px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderRadius: '6px', fontSize: '0.9rem' }}>{error}</div>}
           
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 500 }}>Nama Kampanye <span className="text-danger">*</span></label>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 500 }}>Nama Kampanye <span className="text-danger">(Wajib)</span></label>
             <input 
               type="text" 
               className="input" 

@@ -88,7 +88,7 @@ export function TargetCrudModal({
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 500 }}>Nilai Angka <span className="text-danger">*</span></label>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 500 }}>Nilai Angka <span className="text-danger">(Wajib)</span></label>
             <input 
               type="number" 
               step="any"

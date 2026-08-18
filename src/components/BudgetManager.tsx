@@ -173,7 +173,7 @@ export function BudgetManager({ initialTotal, initialData, recommendedTotal, rec
           <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: '4px' }}>
             Rp {(allocations.reduce((sum, a) => sum + (a.allocated * a.historicalRoas), 0)/1000000).toFixed(1)} Juta
           </div>
-          <div style={{ fontSize: '0.7rem', marginTop: '6px', opacity: 0.8, fontWeight: 500 }}>*Berdasarkan ROAS 30 Hari</div>
+          <div style={{ fontSize: '0.7rem', marginTop: '6px', opacity: 0.8, fontWeight: 500 }}>Berdasarkan ROAS 30 Hari</div>
         </div>
       </div>
 

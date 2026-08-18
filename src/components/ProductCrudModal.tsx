@@ -77,7 +77,7 @@ export function ProductCrudModal({
           {error && <div style={{ padding: '12px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderRadius: '6px', fontSize: '0.9rem' }}>{error}</div>}
           
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 500 }}>SKU <span style={{ color: 'var(--danger)' }}>*</span></label>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 500 }}>SKU <span style={{ color: 'var(--danger)' }}>(Wajib)</span></label>
             <input 
               type="text" 
               className="input" 
@@ -89,7 +89,7 @@ export function ProductCrudModal({
           </div>
           
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 500 }}>Nama Produk <span style={{ color: 'var(--danger)' }}>*</span></label>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 500 }}>Nama Produk <span style={{ color: 'var(--danger)' }}>(Wajib)</span></label>
             <input 
               type="text" 
               className="input" 

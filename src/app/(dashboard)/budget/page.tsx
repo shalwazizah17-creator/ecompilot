@@ -243,7 +243,7 @@ export default function BudgetManagerPage() {
           <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Simulasi & Putuskan Anggaran Final</h2>
         </div>
         <div style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Gunakan *slider* di bawah ini untuk mengatur dan melihat simulasi efek dari perubahan anggaran yang akan Anda ambil. Jika sudah yakin, klik **Setujui Anggaran**.
+          Gunakan <em>slider</em> di bawah ini untuk mengatur dan melihat simulasi efek dari perubahan anggaran yang akan Anda ambil. Jika sudah yakin, klik <strong>Setujui Anggaran</strong>.
         </div>
         <BudgetManager 
           initialTotal={currentTotal}

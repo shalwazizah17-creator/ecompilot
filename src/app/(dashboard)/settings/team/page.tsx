@@ -62,7 +62,7 @@ export default function TeamPage() {
       
       <div>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>Manajemen Anggota Tim</h1>
-        <p style={{ color: 'var(--text-secondary)' }}>Undang dan atur peran (*role*) para karyawan dan kolaborator Anda.</p>
+        <p style={{ color: 'var(--text-secondary)' }}>Undang dan atur peran para karyawan dan kolaborator Anda.</p>
       </div>
 
       <div className="card">
