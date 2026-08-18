@@ -1,4 +1,4 @@
-﻿import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
@@ -70,7 +70,7 @@ async function main() {
   })
 
   const comp2 = await prisma.competitor.create({
-    data: { brand_id: brand.id, workspace_id: workspace.id, name: 'Skintific', marketplace: 'tiktok', store_url: 'https://tiktok.com/@skintific' }
+    data: { brand_id: brand.id, workspace_id: workspace.id, name: 'Skintific', marketplace: 'tiktok', store_url: 'https://www.tiktok.com/@skintific.official.store' }
   })
   await prisma.competitorProduct.createMany({
     data: [
