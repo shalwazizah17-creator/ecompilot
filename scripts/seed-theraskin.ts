@@ -60,7 +60,7 @@ async function main() {
   })
 
   const comp1 = await prisma.competitor.create({
-    data: { brand_id: brand.id, workspace_id: workspace.id, name: 'Glad2Glow', marketplace: 'shopee', store_url: 'https://shopee.co.id/glad2glow' }
+    data: { brand_id: brand.id, workspace_id: workspace.id, name: 'Glad2Glow', marketplace: 'tiktok', store_url: 'https://www.tiktok.com/@glad2glow_id' }
   })
   await prisma.competitorProduct.createMany({
     data: [
@@ -76,6 +76,16 @@ async function main() {
     data: [
       { competitor_id: comp2.id, product_name: 'Skintific 5X Ceramide', current_price: 139000, stock_status: 'IN_STOCK' },
       { competitor_id: comp2.id, product_name: 'Skintific Mugwort Clay Mask', current_price: 89000, stock_status: 'OUT_OF_STOCK' }
+    ]
+  })
+
+  const comp3 = await prisma.competitor.create({
+    data: { brand_id: brand.id, workspace_id: workspace.id, name: 'Becoming', marketplace: 'tiktok', store_url: 'https://www.tiktok.com/@becoming_id' }
+  })
+  await prisma.competitorProduct.createMany({
+    data: [
+      { competitor_id: comp3.id, product_name: 'Becoming Brightening Body Lotion', current_price: 55000, stock_status: 'IN_STOCK' },
+      { competitor_id: comp3.id, product_name: 'Becoming Acne Spot Treatment', current_price: 45000, stock_status: 'IN_STOCK' }
     ]
   })
 
