@@ -5,42 +5,42 @@ import { Plus, Trash2, ExternalLink, TrendingDown } from 'lucide-react'
 
 const DUMMY_COMPETITORS = [
   {
-    id: 'd1', name: 'SKINTIFIC', marketplace: 'shopee', store_url: 'https://shopee.co.id/skintific.id',
+    id: 'd1', name: 'SKINTIFIC', marketplace: 'shopee', store_url: 'https://shopee.co.id/skintific.id', logo: 'https://logo.clearbit.com/skintific.com',
     products: [
       { id: 'p1', product_name: '5X Ceramide Barrier Repair Moisture Gel', sku_reference: 'SK-5X-GEL', current_price: 139000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 139000 }, { price: 159000 }] },
       { id: 'p2', product_name: 'Mugwort Anti Pores & Acne Clay Mask', sku_reference: 'SK-MGW-MASK', current_price: 89000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 89000 }, { price: 95000 }] },
     ]
   },
   {
-    id: 'd2', name: 'GLAD2GLOW', marketplace: 'tokopedia', store_url: 'https://www.tokopedia.com/glad2glow',
+    id: 'd2', name: 'GLAD2GLOW', marketplace: 'tokopedia', store_url: 'https://www.tokopedia.com/glad2glow', logo: 'https://logo.clearbit.com/glad2glow.com',
     products: [
       { id: 'p3', product_name: 'Centella Allantoin Soothing Gel Moisturizer', sku_reference: 'G2G-CEN-GEL', current_price: 49000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 49000 }] },
       { id: 'p4', product_name: 'Blueberry Ceramide 5% Barrier Repair', sku_reference: 'G2G-BLU-CER', current_price: 52000, stock_status: 'OUT_OF_STOCK', url: '', snapshots: [{ price: 52000 }, { price: 55000 }] },
     ]
   },
   {
-    id: 'd3', name: 'TRUE TO SKIN', marketplace: 'tiktok', store_url: '',
+    id: 'd3', name: 'TRUE TO SKIN', marketplace: 'tiktok', store_url: 'https://www.tiktok.com/@truetoskin', logo: 'https://logo.clearbit.com/truetoskin.com',
     products: [
       { id: 'p5', product_name: 'Bakuchiol Anti-Aging Serum', sku_reference: 'TTS-BAK-SRM', current_price: 119000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 119000 }, { price: 119000 }] },
       { id: 'p6', product_name: 'Mugwort Tripeptide Gel Cream', sku_reference: 'TTS-MUG-GEL', current_price: 115000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 105000 }, { price: 115000 }] },
     ]
   },
   {
-    id: 'd4', name: 'EMINA', marketplace: 'shopee', store_url: 'https://shopee.co.id/eminaofficial',
+    id: 'd4', name: 'EMINA', marketplace: 'shopee', store_url: 'https://shopee.co.id/eminaofficial', logo: 'https://logo.clearbit.com/eminacosmetics.com',
     products: [
       { id: 'p7', product_name: 'Bright Stuff Face Wash', sku_reference: 'EM-BS-FW', current_price: 28500, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 28500 }, { price: 29000 }] },
     ]
   },
   {
-    id: 'd5', name: 'WARDAH', marketplace: 'lazada', store_url: '',
+    id: 'd5', name: 'WARDAH', marketplace: 'lazada', store_url: 'https://www.lazada.co.id/shop/wardah-official-store', logo: 'https://logo.clearbit.com/wardahbeauty.com',
     products: [
       { id: 'p8', product_name: 'Lightening Day Cream', sku_reference: 'WD-LGT-DAY', current_price: 45000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 45000 }] },
     ]
   },
   {
-    id: 'd6', name: 'BECOMING', marketplace: 'shopee', store_url: '',
+    id: 'd6', name: 'SOMETHINC', marketplace: 'shopee', store_url: 'https://shopee.co.id/somethinc', logo: 'https://logo.clearbit.com/somethinc.com',
     products: [
-      { id: 'p9', product_name: 'Glow Up Serum 20ml', sku_reference: 'BCM-GLW-SRM', current_price: 85000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 85000 }, { price: 89000 }] },
+      { id: 'p9', product_name: 'Niacinamide + Moisture Sabi Beet Serum', sku_reference: 'SMT-NIA-SAB', current_price: 115000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 115000 }, { price: 119000 }] },
     ]
   },
 ]
@@ -171,13 +171,20 @@ export default function CompetitorsPage() {
               {/* Card Header */}
               <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--surface-border)', backgroundColor: 'var(--surface)', flexWrap: 'wrap', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <span style={{ padding: '4px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: `${mktColors[comp.marketplace] ?? '#6b7280'}15`, color: mktColors[comp.marketplace] ?? '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    {comp.marketplace}
-                  </span>
+                  {comp.logo ? (
+                    <img src={comp.logo} alt={comp.name} style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--surface-border)', objectFit: 'contain', backgroundColor: '#fff' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                  ) : (
+                    <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: 'var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'var(--text-secondary)' }}>{comp.name.substring(0,2)}</div>
+                  )}
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <h2 style={{ fontWeight: 700, fontSize: '1.1rem', margin: 0, color: 'var(--text-primary)' }}>{comp.name}</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <h2 style={{ fontWeight: 800, fontSize: '1.15rem', margin: 0, color: 'var(--text-primary)' }}>{comp.name}</h2>
+                      <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, backgroundColor: `${mktColors[comp.marketplace] ?? '#6b7280'}15`, color: mktColors[comp.marketplace] ?? '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        {comp.marketplace}
+                      </span>
+                    </div>
                     {comp.store_url && (
-                      <a href={comp.store_url} target="_blank" rel="noreferrer" style={{ fontSize: '0.8rem', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 500, textDecoration: 'none', marginTop: '2px' }}>
+                      <a href={comp.store_url} target="_blank" rel="noreferrer" style={{ fontSize: '0.8rem', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600, textDecoration: 'none', marginTop: '4px' }}>
                         <ExternalLink size={12} /> Kunjungi Toko
                       </a>
                     )}
@@ -185,10 +192,10 @@ export default function CompetitorsPage() {
                 </div>
                 {!isDummy && (
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <button onClick={() => setProductModal({ competitorId: comp.id, competitorName: comp.name })} style={{ padding: '6px 14px', border: '1px solid var(--primary)', borderRadius: '6px', color: 'var(--primary)', backgroundColor: 'var(--background)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}>
+                    <button onClick={() => setProductModal({ competitorId: comp.id, competitorName: comp.name })} style={{ padding: '8px 14px', border: '1px solid var(--primary)', borderRadius: '6px', color: 'var(--primary)', backgroundColor: 'var(--background)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}>
                       <Plus size={14} /> Tambah Produk
                     </button>
-                    <button onClick={() => deleteCompetitor(comp.id)} style={{ padding: '6px 10px', border: '1px solid var(--danger)', borderRadius: '6px', color: 'var(--danger)', backgroundColor: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }} title="Hapus Kompetitor">
+                    <button onClick={() => deleteCompetitor(comp.id)} style={{ padding: '8px 12px', border: '1px solid var(--danger)', borderRadius: '6px', color: 'var(--danger)', backgroundColor: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }} title="Hapus Kompetitor">
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -198,13 +205,15 @@ export default function CompetitorsPage() {
               {/* Card Body - Products Table */}
               {comp.products?.length > 0 ? (
                 <div style={{ overflowX: 'auto', backgroundColor: 'var(--background)' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', tableLayout: 'fixed' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid var(--surface-border)', backgroundColor: '#fafafa' }}>
-                        {['Nama Produk', 'SKU Ref.', 'Harga Saat Ini', 'Stok', 'Tren Harga'].map(h => (
-                          <th key={h} style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>{h}</th>
-                        ))}
-                        {!isDummy && <th style={{ padding: '12px 20px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Aksi</th>}
+                        <th style={{ width: '35%', padding: '12px 20px', textAlign: 'left', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>Nama Produk</th>
+                        <th style={{ width: '15%', padding: '12px 20px', textAlign: 'left', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>SKU Ref.</th>
+                        <th style={{ width: '20%', padding: '12px 20px', textAlign: 'left', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>Harga Saat Ini</th>
+                        <th style={{ width: '15%', padding: '12px 20px', textAlign: 'left', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>Stok</th>
+                        <th style={{ width: '15%', padding: '12px 20px', textAlign: 'left', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>Tren Harga</th>
+                        {!isDummy && <th style={{ width: '15%', padding: '12px 20px', textAlign: 'right', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Aksi</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -214,18 +223,18 @@ export default function CompetitorsPage() {
                         return (
                           <tr key={prod.id} style={{ borderBottom: '1px solid var(--surface-border)', transition: 'background-color 0.15s' }} onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--surface)'} onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                             <td style={{ padding: '12px 20px' }}>
-                              <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{prod.product_name}</div>
+                              <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{prod.product_name}</div>
                             </td>
-                            <td style={{ padding: '12px 20px', color: 'var(--text-secondary)', fontSize: '0.8rem', fontFamily: 'monospace' }}>{prod.sku_reference ?? '—'}</td>
-                            <td style={{ padding: '12px 20px', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{prod.current_price > 0 ? `Rp ${prod.current_price.toLocaleString('id-ID')}` : '—'}</td>
+                            <td style={{ padding: '12px 20px', color: 'var(--text-secondary)', fontSize: '0.8rem', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{prod.sku_reference ?? '—'}</td>
+                            <td style={{ padding: '12px 20px', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>{prod.current_price > 0 ? `Rp ${prod.current_price.toLocaleString('id-ID')}` : '—'}</td>
                             <td style={{ padding: '12px 20px' }}>
-                              <span style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700, backgroundColor: prod.stock_status === 'IN_STOCK' ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.1)', color: prod.stock_status === 'IN_STOCK' ? '#059669' : '#dc2626', whiteSpace: 'nowrap' }}>
+                              <span style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800, backgroundColor: prod.stock_status === 'IN_STOCK' ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.1)', color: prod.stock_status === 'IN_STOCK' ? '#059669' : '#dc2626', whiteSpace: 'nowrap' }}>
                                 {prod.stock_status === 'IN_STOCK' ? 'Tersedia' : prod.stock_status === 'OUT_OF_STOCK' ? 'Habis' : '—'}
                               </span>
                             </td>
-                            <td style={{ padding: '12px 20px', fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-secondary)' }}>{trend}</td>
+                            <td style={{ padding: '12px 20px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{trend}</td>
                             {!isDummy && <td style={{ padding: '12px 20px', textAlign: 'right' }}>
-                              <button onClick={() => setSnapshotModal(prod)} style={{ padding: '6px 12px', border: '1px solid var(--surface-border)', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', backgroundColor: 'var(--surface)', transition: 'all 0.2s', whiteSpace: 'nowrap' }} onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }} onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--surface-border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}>Update Harga</button>
+                              <button onClick={() => setSnapshotModal(prod)} style={{ padding: '6px 12px', border: '1px solid var(--surface-border)', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', backgroundColor: 'var(--surface)', transition: 'all 0.2s', whiteSpace: 'nowrap' }} onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }} onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--surface-border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}>Update Harga</button>
                             </td>}
                           </tr>
                         )
