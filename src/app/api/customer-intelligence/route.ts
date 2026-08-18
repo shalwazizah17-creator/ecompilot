@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   const brandId = req.nextUrl.searchParams.get('brandId')
   if (!brandId) return NextResponse.json({ error: 'brandId required' }, { status: 400 })
 
-  const access = await assertBrandAccess(session.user.id, brandId)
+  const access = await assertBrandAccess(brandId)
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const reviews = await prisma.customerReview.findMany({
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   const { brandId, reviews: rawReviews } = body
   if (!brandId || !rawReviews?.length) return NextResponse.json({ error: 'brandId and reviews required' }, { status: 400 })
 
-  const access = await assertBrandAccess(session.user.id, brandId)
+  const access = await assertBrandAccess(brandId)
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const brand = await prisma.brand.findFirst({ where: { id: brandId } })

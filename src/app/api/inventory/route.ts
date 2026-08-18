@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const brandId = req.nextUrl.searchParams.get('brandId')
   if (!brandId) return NextResponse.json({ error: 'brandId required' }, { status: 400 })
 
-  const access = await assertBrandAccess(session.user.id, brandId)
+  const access = await assertBrandAccess(brandId)
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const records = await prisma.inventoryRecord.findMany({
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   const { brandId, ...data } = body
   if (!brandId) return NextResponse.json({ error: 'brandId required' }, { status: 400 })
 
-  const access = await assertBrandAccess(session.user.id, brandId)
+  const access = await assertBrandAccess(brandId)
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const brand = await prisma.brand.findFirst({ where: { id: brandId } })
@@ -61,7 +61,7 @@ export async function DELETE(req: NextRequest) {
   const brandId = req.nextUrl.searchParams.get('brandId')
   if (!id || !brandId) return NextResponse.json({ error: 'Missing params' }, { status: 400 })
 
-  const access = await assertBrandAccess(session.user.id, brandId)
+  const access = await assertBrandAccess(brandId)
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   await prisma.inventoryRecord.deleteMany({ where: { id, brand_id: brandId } })

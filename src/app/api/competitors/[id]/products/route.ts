@@ -15,7 +15,7 @@ export async function POST(
   const { brandId, ...data } = body
   if (!brandId) return NextResponse.json({ error: 'brandId required' }, { status: 400 })
 
-  const access = await assertBrandAccess(session.user.id, brandId)
+  const access = await assertBrandAccess(brandId)
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   // Verify competitor belongs to this brand

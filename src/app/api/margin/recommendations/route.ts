@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   const brandId = req.nextUrl.searchParams.get('brandId')
   if (!brandId) return NextResponse.json({ error: 'brandId required' }, { status: 400 })
 
-  const access = await assertBrandAccess(session.user.id, brandId)
+  const access = await assertBrandAccess(brandId)
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   // Call our own analysis API to get product data

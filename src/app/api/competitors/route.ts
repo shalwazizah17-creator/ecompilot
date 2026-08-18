@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const brandId = req.nextUrl.searchParams.get('brandId')
   if (!brandId) return NextResponse.json({ error: 'brandId required' }, { status: 400 })
 
-  const access = await assertBrandAccess(session.user.id, brandId)
+  const access = await assertBrandAccess(brandId)
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const competitors = await prisma.competitor.findMany({
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   const { brandId, name, marketplace, store_url } = body
   if (!brandId || !name) return NextResponse.json({ error: 'brandId and name required' }, { status: 400 })
 
-  const access = await assertBrandAccess(session.user.id, brandId)
+  const access = await assertBrandAccess(brandId)
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const brand = await prisma.brand.findFirst({ where: { id: brandId } })
@@ -55,7 +55,7 @@ export async function DELETE(req: NextRequest) {
   const brandId = req.nextUrl.searchParams.get('brandId')
   if (!id || !brandId) return NextResponse.json({ error: 'Missing params' }, { status: 400 })
 
-  const access = await assertBrandAccess(session.user.id, brandId)
+  const access = await assertBrandAccess(brandId)
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   await prisma.competitor.deleteMany({ where: { id, brand_id: brandId } })
