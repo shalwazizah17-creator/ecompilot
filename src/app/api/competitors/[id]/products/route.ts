@@ -6,7 +6,7 @@ import { assertBrandAccess } from '@/lib/auth/assert-brand-access'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -20,13 +20,13 @@ export async function POST(
 
   // Verify competitor belongs to this brand
   const competitor = await prisma.competitor.findFirst({
-    where: { id: params.id, brand_id: brandId }
+    where: { id: (await context.params).id, brand_id: brandId }
   })
   if (!competitor) return NextResponse.json({ error: 'Competitor not found' }, { status: 404 })
 
   const product = await prisma.competitorProduct.create({
     data: {
-      competitor_id: params.id,
+      competitor_id: (await context.params).id,
       product_name: data.product_name,
       sku_reference: data.sku_reference ?? null,
       url: data.url ?? null,
@@ -36,3 +36,4 @@ export async function POST(
 
   return NextResponse.json({ product }, { status: 201 })
 }
+

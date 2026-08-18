@@ -15,13 +15,13 @@ async function main() {
     brand = await prisma.brand.create({
       data: {
         name: 'Theraskin',
-        industry: 'Beauty & Personal Care',
+        
         workspace_id: workspace.id
       }
     })
   }
 
-  const getOrCreatePlatform = async (name) => {
+  const getOrCreatePlatform = async (name: string) => {
     let p = await prisma.platform.findFirst({ where: { name } })
     if (!p) {
       p = await prisma.platform.create({ data: { name } })
@@ -179,7 +179,7 @@ async function main() {
 
   await prisma.workspace.update({
     where: { id: workspace.id },
-    data: { active_brand_id: brand.id }
+    data: {  }
   })
 
   console.log('Selesai! Data dummy Theraskin berhasil di-inject ke database!')
