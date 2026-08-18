@@ -5,40 +5,40 @@ import { Plus, Trash2, ExternalLink, TrendingDown } from 'lucide-react'
 
 const DUMMY_COMPETITORS = [
   {
-    id: 'd1', name: 'SKINTIFIC', marketplace: 'shopee', store_url: 'https://shopee.co.id/skintific.id', logo: 'https://logo.clearbit.com/skintific.com',
+    id: 'd1', name: 'SKINTIFIC', marketplace: 'shopee', store_url: 'https://shopee.co.id/skintific.id', logo: 'https://www.google.com/s2/favicons?domain=skintific.id&sz=128',
     products: [
       { id: 'p1', product_name: '5X Ceramide Barrier Repair Moisture Gel', sku_reference: 'SK-5X-GEL', current_price: 139000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 139000 }, { price: 159000 }] },
       { id: 'p2', product_name: 'Mugwort Anti Pores & Acne Clay Mask', sku_reference: 'SK-MGW-MASK', current_price: 89000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 89000 }, { price: 95000 }] },
     ]
   },
   {
-    id: 'd2', name: 'GLAD2GLOW', marketplace: 'tokopedia', store_url: 'https://www.tokopedia.com/glad2glow', logo: 'https://logo.clearbit.com/glad2glow.com',
+    id: 'd2', name: 'GLAD2GLOW', marketplace: 'tokopedia', store_url: 'https://www.tokopedia.com/glad2glow', logo: 'https://www.google.com/s2/favicons?domain=glad2glow.com&sz=128',
     products: [
       { id: 'p3', product_name: 'Centella Allantoin Soothing Gel Moisturizer', sku_reference: 'G2G-CEN-GEL', current_price: 49000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 49000 }] },
       { id: 'p4', product_name: 'Blueberry Ceramide 5% Barrier Repair', sku_reference: 'G2G-BLU-CER', current_price: 52000, stock_status: 'OUT_OF_STOCK', url: '', snapshots: [{ price: 52000 }, { price: 55000 }] },
     ]
   },
   {
-    id: 'd3', name: 'TRUE TO SKIN', marketplace: 'tiktok', store_url: 'https://www.tiktok.com/@truetoskin', logo: 'https://logo.clearbit.com/truetoskin.com',
+    id: 'd3', name: 'TRUE TO SKIN', marketplace: 'tiktok', store_url: 'https://www.tiktok.com/@truetoskin', logo: 'https://www.google.com/s2/favicons?domain=truetoskin.com&sz=128',
     products: [
       { id: 'p5', product_name: 'Bakuchiol Anti-Aging Serum', sku_reference: 'TTS-BAK-SRM', current_price: 119000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 119000 }, { price: 119000 }] },
       { id: 'p6', product_name: 'Mugwort Tripeptide Gel Cream', sku_reference: 'TTS-MUG-GEL', current_price: 115000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 105000 }, { price: 115000 }] },
     ]
   },
   {
-    id: 'd4', name: 'EMINA', marketplace: 'shopee', store_url: 'https://shopee.co.id/eminaofficial', logo: 'https://logo.clearbit.com/eminacosmetics.com',
+    id: 'd4', name: 'EMINA', marketplace: 'shopee', store_url: 'https://shopee.co.id/eminaofficial', logo: 'https://www.google.com/s2/favicons?domain=eminacosmetics.com&sz=128',
     products: [
       { id: 'p7', product_name: 'Bright Stuff Face Wash', sku_reference: 'EM-BS-FW', current_price: 28500, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 28500 }, { price: 29000 }] },
     ]
   },
   {
-    id: 'd5', name: 'WARDAH', marketplace: 'lazada', store_url: 'https://www.lazada.co.id/shop/wardah-official-store', logo: 'https://logo.clearbit.com/wardahbeauty.com',
+    id: 'd5', name: 'WARDAH', marketplace: 'lazada', store_url: 'https://www.lazada.co.id/shop/wardah-official-store', logo: 'https://www.google.com/s2/favicons?domain=wardahbeauty.com&sz=128',
     products: [
       { id: 'p8', product_name: 'Lightening Day Cream', sku_reference: 'WD-LGT-DAY', current_price: 45000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 45000 }] },
     ]
   },
   {
-    id: 'd6', name: 'SOMETHINC', marketplace: 'shopee', store_url: 'https://shopee.co.id/somethinc', logo: 'https://logo.clearbit.com/somethinc.com',
+    id: 'd6', name: 'SOMETHINC', marketplace: 'shopee', store_url: 'https://shopee.co.id/somethinc', logo: 'https://www.google.com/s2/favicons?domain=somethinc.com&sz=128',
     products: [
       { id: 'p9', product_name: 'Niacinamide + Moisture Sabi Beet Serum', sku_reference: 'SMT-NIA-SAB', current_price: 115000, stock_status: 'IN_STOCK', url: '', snapshots: [{ price: 115000 }, { price: 119000 }] },
     ]
