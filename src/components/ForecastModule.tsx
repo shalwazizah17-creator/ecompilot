@@ -33,18 +33,18 @@ export function ForecastModule({ brandId }: { brandId: string }) {
         
         <div style={{ padding: '16px', border: '1px solid var(--surface-border)', borderRadius: '8px' }}>
           <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Current GMV (MTD)</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700, margin: '8px 0' }}>Rp {(forecast.actualGmv/1000000).toFixed(1)}M</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 700, margin: '8px 0' }}>Rp {(forecast.actualGmv/1000000).toFixed(1)} Juta</div>
         </div>
 
         <div style={{ padding: '16px', border: '1px solid var(--primary)', backgroundColor: 'var(--surface)', borderRadius: '8px' }}>
           <div style={{ fontSize: '0.9rem', color: 'var(--primary)', fontWeight: 600 }}>Projected Month-End GMV</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700, margin: '8px 0', color: 'var(--primary)' }}>Rp {(forecast.projectedGmv/1000000).toFixed(1)}M</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 700, margin: '8px 0', color: 'var(--primary)' }}>Rp {(forecast.projectedGmv/1000000).toFixed(1)} Juta</div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Not a guaranteed outcome</div>
         </div>
 
         <div style={{ padding: '16px', border: '1px solid var(--surface-border)', borderRadius: '8px' }}>
           <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Monthly Target GMV</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700, margin: '8px 0' }}>Rp {(forecast.targetGmv/1000000).toFixed(1)}M</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 700, margin: '8px 0' }}>Rp {(forecast.targetGmv/1000000).toFixed(1)} Juta</div>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginTop: '12px' }}>
             <span>Proj. Achievement:</span>
@@ -55,7 +55,7 @@ export function ForecastModule({ brandId }: { brandId: string }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginTop: '4px' }}>
             <span>Variance:</span>
             <span style={{ fontWeight: 600, color: variance >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-              {variance > 0 ? '+' : ''}Rp {(variance/1000000).toFixed(1)}M
+              {variance > 0 ? '+' : ''}Rp {(variance/1000000).toFixed(1)} Juta
             </span>
           </div>
         </div>

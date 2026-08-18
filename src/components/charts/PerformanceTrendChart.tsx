@@ -90,7 +90,7 @@ export function PerformanceTrendChart({ data }: { data: TrendData[] }) {
               tickLine={false} 
               tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
               tickFormatter={(value) => {
-                if (metricConfig.format === 'currency') return `${(value/1000000).toFixed(0)}M`
+                if (metricConfig.format === 'currency') return `${(value/1000000).toFixed(0)} Juta`
                 if (metricConfig.format === 'multiplier') return `${value}x`
                 return value
               }}

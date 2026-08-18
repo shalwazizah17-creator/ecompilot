@@ -33,7 +33,7 @@ export default function MarketplaceIntelligence() {
 
   const { kpis, chartData, platformGrowth } = data
 
-  const formatIDR = (val: number) => `Rp ${(val/1000000).toFixed(1)}M`
+  const formatIDR = (val: number) => `Rp ${(val/1000000).toFixed(1)} Juta`
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -77,7 +77,7 @@ export default function MarketplaceIntelligence() {
               <AreaChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--surface-border)" />
                 <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} />
-                <YAxis tickFormatter={(val) => `${(val/1000000)}M`} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} />
+                <YAxis tickFormatter={(val) => `${(val/1000000)} Juta`} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} />
                 <Tooltip formatter={(value: any) => `Rp ${Number(value).toLocaleString()}`} />
                 <Area type="monotone" dataKey="gmv" name="Total GMV" stroke="var(--primary)" fill="rgba(59, 130, 246, 0.1)" strokeWidth={3} />
                 <Area type="monotone" dataKey="affiliateGmv" name="Affiliate GMV" stroke="var(--success)" fill="rgba(16, 185, 129, 0.2)" strokeWidth={3} />
@@ -92,7 +92,7 @@ export default function MarketplaceIntelligence() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={platformGrowth} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--surface-border)" />
-                <XAxis type="number" tickFormatter={(val) => `${(val/1000000)}M`} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} />
+                <XAxis type="number" tickFormatter={(val) => `${(val/1000000)} Juta`} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} tickLine={false} axisLine={false} />
                 <YAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} type="category" width={80} />
                 <Tooltip formatter={(value: any) => `Rp ${Number(value).toLocaleString()}`} />
                 <Bar dataKey="gmv" name="GMV" fill="var(--primary-navy)" radius={[0, 4, 4, 0]} />

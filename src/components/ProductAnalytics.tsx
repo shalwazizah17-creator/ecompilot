@@ -76,7 +76,7 @@ export function ProductAnalytics() {
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>SKU: {p.sku}</div>
                   </div>
                   <div style={{ textAlign: 'right', fontWeight: 600, color: 'var(--success)' }}>
-                    Rp {(p.netSales/1000000).toFixed(1)}M
+                    Rp {(p.netSales/1000000).toFixed(1)} Juta
                   </div>
                 </div>
               ))}

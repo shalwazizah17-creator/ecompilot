@@ -51,7 +51,7 @@ export function ProductScatterPlot({ data }: { data: any[] }) {
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-border)" />
-              <XAxis type="number" dataKey="gmv" name="Revenue" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000000).toFixed(0)}M`}>
+              <XAxis type="number" dataKey="gmv" name="Revenue" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000000).toFixed(0)} Juta`}>
                 <text x="50%" y="15" dy="15" textAnchor="middle" fill="var(--text-secondary)" fontSize="12">Gross Merchandise Value (GMV)</text>
               </XAxis>
               <YAxis type="number" dataKey="margin" name="Margin" unit="%" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} />

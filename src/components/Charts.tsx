@@ -34,7 +34,7 @@ export function TrendChart({ data, dataKey, color }: ChartProps) {
           tick={{ fontSize: 12, fill: 'var(--text-muted)' }} 
           dy={10}
         />
-        <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={(value: any) => `Rp ${(value/1000000).toFixed(0)}M`} />
+        <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={(value: any) => `Rp ${(value/1000000).toFixed(0)} Juta`} />
         <Tooltip 
           contentStyle={{ backgroundColor: 'var(--surface)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
           labelStyle={{ color: 'var(--text-secondary)' }}

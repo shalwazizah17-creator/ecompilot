@@ -25,7 +25,7 @@ export function BudgetUtilizationBar({ allocations }: { allocations: any[] }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem' }}>
                 <span style={{ fontWeight: 600 }}>{a.name}</span>
                 <span style={{ color: 'var(--text-secondary)' }}>
-                  Rp {(a.spend/1000000).toFixed(1)}M <span style={{ opacity: 0.5 }}>/ {(budget/1000000).toFixed(1)}M</span>
+                  Rp {(a.spend/1000000).toFixed(1)} Juta <span style={{ opacity: 0.5 }}>/ {(budget/1000000).toFixed(1)} Juta</span>
                 </span>
               </div>
               <div style={{ width: '100%', height: '12px', backgroundColor: 'var(--surface-border)', borderRadius: '6px', overflow: 'hidden' }}>

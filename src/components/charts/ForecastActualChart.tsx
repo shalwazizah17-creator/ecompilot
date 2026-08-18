@@ -63,7 +63,7 @@ export function ForecastActualChart({
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Variance</div>
           <div style={{ fontSize: '1.1rem', fontWeight: 600, color: forecast.variance >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-            {forecast.variance > 0 ? '+' : ''}Rp {(forecast.variance/1000000).toFixed(1)}M
+            {forecast.variance > 0 ? '+' : ''}Rp {(forecast.variance/1000000).toFixed(1)} Juta
           </div>
         </div>
       </div>
@@ -73,7 +73,7 @@ export function ForecastActualChart({
           <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--surface-border)" />
             <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} dy={10} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={v => `${(v/1000000).toFixed(0)}M`} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={v => `${(v/1000000).toFixed(0)} Juta`} />
             <Tooltip content={<CustomTooltip />} />
             
             <ReferenceLine y={forecast.target} stroke="var(--warning)" strokeDasharray="3 3" label={{ position: 'top', value: 'Monthly Target', fill: 'var(--warning)', fontSize: 12 }} />

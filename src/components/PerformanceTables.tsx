@@ -38,9 +38,9 @@ export function PerformanceTables() {
             {marketplaceData.map(row => (
               <tr key={row.name} style={{ borderBottom: '1px solid var(--surface-border)', fontSize: '0.9rem' }}>
                 <td style={{ padding: '12px 8px', fontWeight: 500 }}>{row.name}</td>
-                <td style={{ padding: '12px 8px' }}>Rp {(row.gmv/1000000).toFixed(1)}M</td>
+                <td style={{ padding: '12px 8px' }}>Rp {(row.gmv/1000000).toFixed(1)} Juta</td>
                 <td style={{ padding: '12px 8px' }}>{row.orders}</td>
-                <td style={{ padding: '12px 8px', color: 'var(--text-muted)' }}>Rp {(row.spend/1000000).toFixed(1)}M</td>
+                <td style={{ padding: '12px 8px', color: 'var(--text-muted)' }}>Rp {(row.spend/1000000).toFixed(1)} Juta</td>
                 <td style={{ padding: '12px 8px' }}>{row.roas}x</td>
                 <td style={{ padding: '12px 8px' }}>Rp {row.cpa.toLocaleString()}</td>
                 <td style={{ padding: '12px 8px', textAlign: 'right' }}>
@@ -76,8 +76,8 @@ export function PerformanceTables() {
             {adChannelData.map(row => (
               <tr key={row.name} style={{ borderBottom: '1px solid var(--surface-border)', fontSize: '0.9rem' }}>
                 <td style={{ padding: '12px 8px', fontWeight: 500 }}>{row.name}</td>
-                <td style={{ padding: '12px 8px' }}>Rp {(row.spend/1000000).toFixed(1)}M</td>
-                <td style={{ padding: '12px 8px' }}>Rp {(row.attrRevenue/1000000).toFixed(1)}M</td>
+                <td style={{ padding: '12px 8px' }}>Rp {(row.spend/1000000).toFixed(1)} Juta</td>
+                <td style={{ padding: '12px 8px' }}>Rp {(row.attrRevenue/1000000).toFixed(1)} Juta</td>
                 <td style={{ padding: '12px 8px', fontWeight: 600, color: row.roas > 5 ? 'var(--success)' : 'var(--text-primary)' }}>{row.roas}x</td>
                 <td style={{ padding: '12px 8px' }}>Rp {row.cpa.toLocaleString()}</td>
                 <td style={{ padding: '12px 8px' }}>{row.ctr}%</td>

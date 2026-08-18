@@ -54,7 +54,7 @@ export function MarketplaceComparisonChart({ data }: { data: any[] }) {
           <BarChart data={sortedData} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--surface-border)" />
             <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} 
-              tickFormatter={v => config.format === 'currency' ? `${(v/1000000).toFixed(0)}M` : v} 
+              tickFormatter={v => config.format === 'currency' ? `${(v/1000000).toFixed(0)} Juta` : v} 
             />
             <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-primary)', fontSize: 12, fontWeight: 500 }} width={80} />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} />

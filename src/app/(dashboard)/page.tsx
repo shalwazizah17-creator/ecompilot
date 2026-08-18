@@ -30,7 +30,7 @@ export default function DashboardPage() {
 
   const { score, healthStatus, metrics, risks, opportunities } = data
 
-  const formatCurrency = (val: number) => `Rp ${(val/1000000).toFixed(1)}M`
+  const formatCurrency = (val: number) => `Rp ${(val/1000000).toFixed(1)} Juta`
   
   let healthColor = 'var(--text-primary)'
   if (healthStatus === 'Sangat Baik' || healthStatus === 'Excellent') healthColor = 'var(--success)'

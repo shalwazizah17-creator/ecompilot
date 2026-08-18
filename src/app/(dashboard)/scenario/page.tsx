@@ -36,7 +36,7 @@ export default function ScenarioPlannerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [metaBudgetChange, affiliateCommission])
 
-  const formatCurrency = (val: number) => `Rp ${(val/1000000).toFixed(1)}M`
+  const formatCurrency = (val: number) => `Rp ${(val/1000000).toFixed(1)} Juta`
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '1000px' }}>
