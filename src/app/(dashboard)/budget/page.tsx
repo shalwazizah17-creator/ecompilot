@@ -156,49 +156,42 @@ export default function BudgetManagerPage() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
-        
-        {/* TOTAL SUMMARY */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Anggaran 30 Hari Saat Ini</div>
-            <div style={{ fontSize: '2rem', fontWeight: 700 }}>{formatCurrency(currentTotal)}</div>
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-secondary)' }}><ArrowRight /></div>
-          
-          <div style={{ padding: '16px', backgroundColor: isIncrease ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', borderRadius: '8px' }}>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Anggaran Rekomendasi</div>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: isIncrease ? 'var(--danger)' : 'var(--success)' }}>
-              {formatCurrency(recTotal)}
-            </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
-              Selisih: {formatCurrency(Math.abs(recTotal - currentTotal))}
-            </div>
-          </div>
-
-          <button 
-            className="btn-primary" 
-            style={{ width: '100%', marginTop: 'auto' }}
-            onClick={() => {
-              const el = document.getElementById('budget-manager-section')
-              if (el) el.scrollIntoView({ behavior: 'smooth' })
-            }}
-          >
-            {data?.isApproved ? 'Ubah Anggaran Disetujui' : 'Mulai Simulasi & Setujui'}
-          </button>
+      {/* STEP 1 */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>1</div>
+          <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Tinjau Performa & Rekomendasi AI</h2>
         </div>
+        
+        <div className="responsive-grid-2">
+          {/* TOTAL SUMMARY */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Anggaran 30 Hari Saat Ini</div>
+              <div style={{ fontSize: '2rem', fontWeight: 700 }}>{formatCurrency(currentTotal)}</div>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-secondary)' }}><ArrowRight /></div>
+            
+            <div style={{ padding: '16px', backgroundColor: isIncrease ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', borderRadius: '8px' }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Anggaran Rekomendasi AI</div>
+              <div style={{ fontSize: '2rem', fontWeight: 700, color: isIncrease ? 'var(--danger)' : 'var(--success)' }}>
+                {formatCurrency(recTotal)}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                Selisih: {formatCurrency(Math.abs(recTotal - currentTotal))}
+              </div>
+            </div>
+          </div>
 
-        {/* CHANNEL BREAKDOWN & INSIGHTS */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
+          {/* CHANNEL BREAKDOWN */}
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Rincian Saluran</h3>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Rincian Saluran (ROAS)</h3>
             <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--surface-border)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                   <th style={{ padding: '8px 0', fontWeight: 600 }}>Saluran</th>
-                  <th style={{ padding: '8px 0', fontWeight: 600 }}>ROAS (30H)</th>
+                  <th style={{ padding: '8px 0', fontWeight: 600 }}>ROAS</th>
                   <th style={{ padding: '8px 0', fontWeight: 600 }}>Saat Ini</th>
                   <th style={{ padding: '8px 0', fontWeight: 600 }}>Rekomendasi</th>
                 </tr>
@@ -209,7 +202,7 @@ export default function BudgetManagerPage() {
                   return (
                     <tr key={c.channel} style={{ borderBottom: '1px solid var(--surface-border)' }}>
                       <td style={{ padding: '12px 0', fontWeight: 500 }}>{c.channel}</td>
-                      <td style={{ padding: '12px 0', color: c.roas >= 4 ? 'var(--success)' : c.roas < 2.5 ? 'var(--danger)' : 'var(--text-primary)' }}>{c.roas.toFixed(2)}x</td>
+                      <td style={{ padding: '12px 0', fontWeight: 700, color: c.roas >= 4 ? 'var(--success)' : c.roas < 2.5 ? 'var(--danger)' : 'var(--text-primary)' }}>{c.roas.toFixed(2)}x</td>
                       <td style={{ padding: '12px 0' }}>{formatCurrency(c.spend)}</td>
                       <td style={{ padding: '12px 0', fontWeight: 600, color: rec.spend > c.spend ? 'var(--danger)' : rec.spend < c.spend ? 'var(--success)' : 'var(--text-primary)' }}>
                         {formatCurrency(rec.spend)}
@@ -220,24 +213,38 @@ export default function BudgetManagerPage() {
               </tbody>
             </table>
           </div>
-
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Lightbulb size={18} color="var(--primary)" /> Wawasan Anggaran AI
-            </h3>
-            <ul style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingLeft: '20px', margin: 0 }}>
-              {insightsData.map((insight: string, idx: number) => (
-                <li key={idx} style={{ fontSize: '0.95rem', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-                  {insight}
-                </li>
-              ))}
-            </ul>
-          </div>
-
         </div>
-
       </div>
+
+      {/* STEP 2 */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>2</div>
+          <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Pahami Alasan (Insights)</h2>
+        </div>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', backgroundColor: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
+            <Lightbulb size={18} /> Wawasan Strategis AI
+          </h3>
+          <ul style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingLeft: '20px', margin: 0 }}>
+            {insightsData.map((insight: string, idx: number) => (
+              <li key={idx} style={{ fontSize: '0.95rem', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+                {insight}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* STEP 3 */}
       <div id="budget-manager-section">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>3</div>
+          <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Simulasi & Putuskan Anggaran Final</h2>
+        </div>
+        <div style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+          Gunakan *slider* di bawah ini untuk mengatur dan melihat simulasi efek dari perubahan anggaran yang akan Anda ambil. Jika sudah yakin, klik **Setujui Anggaran**.
+        </div>
         <BudgetManager 
           initialTotal={currentTotal}
           initialData={mappedCurrent}
