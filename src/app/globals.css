@@ -233,3 +233,65 @@ table tbody tr:hover {
   }
 }
 
+/* ========================================================
+   MOBILE ONLY OPTIMIZATIONS (ANDROID/IOS FRIENDLY)
+   ======================================================== */
+@media (max-width: 768px) {
+  /* Smaller and tighter cards */
+  .card {
+    padding: 12px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+  }
+  
+  /* Make inline styled card headers smaller */
+  .card > div:first-child[style*="borderBottom"] {
+    padding: 12px !important;
+  }
+
+  /* Make typography more compact */
+  h1 { font-size: 1.25rem !important; }
+  h2 { font-size: 1.05rem !important; }
+  h3 { font-size: 0.95rem !important; }
+  
+  /* Smaller buttons for thumbs/tapping without being huge */
+  button {
+    padding: 6px 12px !important;
+    font-size: 0.75rem !important;
+    border-radius: 6px !important;
+  }
+  
+  /* Exception for icon-only buttons (like delete or sidebar toggle) */
+  button[title="Hapus Kompetitor"],
+  .menu-toggle button {
+    padding: 6px !important;
+  }
+
+  /* Optimize table spacing */
+  table th {
+    padding: 10px 12px !important;
+    font-size: 0.7rem !important;
+    white-space: nowrap !important;
+  }
+  table td {
+    padding: 10px 12px !important;
+    font-size: 0.8rem !important;
+  }
+  
+  /* Ensure container padding isn't excessive */
+  main > div:last-child {
+    padding: 12px 16px !important;
+  }
+  
+  /* Ensure flex grids collapse properly */
+  .responsive-grid-2, .responsive-grid-4, .responsive-grid-5 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  
+  div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
