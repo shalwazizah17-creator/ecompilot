@@ -32,25 +32,25 @@ const navTree: NavItem[] = [
   { 
     name: 'Intelijen Bisnis', icon: ShieldCheck,
     children: [
-      { name: '🛡️ Margin Protection', href: '/margin-protection' },
-      { name: '🕵️ Kepo Kompetitor', href: '/competitors' },
-      { name: '📦 Pawang Inventori', href: '/inventory-intelligence' },
-      { name: '💬 Suara Pelanggan', href: '/customer-intelligence' },
+      { name: 'Margin Protection', href: '/margin-protection' },
+      { name: 'Intelijen Kompetitor', href: '/competitors' },
+      { name: 'Intelijen Inventori', href: '/inventory-intelligence' },
+      { name: 'Intelijen Pelanggan', href: '/customer-intelligence' },
     ]
   },
   { 
     name: 'Strategi & Pertumbuhan', icon: TrendingUp,
     children: [
-      { name: '💰 Manajer Anggaran Iklan', href: '/budget' },
-      { name: '🤝 Intelijen Afiliasi', href: '/affiliate' },
-      { name: '🤖 AI Marketing Advisor', href: '/marketing-advisor' },
+      { name: 'Manajer Anggaran', href: '/budget' },
+      { name: 'Intelijen Afiliasi', href: '/affiliate' },
+      { name: 'Penasihat AI', href: '/marketing-advisor' },
     ]
   },
   { 
     name: 'Pengaturan & Data', icon: Database,
     children: [
-      { name: '📥 Sumber Data (Import)', href: '/data-sources' },
-      { name: '🎯 Target Bisnis', href: '/settings/targets' }
+      { name: 'Sumber Data', href: '/data-sources' },
+      { name: 'Target Bisnis', href: '/settings/targets' }
     ]
   }
 ]
