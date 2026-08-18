@@ -28,55 +28,29 @@ type NavItem = {
 }
 
 const navTree: NavItem[] = [
-  { name: 'Ringkasan Dasbor', href: '/', icon: LayoutDashboard },
-  { 
-    name: 'Analitik', icon: LineChart,
-    children: [
-      { name: 'Intelijen Marketplace', href: '/marketplace-intelligence' },
-      { name: 'Produk', href: '/products' },
-      { name: 'Manajemen Kampanye', href: '/campaigns' },
-      { name: 'Iklan Meta', href: '/campaigns/meta' },
-      { name: 'Periklanan', href: '/marketing-intelligence' },
-    ]
-  },
+  { name: 'Dasbor Eksekutif', href: '/', icon: LayoutDashboard },
   { 
     name: 'Intelijen Bisnis', icon: ShieldCheck,
     children: [
       { name: '🛡️ Margin Protection', href: '/margin-protection' },
-      { name: '🕵️ Kompetitor', href: '/competitors' },
-      { name: '📦 Intelijen Inventori', href: '/inventory-intelligence' },
-      { name: '💬 Intelijen Pelanggan', href: '/customer-intelligence' },
+      { name: '🕵️ Kepo Kompetitor', href: '/competitors' },
+      { name: '📦 Pawang Inventori', href: '/inventory-intelligence' },
+      { name: '💬 Suara Pelanggan', href: '/customer-intelligence' },
     ]
   },
   { 
-    name: 'Pertumbuhan', icon: TrendingUp,
+    name: 'Strategi & Pertumbuhan', icon: TrendingUp,
     children: [
-      { name: 'Manajer Anggaran', href: '/budget' },
-      { name: 'Intelijen Afiliasi', href: '/affiliate' },
-      { name: 'Penasihat Pemasaran', href: '/marketing-advisor' },
+      { name: '💰 Manajer Anggaran Iklan', href: '/budget' },
+      { name: '🤝 Intelijen Afiliasi', href: '/affiliate' },
+      { name: '🤖 AI Marketing Advisor', href: '/marketing-advisor' },
     ]
   },
   { 
-    name: 'Laporan', icon: FileText,
+    name: 'Pengaturan & Data', icon: Database,
     children: [
-      { name: 'Laporan', href: '/reports' },
-    ]
-  },
-  { 
-    name: 'Sumber Data', icon: Database,
-    href: '/data-sources'
-  },
-  { 
-    name: 'Pengaturan', icon: Target,
-    children: [
-      { name: 'Target Bisnis', href: '/settings/targets' },
-      { name: 'Anggota Tim', href: '/settings/team' }
-    ]
-  },
-  { 
-    name: 'Alat', icon: Package,
-    children: [
-      { name: 'Pusat Tindakan', href: '/actions' }
+      { name: '📥 Sumber Data (Import)', href: '/data-sources' },
+      { name: '🎯 Target Bisnis', href: '/settings/targets' }
     ]
   }
 ]
