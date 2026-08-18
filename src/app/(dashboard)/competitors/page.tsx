@@ -146,7 +146,12 @@ export default function CompetitorsPage() {
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Pantau pergerakan harga, stok, promo, dan sentimen pesaing Anda secara real-time.</p>
       </div>
 
-      {/* Global AI Alert */}
+      
+      {/* Toolbar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+        {!isDummy && <button className="btn-primary" onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}><Plus size={16} /> Tambah Kompetitor</button>}
+      </div>
+{/* Global AI Alert */}
       {competitors.length > 0 && (
         <div style={{ padding: '20px', borderRadius: '12px', backgroundColor: 'var(--surface)', border: '1px solid var(--primary)', borderLeft: '4px solid var(--primary)', display: 'flex', gap: '16px', alignItems: 'flex-start', boxShadow: '0 4px 6px -1px rgba(26, 86, 219, 0.05)' }}>
           <div style={{ backgroundColor: 'rgba(26, 86, 219, 0.1)', padding: '8px', borderRadius: '8px', color: 'var(--primary)' }}>
@@ -162,15 +167,10 @@ export default function CompetitorsPage() {
         </div>
       )}
 
-      {/* Toolbar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
-        {!isDummy && <button className="btn-primary" onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Plus size={16} /> Tambah Kompetitor</button>}
-      </div>
-
       {isDummy && (
         <div style={{ padding: '12px 16px', borderRadius: '8px', backgroundColor: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.3)', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.88rem', color: '#854d0e' }}>
-          <span>⚠️</span>
-          <span>Menampilkan <strong>data contoh</strong>. Tambahkan kompetitor nyata untuk mulai memantau harga pesaing.</span>
+          <span></span>
+          <span>Data contoh sedang ditampilkan. Tambahkan kompetitor nyata untuk mulai memantau harga pesaing.</span>
           <button onClick={() => { setIsDummy(false); setCompetitors([]) }} style={{ marginLeft: 'auto', padding: '6px 14px', border: '1px solid var(--primary)', borderRadius: '6px', color: 'var(--primary)', backgroundColor: 'transparent', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
             + Tambah Kompetitor
           </button>
@@ -326,3 +326,4 @@ export default function CompetitorsPage() {
     </div>
   )
 }
+
