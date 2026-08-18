@@ -170,15 +170,15 @@ export default function CompetitorsPage() {
             <div key={comp.id} className="card" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--surface-border)', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
               {/* Card Header */}
               <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--surface-border)', backgroundColor: 'var(--surface)', flexWrap: 'wrap', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: '1 1 auto', minWidth: '250px' }}>
                   {comp.logo ? (
-                    <img src={comp.logo} alt={comp.name} style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--surface-border)', objectFit: 'contain', backgroundColor: '#fff' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                    <img src={comp.logo} alt={comp.name} style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--surface-border)', objectFit: 'contain', backgroundColor: '#fff', flexShrink: 0 }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
                   ) : (
-                    <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: 'var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'var(--text-secondary)' }}>{comp.name.substring(0,2)}</div>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: 'var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'var(--text-secondary)', flexShrink: 0 }}>{comp.name.substring(0,2)}</div>
                   )}
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <h2 style={{ fontWeight: 800, fontSize: '1.15rem', margin: 0, color: 'var(--text-primary)' }}>{comp.name}</h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <h2 style={{ fontWeight: 800, fontSize: '1.15rem', margin: 0, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{comp.name}</h2>
                       <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, backgroundColor: `${mktColors[comp.marketplace] ?? '#6b7280'}15`, color: mktColors[comp.marketplace] ?? '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         {comp.marketplace}
                       </span>
@@ -204,8 +204,8 @@ export default function CompetitorsPage() {
 
               {/* Card Body - Products Table */}
               {comp.products?.length > 0 ? (
-                <div style={{ overflowX: 'auto', backgroundColor: 'var(--background)' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', tableLayout: 'fixed' }}>
+                <div style={{ overflowX: 'auto', backgroundColor: 'var(--background)', WebkitOverflowScrolling: 'touch' }}>
+                  <table style={{ width: '100%', minWidth: '750px', borderCollapse: 'collapse', fontSize: '0.85rem', tableLayout: 'fixed' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid var(--surface-border)', backgroundColor: '#fafafa' }}>
                         <th style={{ width: '35%', padding: '12px 20px', textAlign: 'left', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>Nama Produk</th>

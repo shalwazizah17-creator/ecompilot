@@ -306,8 +306,8 @@ export default function MarginProtectionPage() {
             <button className="btn-primary" onClick={() => setShowRuleModal(true)}>+ Tambah Aturan</button>
           </div>
 
-          <div className="card" style={{ overflow: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+          <div className="card" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--surface-border)' }}>
                   {['Marketplace', 'Fee Mkt', 'Fee Payment', 'Komisi Aff.', 'Voucher', 'Target Margin'].map(h => (

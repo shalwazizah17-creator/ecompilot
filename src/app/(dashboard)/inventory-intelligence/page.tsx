@@ -125,8 +125,8 @@ export default function InventoryIntelligencePage() {
         ))}
       </div>
 
-      <div className="card" style={{ overflow: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+      <div className="card" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
           <thead>
             <tr style={{ borderBottom: '2px solid var(--surface-border)' }}>
               {['SKU / Produk', 'Stok Tersedia', 'Alokasi Kampanye', 'Avg Jual/Hari (7H)', 'Sisa Hari', 'Risiko Stockout', 'Aksi'].map(h => (
