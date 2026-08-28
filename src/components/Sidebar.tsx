@@ -28,7 +28,7 @@ type NavItem = {
 }
 
 const navTree: NavItem[] = [
-  { name: 'Dasbor Eksekutif', href: '/', icon: LayoutDashboard },
+  { name: 'Dasbor Eksekutif', href: '/', icon: LayoutDashboard }, { name: 'Decision History', href: '/decision-history', icon: FileText },
   { 
     name: 'Intelijen Bisnis', icon: ShieldCheck,
     children: [
