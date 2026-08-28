@@ -57,7 +57,7 @@ export default function DashboardPage() {
       <div style={{ padding: '40px', backgroundColor: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--surface-border)', textAlign: 'center' }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>📥 Data marketplace belum tersedia</h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Upload laporan Shopee, TikTok Shop, Tokopedia, atau Lazada untuk mulai menganalisis bisnis Anda.</p>
-        <Link href="/import" style={{ display: 'inline-block', backgroundColor: 'var(--primary)', color: 'white', padding: '10px 20px', borderRadius: '6px', fontWeight: 600, textDecoration: 'none' }}>
+        <Link href="/data-sources" style={{ display: 'inline-block', backgroundColor: 'var(--primary)', color: 'white', padding: '10px 20px', borderRadius: '6px', fontWeight: 600, textDecoration: 'none' }}>
           IMPORT MARKETPLACE DATA
         </Link>
       </div>
