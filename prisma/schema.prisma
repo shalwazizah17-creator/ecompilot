@@ -699,3 +699,96 @@ model CustomerReview {
 }
 
 
+
+// ==========================================
+// PHASE 13: DECISION SUPPORT PLATFORM
+// ==========================================
+
+model MarketTrend {
+  id              String   @id @default(cuid())
+  category        String
+  platform        String
+  region          String   @default("ID")
+  trend           String   // UP, DOWN, STABLE
+  summary         String   @db.Text
+  source          String
+  sourceUrl       String?
+  confidence      Float    // 0-100
+  publishedAt     DateTime
+  validFrom       DateTime
+  validUntil      DateTime?
+  created_at      DateTime @default(now())
+}
+
+model MarketCalendarEvent {
+  id                  String   @id @default(cuid())
+  eventName           String
+  eventDate           DateTime
+  marketplace         String
+  categoryRelevance   String?
+  preparationDeadline DateTime?
+  historicalPerformance String? @db.Text
+  created_at          DateTime @default(now())
+}
+
+model Recommendation {
+  id              String   @id @default(cuid())
+  workspace_id    String
+  brand_id        String
+  title           String
+  category        String   // BUDGET, MARKETPLACE, PRODUCT, CAMPAIGN, AFFILIATE, PRICING, MARGIN, INVENTORY, PROMOTION, CONTENT, CUSTOMER, DATA_QUALITY, COMPETITOR, FORECAST
+  severity        String   // CRITICAL, HIGH, MEDIUM, LOW, INFO
+  recommendation  String   @db.Text
+  reason          String   @db.Text
+  expectedImpact  String?  @db.Text
+  risk            String?  @db.Text
+  actionSteps     String   @db.Text // JSON array or text
+  confidenceScore Float
+  confidenceLevel String
+  dataCoverage    Float
+  observationDays Int
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED, EXECUTED, EXPIRED
+  created_at      DateTime @default(now())
+
+  brand           Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  evidence        RecommendationEvidence[]
+  decisions       DecisionHistory[]
+}
+
+model RecommendationEvidence {
+  id               String   @id @default(cuid())
+  recommendation_id String
+  metric           String
+  value            String
+  trend            String?
+  description      String   @db.Text
+  
+  recommendation   Recommendation @relation(fields: [recommendation_id], references: [id], onDelete: Cascade)
+}
+
+model DecisionHistory {
+  id                String   @id @default(cuid())
+  workspace_id      String
+  brand_id          String
+  user_id           String
+  recommendation_id String?
+  actionTaken       String   @db.Text
+  expectedOutcome   String?  @db.Text
+  status            String   @default("EXECUTED") // EXECUTED, SUCCESS, FAILED
+  created_at        DateTime @default(now())
+  
+  brand             Brand          @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  recommendation    Recommendation? @relation(fields: [recommendation_id], references: [id], onDelete: SetNull)
+  outcomes          DecisionOutcome[]
+}
+
+model DecisionOutcome {
+  id                 String   @id @default(cuid())
+  decision_history_id String
+  recordedAt         DateTime @default(now())
+  actualOutcome      String   @db.Text
+  success            Boolean
+  metricsChanged     String?  @db.Text // JSON string of metrics changes (e.g. GMV +22%, ROAS -3%)
+  
+  decision           DecisionHistory @relation(fields: [decision_history_id], references: [id], onDelete: Cascade)
+}
