@@ -42,7 +42,7 @@ const navTree: NavItem[] = [
     name: 'Strategi & Pertumbuhan', icon: TrendingUp,
     children: [
       { name: 'Manajer Anggaran', href: '/budget' },
-      { name: 'Intelijen Afiliasi', href: '/affiliate' },
+      { name: 'Intelijen Afiliasi', href: '/affiliate' }, { name: 'Affiliate Discovery', href: '/affiliate/discovery' },
       { name: 'Penasihat AI', href: '/marketing-advisor' },
     ]
   },
