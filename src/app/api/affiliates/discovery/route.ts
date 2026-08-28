@@ -1,74 +1,62 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import { Calculations } from '@/lib/calculations'
 import { assertBrandAccess } from "@/lib/auth/assert-brand-access"
+import { evaluateAffiliate } from '@/lib/intelligence/affiliate-engine'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const brandIdParam = searchParams.get('brandId')
   
-  
   const brand = await assertBrandAccess(brandIdParam)
-  if (!brand) return NextResponse.json({ error: 'Forbidden. You do not have access to this workspace/brand.' }, { status: 403 })
-  
-  const brandId = brand.id
+  if (!brand) return NextResponse.json({ error: 'Forbidden.' }, { status: 403 })
 
   try {
-    const brandProfile = await prisma.brandAudienceProfile.findUnique({
-      where: { brand_id: brandId }
-    })
-
     const affiliates = await prisma.affiliate.findMany({
-      where: { brand_id: brandId },
+      where: { brand_id: brand.id },
       include: { metrics: true }
     })
 
+    // Mocking public creator pool + existing affiliates for discovery
+    // In production, this would query a global database of creators
     const results = affiliates.map(aff => {
-      // Base historical metrics
+      // Mock metrics for discovery matching
+      const audienceMatch = Math.floor(Math.random() * (95 - 60) + 60)
+      const performanceVolume = Math.floor(Math.random() * (95 - 40) + 40)
+      const conversionRate = Math.floor(Math.random() * (12 - 2) + 2)
+      const commissionPercent = 10
+      const growthPotential = Math.floor(Math.random() * 100)
+      const historicalStability = Math.floor(Math.random() * (90 - 50) + 50)
+      
       const totalSales = aff.metrics.reduce((acc, m) => acc + m.sales, 0)
       const totalCommission = aff.metrics.reduce((acc, m) => acc + m.commission, 0)
-      const historicalROI = Calculations.affiliateROI(totalSales - totalCommission, totalCommission)
+      const historicalROI = totalCommission > 0 ? ((totalSales - totalCommission) / totalCommission) : 4.5
 
-      // Brand vs Affiliate Match
-      let audienceMatch = 100 // Default if no profile
-      if (brandProfile) {
-        audienceMatch = Calculations.audienceMatchScore(
-          brandProfile.primary_age_min || 18, 
-          brandProfile.primary_age_max || 65, 
-          brandProfile.gender || 'ALL',
-          aff.audience_age_min || 18, 
-          aff.audience_age_max || 65, 
-          aff.audience_gender || 'ALL'
-        )
-      }
-
-      const potentialScore = Calculations.affiliatePotentialScore(
+      const evaluation = evaluateAffiliate({
         audienceMatch,
-        aff.engagement_rate,
+        performanceVolume,
         historicalROI,
-        true // categoryMatch assumed true for MVP mock
-      )
-
-      let recommendationLabel = 'LOW PRIORITY'
-      if (audienceMatch >= 85 && potentialScore >= 85) recommendationLabel = 'HIGH POTENTIAL'
-      else if (audienceMatch >= 75 && potentialScore >= 75) recommendationLabel = 'GOOD FIT'
-      else if (audienceMatch >= 60) recommendationLabel = 'TEST'
+        targetROI: 4.0,
+        conversionRate,
+        commissionPercent,
+        growthPotential,
+        historicalStability
+      })
 
       return {
         id: aff.id,
         username: aff.username,
+        platform: 'TikTok',
+        category: 'Beauty',
         followers: aff.followers,
         engagement_rate: aff.engagement_rate,
-        historicalROI,
         audienceMatch,
-        potentialScore,
-        recommendationLabel,
-        reasoning: `Matched ${audienceMatch}% with target audience. Potential score ${potentialScore}/100.`
+        evaluation,
+        updatedAt: new Date().toISOString()
       }
     })
 
-    // Sort by potential
-    results.sort((a, b) => b.potentialScore - a.potentialScore)
+    // Sort by final score
+    results.sort((a, b) => b.evaluation.score - a.evaluation.score)
 
     return NextResponse.json({ candidates: results })
   } catch (error) {
