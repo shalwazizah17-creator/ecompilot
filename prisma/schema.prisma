@@ -86,6 +86,8 @@ model Brand {
   competitors        Competitor[]
   inventory_records  InventoryRecord[]
   customer_reviews   CustomerReview[]
+  recommendations    Recommendation[]
+  decisions          DecisionHistory[]
 
   workspace                Workspace            @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 
