@@ -708,3 +708,6 @@ input, select, textarea {
   .print-charts-grid { display: block !important; }
   .print-charts-grid > div { margin-bottom: 20px; page-break-inside: avoid; }
 }
+
+.input { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--surface-border); background-color: var(--background); color: var(--text-primary); font-size: 0.875rem; transition: border-color 0.15s; outline: none; }
+.input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }

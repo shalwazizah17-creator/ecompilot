@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts'
-import { Download, Filter, Printer, FileText, PieChart, Store, Calendar, TrendingUp } from 'lucide-react'
+import { Download, Filter, Printer, FileText, PieChart, Store, Calendar, TrendingUp, Plus, X } from 'lucide-react'
 
 export default function MarketplaceIntelligence() {
   const [data, setData] = useState<any>(null)
@@ -11,6 +11,10 @@ export default function MarketplaceIntelligence() {
   // Controls
   const [platform, setPlatform] = useState('ALL') // ALL, Shopee, TikTok, Tokopedia
   const [period, setPeriod] = useState('MONTHLY') // WEEKLY, MONTHLY, YEARLY
+
+  // Modal State
+  const [showInputModal, setShowInputModal] = useState(false)
+  const [savingData, setSavingData] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -51,6 +55,17 @@ export default function MarketplaceIntelligence() {
     window.print()
   }
 
+  const handleSaveData = (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingData(true)
+    // Simulate save to DB
+    setTimeout(() => {
+      setSavingData(false)
+      setShowInputModal(false)
+      alert('Data laporan berhasil disimpan! Makasih udah update datanya 🎉')
+    }, 1000)
+  }
+
   // Simulated dynamic values based on selection
   const displayPlatform = platform === 'ALL' ? 'Semua Marketplace' : platform
   const displayPeriod = period === 'WEEKLY' ? 'Mingguan' : period === 'MONTHLY' ? 'Bulanan' : 'Tahunan'
@@ -63,11 +78,14 @@ export default function MarketplaceIntelligence() {
         <div>
           <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Laporan Evaluasi Marketplace</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-            Rangkuman performa {displayPlatform} buat evaluasi {displayPeriod}.
+            Rangkuman performa jualan di {displayPlatform} buat evaluasi {displayPeriod}.
           </p>
         </div>
         
         <div style={{ display: 'flex', gap: '12px' }} className="no-print">
+          <button onClick={() => setShowInputModal(true)} className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Plus size={16} /> Input Data Laporan
+          </button>
           <button onClick={handlePrint} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Printer size={16} /> Export PDF
           </button>
@@ -125,10 +143,10 @@ export default function MarketplaceIntelligence() {
       {/* AI SUMMARY */}
       <div className="ai-card" style={{ padding: '20px' }}>
         <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, marginBottom: '8px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <FileText size={16} /> Rangkuman Evaluasi {displayPeriod}
+          <FileText size={16} /> Insight Laporan {displayPeriod} (by AI)
         </h3>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0 }}>
-          Secara keseluruhan, {displayPlatform} mencatatkan GMV sebesar <strong>{formatIDR(kpis.totalGMV)}</strong> dengan ROAS rata-rata <strong>{kpis.roas.toFixed(1)}x</strong>. Pertumbuhan cukup stabil didorong oleh kontribusi Affiliate sebesar <strong>{kpis.affiliateContribution.toFixed(1)}%</strong>. Untuk evaluasi bulan depan, disarankan untuk mengoptimalkan budget pada channel dengan ROAS di atas 4x dan memperbanyak kuota sampel affiliate untuk menjaga momentum penjualan.
+          Overall, performa jualan di {displayPlatform} berhasil nyetak GMV sebesar <strong>{formatIDR(kpis.totalGMV)}</strong> nih, dengan rata-rata ROAS di angka <strong>{kpis.roas.toFixed(1)}x</strong>. Kerennya lagi, penjualan lumayan stabil berkat dorongan dari temen-temen Affiliate yang nyumbang <strong>{kpis.affiliateContribution.toFixed(1)}%</strong> dari total sales kita. Buat next step-nya, mending kita fokusin budget ke channel yang ROAS-nya di atas 4x, plus nambahin kuota sampel gratis buat kreator biar momentum penjualannya tetep kenceng! 🚀
         </p>
       </div>
 
@@ -212,6 +230,70 @@ export default function MarketplaceIntelligence() {
         </div>
       </div>
 
+      {/* INPUT MODAL */}
+      {showInputModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(2px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card fade-in" style={{ width: '100%', maxWidth: '480px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>Input Data Marketplace</h3>
+              <button onClick={() => setShowInputModal(false)} style={{ color: 'var(--text-muted)' }}><X size={20} /></button>
+            </div>
+            
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '24px' }}>
+              Biar laporan nggak ngawur, masukin data laporan harian, mingguan, atau bulanan kamu di sini ya.
+            </p>
+
+            <form onSubmit={handleSaveData} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Platform</label>
+                  <select className="input" required>
+                    <option value="shopee">Shopee</option>
+                    <option value="tiktok">TikTok Shop</option>
+                    <option value="tokopedia">Tokopedia</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Tipe Laporan</label>
+                  <select className="input" required>
+                    <option value="harian">Harian</option>
+                    <option value="mingguan">Mingguan</option>
+                    <option value="bulanan">Bulanan</option>
+                    <option value="tahunan">Tahunan</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Periode Tanggal</label>
+                <input type="date" className="input" required />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Total GMV (Rp)</label>
+                  <input type="number" className="input" placeholder="Contoh: 15000000" required />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Total Orders</label>
+                  <input type="number" className="input" placeholder="Contoh: 150" required />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+                <button type="button" onClick={() => setShowInputModal(false)} className="btn-outline">
+                  Batal
+                </button>
+                <button type="submit" className="btn-primary" disabled={savingData}>
+                  {savingData ? 'Menyimpan...' : 'Simpan Data'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
