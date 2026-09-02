@@ -74,13 +74,13 @@ export default function DashboardPage() {
             <Upload size={24} style={{ color: 'var(--primary)' }} />
           </div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', letterSpacing: '-0.02em' }}>
-            Data marketplace belum tersedia
+            Belum ada data marketplace nih
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '28px' }}>
-            Upload laporan Shopee, TikTok Shop, Tokopedia, atau Lazada untuk mulai menganalisis performa bisnis Anda.
+            Upload laporan dari Shopee, TikTok Shop, Tokopedia, atau Lazada buat mulai analisis performa bisnis kamu.
           </p>
           <Link href="/data-sources" className="btn-primary">
-            Impor data marketplace
+            Upload data marketplace
           </Link>
         </div>
       </div>
@@ -88,7 +88,7 @@ export default function DashboardPage() {
   }
 
   const kpiItems = [
-    { label: 'GMV', value: fmt(metrics.gmv.value), trend: metrics.gmv.trend, icon: DollarSign, key: 'GMV', why: 'Penyebab terbesar: Orders turun 11% dan Conversion Rate turun 8%. Pengaruh terbesar dari ketersediaan stok SKU Hero.' },
+    { label: 'GMV', value: fmt(metrics.gmv.value), trend: metrics.gmv.trend, icon: DollarSign, key: 'GMV', why: 'Penyebab utamanya: Orders turun 11% dan Conversion Rate turun 8%. Pengaruh terbesar dari ketersediaan stok SKU Hero.' },
     { label: 'ROAS', value: `${metrics.roas.value.toFixed(2)}x`, trend: metrics.roas.trend, icon: Target, key: 'ROAS', why: 'ROAS dipengaruhi oleh efisiensi kampanye iklan dan biaya per klik yang bervariasi antar marketplace.' },
     { label: 'Net Sales', value: fmt(metrics.netSales.value), trend: metrics.netSales.trend, icon: ShoppingCart, key: 'NetSales', why: 'Net sales dihitung setelah deduksi retur dan voucher dari gross revenue.' },
     { label: 'Profit', value: fmt(metrics.profit.value), trend: metrics.profit.trend, icon: TrendingUp, key: 'Profit', why: 'Profit dipengaruhi margin kotor dan biaya operasional logistik bulan ini.' },
@@ -102,10 +102,10 @@ export default function DashboardPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: '1.375rem', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)', marginBottom: '4px' }}>
-            Selamat datang kembali 👋
+            Welcome back! 👋
           </h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            Berikut rangkuman performa dan rekomendasi AI untuk bisnis Anda.
+            Ini ringkasan performa dan saran AI buat bisnis kamu.
           </p>
         </div>
 
@@ -148,7 +148,7 @@ export default function DashboardPage() {
       {showHealthDetail && health && (
         <div className="card fade-in" style={{ padding: '16px 20px' }}>
           <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '12px', color: 'var(--text-primary)' }}>
-            Rincian skor: mengapa skor saya {health.total}/100?
+            Kenapa skor kamu {health.total}/100?
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px' }}>
             {health.components.map((c: any) => (
@@ -238,8 +238,8 @@ export default function DashboardPage() {
                 <Sparkles size={15} />
               </div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>Rekomendasi tindakan AI</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{recommendations.length} prioritas terdeteksi</div>
+                <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>Rekomendasi AI</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{recommendations.length} hal yang perlu diperhatiin</div>
               </div>
             </div>
             <button
@@ -248,14 +248,14 @@ export default function DashboardPage() {
               style={{ fontSize: '0.8125rem', padding: '7px 14px' }}
             >
               <Lightbulb size={14} />
-              Apa yang harus dilakukan?
+              Harus ngapain?
             </button>
           </div>
 
           {/* Expanded action plan */}
           {expandedWhat && (
             <div className="fade-in ai-card" style={{ margin: '16px', borderRadius: '10px' }}>
-              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--primary)', marginBottom: '10px' }}>Tindakan paling berdampak:</div>
+              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--primary)', marginBottom: '10px' }}>Langkah paling impactful:</div>
               <ol style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {recommendations.map((r, i) => (
                   <li key={i} style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
@@ -311,8 +311,8 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', gap: '12px', padding: '14px 16px', backgroundColor: 'var(--warning-light)', border: '1px solid var(--warning-border)', borderRadius: '10px' }}>
               <AlertTriangle size={16} color="var(--warning)" style={{ flexShrink: 0, marginTop: '1px' }} />
               <div>
-                <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--warning)', marginBottom: '3px' }}>Data tidak lengkap</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>Data affiliate hanya 74% lengkap. Akurasi rekomendasi mungkin berkurang.</div>
+                <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--warning)', marginBottom: '3px' }}>Data belum lengkap</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>Data affiliate baru 74% lengkap. Akurasi rekomendasi bisa kurang optimal.</div>
               </div>
             </div>
 
@@ -320,7 +320,7 @@ export default function DashboardPage() {
             <div className="card">
               <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <BarChart2 size={16} color="var(--primary)" />
-                Tren performa 5 minggu
+                Tren performa 5 minggu terakhir
               </div>
               <div style={{ height: '150px' }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -346,10 +346,10 @@ export default function DashboardPage() {
               <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '12px' }}>Aksi cepat</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {[
-                  { label: 'Kelola anggaran', href: '/budget' },
-                  { label: 'Lihat analitik marketplace', href: '/marketplace-intelligence' },
-                  { label: 'Cek kompetitor', href: '/competitors' },
-                  { label: 'Impor data baru', href: '/data-sources' },
+                  { label: 'Kelola budget', href: '/budget' },
+                  { label: 'Cek analitik marketplace', href: '/marketplace-intelligence' },
+                  { label: 'Intip kompetitor', href: '/competitors' },
+                  { label: 'Upload data baru', href: '/data-sources' },
                 ].map((action) => (
                   <Link
                     key={action.href}

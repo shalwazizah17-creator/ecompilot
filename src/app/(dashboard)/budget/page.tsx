@@ -64,22 +64,22 @@ export default function BudgetManagerPage() {
 
   if (errorStatus === 403) return (
     <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-      Anda tidak memiliki akses ke workspace ini.
+      Kamu nggak punya akses ke workspace ini.
     </div>
   )
   if (errorStatus === 404) return (
     <div className="card" style={{ textAlign: 'center', padding: '48px', maxWidth: '500px', margin: '0 auto' }}>
       <Wallet size={32} style={{ color: 'var(--text-muted)', marginBottom: '16px' }} />
-      <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px' }}>Data marketplace belum tersedia</h3>
+      <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px' }}>Belum ada data marketplace nih</h3>
       <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '24px' }}>
-        Impor data marketplace Anda untuk mulai menganalisis anggaran.
+        Upload data marketplace kamu dulu buat mulai analisis budget.
       </p>
-      <a href="/data-sources" className="btn-primary">Impor data marketplace</a>
+      <a href="/data-sources" className="btn-primary">Upload data marketplace</a>
     </div>
   )
   if (errorStatus) return (
     <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-      Gagal memuat data. Silakan coba lagi.
+      Gagal memuat data. Coba lagi ya.
     </div>
   )
   if (!data) return null
@@ -137,10 +137,10 @@ export default function BudgetManagerPage() {
   }
 
   const getChannelStatus = (roas: number) => {
-    if (roas >= 10) return { label: 'Top Performer', color: 'var(--success)', bg: 'var(--success-light)', border: 'var(--success-border)' }
-    if (roas >= 4)  return { label: 'Healthy', color: '#2563EB', bg: '#EFF6FF', border: '#DBEAFE' }
-    if (roas >= 2)  return { label: 'Perlu Monitor', color: 'var(--warning)', bg: 'var(--warning-light)', border: 'var(--warning-border)' }
-    return { label: 'Tidak ada spend', color: 'var(--text-muted)', bg: '#F8FAFC', border: '#E2E8F0' }
+    if (roas >= 10) return { label: 'Top Performer 🔥', color: 'var(--success)', bg: 'var(--success-light)', border: 'var(--success-border)' }
+    if (roas >= 4)  return { label: 'Sehat ✅', color: '#2563EB', bg: '#EFF6FF', border: '#DBEAFE' }
+    if (roas >= 2)  return { label: 'Perlu dipantau ⚠️', color: 'var(--warning)', bg: 'var(--warning-light)', border: 'var(--warning-border)' }
+    return { label: 'Belum ada spend', color: 'var(--text-muted)', bg: '#F8FAFC', border: '#E2E8F0' }
   }
 
   return (
@@ -149,12 +149,12 @@ export default function BudgetManagerPage() {
       {/* PAGE HEADER */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Manajer Anggaran</h1>
-          <p className="page-subtitle">Optimalkan distribusi anggaran berdasarkan performa kanal dan rekomendasi AI.</p>
+          <h1 className="page-title">Budget Manager</h1>
+          <p className="page-subtitle">Atur dan optimalkan budget iklan kamu berdasarkan performa tiap kanal dan saran AI.</p>
         </div>
         <button className="btn-outline" onClick={fetchArchive} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           <Archive size={15} />
-          {loadingArchive ? 'Memuat…' : 'Lihat arsip anggaran'}
+          {loadingArchive ? 'Loading…' : 'Lihat arsip budget'}
         </button>
       </div>
 
@@ -163,14 +163,14 @@ export default function BudgetManagerPage() {
         <div className="info-banner" style={{ backgroundColor: 'var(--success-light)', border: '1px solid var(--success-border)' }}>
           <CheckCircle size={16} className="info-banner-icon" style={{ color: 'var(--success)' }} />
           <p className="info-banner-text">
-            Anggaran bulan ini sudah ditetapkan dan tersimpan di sistem. Pastikan angka ini sesuai dengan dashboard Meta/Shopee/TikTok Anda.
+            Budget bulan ini udah fix dan tersimpan di sistem. Pastikan angkanya sama dengan dashboard Meta/Shopee/TikTok kamu ya.
           </p>
         </div>
       ) : (
         <div className="info-banner">
           <Info size={16} className="info-banner-icon" />
           <p className="info-banner-text">
-            Mode simulasi — perubahan ini tidak akan diterapkan ke platform iklan hingga Anda menyetujuinya.
+            Mode simulasi — perubahan ini belum diterapkan ke platform iklan sampai kamu setujui.
           </p>
         </div>
       )}
@@ -179,7 +179,7 @@ export default function BudgetManagerPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
         {/* Total Budget */}
         <div className="stat-card">
-          <div className="stat-label" style={{ marginBottom: '10px' }}>Total anggaran</div>
+          <div className="stat-label" style={{ marginBottom: '10px' }}>Total budget</div>
           <div className="stat-value">{fmt(currentTotal)}</div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>30 hari terakhir</div>
         </div>
@@ -190,7 +190,7 @@ export default function BudgetManagerPage() {
           <div className="stat-value">{fmt(recTotal)}</div>
           <div style={{ marginTop: '6px' }}>
             {isOptimal ? (
-              <span className="badge badge-success">Budget sudah optimal</span>
+              <span className="badge badge-success">Budget udah optimal ✨</span>
             ) : isIncrease ? (
               <span className="badge badge-warning">
                 <TrendingUp size={11} /> Naik {Math.abs(delta / currentTotal * 100).toFixed(0)}%
@@ -205,12 +205,12 @@ export default function BudgetManagerPage() {
 
         {/* Budget Delta */}
         <div className="stat-card">
-          <div className="stat-label" style={{ marginBottom: '10px' }}>Selisih anggaran</div>
+          <div className="stat-label" style={{ marginBottom: '10px' }}>Selisih budget</div>
           <div className="stat-value" style={{ color: isOptimal ? 'var(--text-primary)' : isIncrease ? 'var(--warning)' : 'var(--success)' }}>
             {isOptimal ? 'Rp 0' : `${isIncrease ? '+' : '-'}${fmt(Math.abs(delta))}`}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-            {isOptimal ? 'Tidak ada perubahan' : `${isIncrease ? '+' : '-'}${Math.abs(delta / currentTotal * 100).toFixed(1)}% dari saat ini`}
+            {isOptimal ? 'Nggak ada perubahan' : `${isIncrease ? '+' : '-'}${Math.abs(delta / currentTotal * 100).toFixed(1)}% dari saat ini`}
           </div>
         </div>
 
@@ -237,8 +237,8 @@ export default function BudgetManagerPage() {
             <Sparkles size={16} />
           </div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>Wawasan strategis AI</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Berdasarkan performa 30 hari terakhir</div>
+            <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>Insight AI</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Dari data performa 30 hari terakhir</div>
           </div>
         </div>
         <ul style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingLeft: '0', margin: 0, listStyle: 'none' }}>
@@ -257,7 +257,7 @@ export default function BudgetManagerPage() {
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <TrendingUp size={18} style={{ color: 'var(--primary)' }} />
-          <h2 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>Performa & rekomendasi per kanal</h2>
+          <h2 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>Performa & saran per kanal</h2>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table">
@@ -265,8 +265,8 @@ export default function BudgetManagerPage() {
               <tr>
                 <th>Kanal</th>
                 <th>ROAS</th>
-                <th>Anggaran saat ini</th>
-                <th>Rekomendasi AI</th>
+                <th>Budget sekarang</th>
+                <th>Saran AI</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -329,9 +329,9 @@ export default function BudgetManagerPage() {
       {/* SIMULATION SECTION */}
       <div>
         <div style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Simulasi & keputusan anggaran final</h2>
+          <h2 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Simulasi & keputusan budget final</h2>
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-            Gunakan slider di bawah untuk mengatur dan melihat simulasi perubahan anggaran. Jika sudah yakin, klik <strong>Setujui anggaran</strong>.
+            Geser slider di bawah buat simulasi perubahan budget. Kalau udah yakin, klik <strong>Setujui budget</strong>.
           </p>
         </div>
         <BudgetManager

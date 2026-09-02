@@ -81,7 +81,7 @@ export function GlobalFilters() {
         onChange={(e) => setSelectedAdChannel(e.target.value)}
         className="filter-select"
       >
-        <option value="ALL">Semua saluran iklan</option>
+        <option value="ALL">Semua channel iklan</option>
         <option value="Meta Ads">Meta Ads</option>
         <option value="Shopee Ads">Shopee Ads</option>
         <option value="TikTok Ads">TikTok Ads</option>

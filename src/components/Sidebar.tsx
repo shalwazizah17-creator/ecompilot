@@ -34,33 +34,33 @@ type NavItem = {
 
 const navTree: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Decision History', href: '/decision-history', icon: Clock },
+  { name: 'History Keputusan', href: '/decision-history', icon: Clock },
   {
     name: 'Intelligence',
     icon: ShieldCheck,
     children: [
-      { name: 'Margin Protection', href: '/margin-protection', icon: ShieldCheck },
-      { name: 'Competitor Intelligence', href: '/competitors', icon: BarChart3 },
-      { name: 'Inventory Intelligence', href: '/inventory-intelligence', icon: BookOpen },
-      { name: 'Customer Intelligence', href: '/customer-intelligence', icon: Users },
+      { name: 'Jaga Margin', href: '/margin-protection', icon: ShieldCheck },
+      { name: 'Kepoin Kompetitor', href: '/competitors', icon: BarChart3 },
+      { name: 'Pantau Stok', href: '/inventory-intelligence', icon: BookOpen },
+      { name: 'Insight Pelanggan', href: '/customer-intelligence', icon: Users },
     ],
   },
   {
     name: 'Growth',
     icon: TrendingUp,
     children: [
-      { name: 'Budget Manager', href: '/budget', icon: Wallet },
-      { name: 'Affiliate Intelligence', href: '/affiliate', icon: Users },
-      { name: 'Affiliate Discovery', href: '/affiliate/discovery', icon: Search },
+      { name: 'Atur Budget', href: '/budget', icon: Wallet },
+      { name: 'Intel Affiliate', href: '/affiliate', icon: Users },
+      { name: 'Cari Affiliate', href: '/affiliate/discovery', icon: Search },
       { name: 'AI Advisor', href: '/marketing-advisor', icon: Bot },
     ],
   },
   {
-    name: 'Data',
+    name: 'Data & Setup',
     icon: Database,
     children: [
-      { name: 'Data Sources', href: '/data-sources', icon: HardDrive },
-      { name: 'Business Targets', href: '/settings/targets', icon: Target },
+      { name: 'Sumber Data', href: '/data-sources', icon: HardDrive },
+      { name: 'Target Bisnis', href: '/settings/targets', icon: Target },
     ],
   },
 ]
@@ -68,7 +68,7 @@ const navTree: NavItem[] = [
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const { data: session } = useSession()
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(['Intelligence', 'Growth', 'Data'])
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['Intelligence', 'Growth', 'Data & Setup'])
 
   const toggleGroup = (name: string) => {
     setExpandedGroups((prev) =>
@@ -317,7 +317,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {session.user.name || 'Pengguna'}
+                {session.user.name || 'User'}
               </div>
               <div
                 style={{
@@ -333,7 +333,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             </div>
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
-              title="Keluar"
+              title="Logout"
               style={{
                 padding: '6px',
                 borderRadius: '6px',
