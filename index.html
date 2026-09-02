@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>E-Posyandu ILP - Ibu Hamil, Nifas &amp; Menyusui</title>
+<style>
+:root{
+  --green:#079b8d;--green2:#068275;--mint:#edf9f6;--ink:#1e293b;
+  --muted:#64748b;--line:#e2e8f0;--bg:#f8fafc;--white:#fff;
+  --blue:#3b82f6;--yellow:#f59e0b;--red:#ef4444;--pink:#ec4899;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit}
+.app{min-height:100vh;display:grid;grid-template-columns:290px minmax(0,1fr)}
+
+/* SIDEBAR */
+.sidebar{background:#fff;border-right:1px solid var(--line);padding:24px 18px 18px;display:flex;flex-direction:column;min-width:0}
+.brand{text-align:center}
+.brand-title{font-size:24px;font-weight:900;letter-spacing:-.6px;color:var(--green)}
+.brand-sub{font-size:12.5px;margin-top:2px;color:#334155;font-weight:700}
+.ver{display:inline-flex;align-items:center;gap:5px;background:#e6f7f4;color:var(--green);padding:4px 12px;border-radius:20px;font-size:10.5px;font-weight:800;margin-top:8px;border:1px solid #c2ece4}
+.logo-area{margin:20px auto 14px;text-align:center}
+.logo-area img{width:115px;height:115px;object-fit:contain;display:block;margin:0 auto;filter:drop-shadow(0 2px 4px rgba(0,0,0,.06))}
+.pos-name{font-size:17px;font-weight:900;color:var(--ink);margin-top:8px}
+.pos-address{font-size:11.5px;line-height:1.5;color:var(--muted);margin-top:3px}
+
+.nav{margin-top:18px;display:grid;gap:5px}
+.nav button{border:0;background:#fff;border-radius:10px;padding:11px 14px;text-align:left;cursor:pointer;color:#475569;font-size:13.5px;display:flex;align-items:center;gap:11px;font-weight:600;transition:all .15s}
+.nav button:hover{background:#f1f5f9;color:var(--ink)}
+.nav button.active{background:#e6f7f4;color:var(--green);font-weight:800}
+.nav-ic{width:18px;height:18px;stroke-width:2.2;flex-shrink:0}
+
+.profile{margin-top:auto;border:1px solid var(--line);border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:11px;background:#fafcfc}
+.avatar{width:38px;height:38px;border-radius:50%;background:#fde8f2;color:var(--pink);display:grid;place-items:center;flex-shrink:0}
+.profile b{font-size:12px;color:var(--ink)}.profile span{display:inline-block;margin-top:2px;background:var(--green);color:#fff;border-radius:8px;padding:2px 7px;font-size:9px;font-weight:800}
+.build-tag{font-size:9px;color:#94a3b8;text-align:center;margin-top:10px}
+
+/* MAIN */
+.main{min-width:0;padding:24px 30px;max-width:1600px;width:100%;margin:auto}
+.topbar{height:42px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.topbar h1{font-size:22px;margin:0;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+.topright{display:flex;gap:12px;align-items:center;font-size:12.5px}
+.date-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:18px;background:#fff;border:1px solid var(--line);color:#475569;font-weight:600}
+.status{padding:6px 12px;border-radius:18px;background:#effaf6;color:#087d6e;font-weight:700;border:1px solid #cfeee6;display:inline-flex;align-items:center;gap:6px}
+.status .pulse{width:7px;height:7px;background:#0aa58b;border-radius:50%;box-shadow:0 0 0 3px rgba(10,165,139,.2)}
+
+.section{display:none}.section.active{display:block}
+.dashboard{display:grid;grid-template-columns:1.15fr 0.85fr;gap:20px;align-items:start}
+.leftcol{min-width:0}
+
+/* HERO */
+.hero{border:1px solid #d0ebe5;border-radius:16px;background:linear-gradient(130deg,#f0faf8 0%,#e4f6f2 100%);padding:28px 26px;position:relative;overflow:hidden}
+.hero h2{font-size:24px;margin-bottom:8px;font-weight:800;color:#134e48}
+.hero p{font-size:13.5px;color:#2d6a64;max-width:390px;line-height:1.5}
+.pill{display:inline-flex;align-items:center;gap:6px;background:#d4f1eb;color:#0f766e;border-radius:14px;padding:6px 12px;font-size:11px;font-weight:800;margin-top:16px;border:1px solid #b5e7dc}
+.hero-art{position:absolute;right:20px;bottom:-10px;width:110px;height:110px;opacity:.9;color:#0f766e}
+
+/* ACTION CARDS */
+.section-title{font-size:12px;font-weight:800;margin:22px 0 11px;letter-spacing:.6px;color:#64748b;text-transform:uppercase}
+.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.action{min-height:136px;border-radius:14px;background:#fff;border:1px solid var(--line);padding:16px;text-align:left;cursor:pointer;position:relative;transition:all .18s ease}
+.action:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.04)}
+.action.pink{background:#fdf4f8;border-color:#fbcfe8}.action.green{background:#f0faf7;border-color:#ccfbf1}.action.blue{background:#f4f8ff;border-color:#dbeafe}
+.action .ic-box{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;margin-bottom:12px}
+.pink .ic-box{background:#f472b6;color:#fff}.green .ic-box{background:#14b8a6;color:#fff}.blue .ic-box{background:#3b82f6;color:#fff}
+.action strong{display:block;font-size:14px;color:var(--ink);font-weight:800}.action small{display:block;margin-top:4px;color:#64748b;font-size:11px}
+.action .arrow-ic{position:absolute;right:14px;bottom:14px;width:18px;height:18px;color:#94a3b8}
+
+/* METRICS */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.metric{background:#fff;border:1px solid var(--line);border-radius:13px;padding:14px;min-height:124px;display:flex;flex-direction:column;justify-content:space-between}
+.metric .top-row{display:flex;align-items:center;justify-content:space-between}
+.metric .m-ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center}
+.metric.pink .m-ic{background:#fce7f3;color:#db2777}.metric.green .m-ic{background:#ccfbf1;color:#0d9488}
+.metric.yellow .m-ic{background:#fef3c7;color:#d97706}.metric.red .m-ic{background:#fee2e2;color:#dc2626}
+.metric .num{font-size:24px;font-weight:900;color:var(--ink);line-height:1;margin:6px 0 2px}
+.metric b{font-size:11px;display:block;color:#334155}.metric small{display:block;color:var(--muted);font-size:9.5px}
+
+/* ALERTS */
+.alerts{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.alert{display:grid;grid-template-columns:26px 140px 1fr 110px;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid #f1f5f9;font-size:11.5px}
+.alert:last-child{border-bottom:0}.alert .a-ic{color:#f59e0b;display:grid;place-items:center}.alert .date{text-align:right;color:#64748b;font-weight:600}
+
+/* PREVIEW PANEL */
+.preview-panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0;box-shadow:0 1px 4px rgba(0,0,0,.02)}
+.preview-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.preview-head b{font-size:11.5px;color:#334155;font-weight:800;display:flex;align-items:center;gap:6px}
+.preview-head button{border:0;background:#e6f7f4;color:#0f766e;padding:6px 11px;border-radius:7px;font-size:10.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:background .15s}
+.preview-head button:hover{background:#ccfbf1}
+.paper{background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:14px;min-width:0;box-shadow:0 2px 8px rgba(0,0,0,.03)}
+.paper-header{display:grid;grid-template-columns:68px 1fr 68px;gap:8px;align-items:center;border-bottom:1.5px solid #334155;padding-bottom:8px}
+.klogo{text-align:center;display:flex;flex-direction:column;align-items:center}
+.klogo img{width:62px;height:38px;object-fit:contain;display:block;margin:auto}
+.tlogo{text-align:center;display:flex;flex-direction:column;align-items:center}
+.tlogo img{width:40px;height:40px;object-fit:contain;display:block;margin:auto}
+.ptitle{text-align:center;font-size:9px;font-weight:900;line-height:1.4;color:#0f172a}
+.identity{display:grid;grid-template-columns:105px 1fr 65px 1fr;gap:3.5px 6px;font-size:7.5px;margin-top:8px}
+.identity .val{border-bottom:1px dotted #94a3b8;color:#0f172a;font-weight:600}
+.print-head{font-size:7.5px;font-weight:900;background:#f3eedf;border:1px solid #94a3b8;margin-top:8px;padding:3px 5px;color:#334155}
+.ptable{width:100%;border-collapse:collapse;font-size:6.2px}.ptable th,.ptable td{border:1px solid #94a3b8;padding:2px;text-align:center;height:15px}.ptable th:first-child,.ptable td:first-child{text-align:left}
+.stepbar{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px}.stepbar div{padding:4px 2px;border-radius:4px;text-align:center;font-size:6px;border:1px solid #cbd5e1;font-weight:700}
+.stepbar div:nth-child(1){background:#fff0e8}.stepbar div:nth-child(2){background:#fff8d9}.stepbar div:nth-child(3){background:#f0f7df}.stepbar div:nth-child(4){background:#e8f3ff}.stepbar div:nth-child(5){background:#f4e9ff}
+
+/* FORM STYLES */
+.page{max-width:1050px;margin:auto}.panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:18px}
+.formgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px}
+.form label{display:block;font-size:11px;font-weight:800;color:#475569;margin-bottom:5px}
+.form input,.form select{width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:9px;background:#f8fafc;font-size:13px;color:var(--ink)}
+.form input:focus,.form select:focus{outline:0;border-color:var(--green);background:#fff;box-shadow:0 0 0 3px rgba(7,155,141,.12)}
+.btn{border:0;border-radius:9px;background:var(--green);color:#fff;padding:10px 16px;font-weight:800;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:background .15s}
+.btn:hover{background:var(--green2)}.btn.secondary{background:#f1f5f9;color:#334155;border:1px solid #cbd5e1}.btn.secondary:hover{background:#e2e8f0}
+.table{width:100%;border-collapse:collapse;font-size:12.5px}.table th,.table td{padding:11px;border-bottom:1px solid #f1f5f9;text-align:left}.table th{font-weight:800;color:#475569;background:#f8fafc}.search{display:flex;gap:8px;margin-bottom:13px}.search input{flex:1;padding:10px 12px;border:1px solid #cbd5e1;border-radius:9px}
+
+/* WIZARD 5 LANGKAH */
+.step-indicator{display:flex;align-items:flex-start;justify-content:center;margin:6px 0 24px;flex-wrap:wrap}
+.step-dot{display:flex;flex-direction:column;align-items:center;gap:5px;width:76px;cursor:pointer}
+.step-dot .circle{width:32px;height:32px;border-radius:50%;background:#e2e8f0;color:#64748b;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;border:2px solid #e2e8f0;transition:all .2s}
+.step-dot span{font-size:9.5px;color:#64748b;font-weight:700;text-align:center;line-height:1.2}
+.step-dot.done .circle{background:var(--green);border-color:var(--green);color:#fff}
+.step-dot.done span{color:var(--green)}
+.step-dot.active .circle{background:#fff;border-color:var(--green);color:var(--green);box-shadow:0 0 0 3px #ccfbf1}
+.step-dot.active span{color:var(--ink)}
+.step-line{width:24px;height:2px;background:#e2e8f0;margin:15px 2px 0}
+.step-line.done{background:var(--green)}
+.visit-info{background:#edf9f6;border:1px solid #b5e7dc;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px}
+.visit-info b{color:var(--green)}
+.section-sub{font-size:11.5px;font-weight:800;color:#475569;margin:16px 0 8px;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:6px}
+.step-nav{display:flex;justify-content:space-between;align-items:center;margin-top:22px;padding-top:16px;border-top:1px solid #e2e8f0}
+.ibu-card{background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.ibu-card:hover{border-color:var(--green);background:#f6fcfb}
+
+/* OVERLAY */
+#gs-loading{display:none;position:fixed;inset:0;background:rgba(255,255,255,.85);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+#gs-loading.show{display:flex}
+.spinner{width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:11px 20px;border-radius:10px;font-size:13px;z-index:10000;display:none;font-weight:600}
+.toast.show{display:block}
+.toast.ok{background:#0d9488}.toast.err{background:#e11d48}
+
+@media(max-width:860px){.app{display:block}.main{padding:16px}.dashboard{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.actions{grid-template-columns:1fr}.summary{grid-template-columns:repeat(2,1fr)}}
+@media print{body{background:#fff}.sidebar,.topbar,.preview-head{display:none!important}.main{padding:0}.dashboard{display:block}.preview-panel{border:0;padding:0}.paper{border:0;box-shadow:none}.leftcol{display:none!important}}
+</style>
+</head>
+<body>
+<div id="gs-loading"><div class="spinner"></div><span style="color:#64748b;font-size:13px;font-weight:600">Memproses data...</span></div>
+<div id="gs-toast" class="toast"></div>
+
+<div class="app">
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-title">E-POSYANDU</div>
+    <div class="brand-sub">Ibu Hamil &amp; Menyusui</div>
+    <span class="ver"><svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> ILP · BUMIL v.01</span>
+  </div>
+
+  <div class="logo-area">
+    <!-- LOGO RESMI KOTA TANGERANG SELATAN (VECTOR SVG MURNI - ANTI BLOKIR & ANTI RUSAK) -->
+    <svg viewBox="0 0 120 140" style="width:115px;height:125px;display:block;margin:0 auto;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.1))">
+      <defs>
+        <linearGradient id="tsGold" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#f9d423"/><stop offset="100%" stop-color="#ff4e50"/>
+        </linearGradient>
+        <linearGradient id="tsSky" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#e0f2fe"/><stop offset="100%" stop-color="#bae6fd"/>
+        </linearGradient>
+      </defs>
+      <!-- Perisai Segilima Hijau & Emas -->
+      <polygon points="60,4 114,24 98,104 60,132 22,104 6,24" fill="#087f5b" stroke="#e67e22" stroke-width="3"/>
+      <polygon points="60,10 108,28 94,100 60,125 26,100 12,28" fill="#ffffff" stroke="#f1c40f" stroke-width="2"/>
+      <polygon points="60,15 103,31 90,96 60,119 30,96 17,31" fill="url(#tsSky)"/>
+      
+      <!-- Gelombang Biru Sungai Cisadane -->
+      <path d="M26,75 Q60,65 94,75 L91,85 Q60,95 29,85 Z" fill="#0284c7" opacity="0.6"/>
+      <path d="M29,82 Q60,74 91,82 L89,90 Q60,100 31,90 Z" fill="#0369a1"/>
+
+      <!-- Bintang Emas 5 Sudut -->
+      <polygon points="60,20 63,28 72,28 65,33 67,41 60,36 53,41 55,33 48,28 57,28" fill="#f59e0b" stroke="#b45309" stroke-width="0.6"/>
+
+      <!-- Sayap & Monumen Gedung Kemandirian -->
+      <path d="M42,50 C44,62 48,74 54,82 L54,58 Z" fill="#ef4444"/>
+      <path d="M46,54 C48,64 51,72 54,78 L54,62 Z" fill="#ffffff"/>
+      <path d="M78,50 C76,62 72,74 66,82 L66,58 Z" fill="#10b981"/>
+      <path d="M74,54 C72,64 69,72 66,78 L66,62 Z" fill="#fbbf24"/>
+      
+      <!-- Tugu Pena Pusat -->
+      <polygon points="60,42 63,55 64,84 56,84 57,55" fill="#334155"/>
+      <polygon points="60,42 61.5,55 62,84 60,84" fill="#94a3b8"/>
+      <circle cx="60" cy="52" r="3" fill="#f59e0b"/>
+
+      <!-- Roda Gigi Industri -->
+      <circle cx="60" cy="70" r="9" fill="none" stroke="#ea580c" stroke-width="2" stroke-dasharray="3,1.5"/>
+      <circle cx="60" cy="70" r="5.5" fill="#ffffff" stroke="#c2410c" stroke-width="1"/>
+
+      <!-- Untaian Padi Emas Kiri -->
+      <path d="M26,42 Q20,68 34,92" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="24" cy="46" r="2" fill="#fbbf24"/><circle cx="22" cy="54" r="2" fill="#fbbf24"/>
+      <circle cx="22" cy="63" r="2" fill="#fbbf24"/><circle cx="24" cy="72" r="2" fill="#fbbf24"/><circle cx="28" cy="81" r="2" fill="#fbbf24"/>
+
+      <!-- Untaian Kapas Hijau Kanan -->
+      <path d="M94,42 Q100,68 86,92" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="96" cy="48" r="2.2" fill="#ffffff" stroke="#059669" stroke-width="0.8"/>
+      <circle cx="97" cy="58" r="2.2" fill="#ffffff" stroke="#059669" stroke-width="0.8"/>
+      <circle cx="95" cy="68" r="2.2" fill="#ffffff" stroke="#059669" stroke-width="0.8"/>
+      <circle cx="91" cy="78" r="2.2" fill="#ffffff" stroke="#059669" stroke-width="0.8"/>
+
+      <!-- Pita Merah Tulisan Daerah -->
+      <path d="M18,102 Q60,94 102,102 L98,114 Q60,105 22,114 Z" fill="#dc2626" stroke="#991b1b" stroke-width="0.8"/>
+      <text x="60" y="109" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-weight="900" font-size="6.5" fill="#ffffff" text-anchor="middle" letter-spacing="0.4">TANGERANG SELATAN</text>
+
+      <!-- Pita Kuning Motto -->
+      <path d="M28,116 Q60,111 92,116 L88,124 Q60,119 32,124 Z" fill="#f59e0b" stroke="#b45309" stroke-width="0.6"/>
+      <text x="60" y="122" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-weight="800" font-size="4.6" fill="#1e293b" text-anchor="middle" letter-spacing="0.3">CERDAS · MODERN · RELIGIUS</text>
+    </svg>
+    <div class="pos-name" id="sb-posyandu">POSYANDU MEKAR 2</div>
+    <div class="pos-address" id="sb-address">Kel. Cireundeu, Kec. Ciputat Timur<br>Kota Tangerang Selatan</div>
+  </div>
+
+  <nav class="nav">
+    <button class="active" onclick="page('home',this)">
+      <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Beranda
+    </button>
+    <button onclick="page('data-ibu',this)">
+      <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Data Ibu
+    </button>
+    <button onclick="page('register',this)">
+      <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+      Pendaftaran
+    </button>
+    <button onclick="navSearch(this)">
+      <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      Cari Ibu
+    </button>
+    <button onclick="page('print',this)">
+      <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+      Cetak Kartu
+    </button>
+    <button onclick="page('laporan',this)">
+      <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      Laporan
+    </button>
+    <button onclick="page('settings',this)">
+      <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0 2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Pengaturan
+    </button>
+  </nav>
+
+  <div class="profile">
+    <div class="avatar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M12 11v6"/><path d="M9 14h6"/></svg>
+    </div>
+    <div><b>Kader Posyandu</b><br><span>BUMIL &amp; BUSUI</span></div>
+  </div>
+  <div id="build-tag" class="build-tag">memuat versi...</div>
+</aside>
+
+<main class="main">
+
+<!-- ============ BERANDA ============ -->
+<section id="home" class="section active">
+  <div class="topbar">
+    <h1>Beranda Pelayanan</h1>
+    <div class="topright">
+      <div class="date-pill" id="tgl-today">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+        <span>Memuat tanggal...</span>
+      </div>
+      <span class="status"><i class="pulse"></i>Sistem Aktif</span>
+    </div>
+  </div>
+
+  <div class="dashboard">
+    <div class="leftcol">
+      <div class="hero">
+        <h2>Selamat Pagi, Kader!</h2>
+        <p>Kawal kehamilan sehat, masa nifas aman, dan sukseskan pemberian ASI eksklusif 0–24 bulan.</p>
+        <span class="pill" id="hero-posyandu">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          POSYANDU MEKAR 2
+        </span>
+        <div style="margin-top:10px;font-size:11.5px;color:#0f766e;font-weight:700" id="hero-bulan">Pelayanan Bulan Ini</div>
+      </div>
+
+      <div class="section-title">Aksi Cepat Pelayanan</div>
+      <div class="actions">
+        <button class="action pink" onclick="page('register',null)">
+          <div class="ic-box">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+          </div>
+          <strong>Ibu Baru</strong>
+          <small>Daftarkan sasaran baru</small>
+          <svg class="arrow-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+
+        <button class="action green" onclick="navSearch(null)">
+          <div class="ic-box">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </div>
+          <strong>Cari Data Ibu</strong>
+          <small>Cari nama atau NIK</small>
+          <svg class="arrow-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+
+        <button class="action blue" onclick="navSearch(null)">
+          <div class="ic-box">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M12 5 9.04 11l6.92.04L13.04 17"/></svg>
+          </div>
+          <strong>Kunjungan Hari Ini</strong>
+          <small>Mulai 5 langkah ILP</small>
+          <svg class="arrow-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+
+      <div class="section-title">Ringkasan Data Sasaran</div>
+      <div class="summary">
+        <div class="metric pink">
+          <div class="top-row">
+            <b>Total Sasaran</b>
+            <div class="m-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          </div>
+          <div class="num" id="stat-total">–</div>
+          <small>Bumil, Nifas &amp; Busui</small>
+        </div>
+
+        <div class="metric green">
+          <div class="top-row">
+            <b>Sudah Hadir</b>
+            <div class="m-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+          </div>
+          <div class="num" id="stat-hadir">–</div>
+          <small>Bulan berjalan</small>
+        </div>
+
+        <div class="metric yellow">
+          <div class="top-row">
+            <b>Belum Hadir</b>
+            <div class="m-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg></div>
+          </div>
+          <div class="num" id="stat-belum">–</div>
+          <small>Perlu dikunjungi</small>
+        </div>
+
+        <div class="metric red">
+          <div class="top-row">
+            <b>Perlu Perhatian</b>
+            <div class="m-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg></div>
+          </div>
+          <div class="num" id="stat-perhatian">–</div>
+          <small>KEK / Anemia / TBC</small>
+        </div>
+      </div>
+
+      <div class="section-title">Perlu Tindak Lanjut Khusus</div>
+      <div class="alerts" id="alert-list">
+        <div class="alert">
+          <span class="a-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+          <b>Memuat data...</b><span></span><span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PREVIEW KARTU BANTU IBU HAMIL & MENYUSUI -->
+    <div class="preview-panel">
+      <div class="preview-head">
+        <b>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          PREVIEW KARTU BANTU IBU HAMIL &amp; MENYUSUI
+        </b>
+        <div>
+          <button onclick="page('print',null)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            Lihat Lengkap
+          </button>
+          <button onclick="window.print()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+            Cetak / PDF
+          </button>
+        </div>
+      </div>
+
+      <div class="paper">
+        <div class="paper-header">
+          <!-- KOP KIRI: LOGO KEMENKES RI (VECTOR SVG MURNI - ANTI BLOKIR) -->
+          <div class="klogo">
+            <svg viewBox="0 0 100 80" style="width:58px;height:42px;display:block;margin:auto">
+              <defs>
+                <linearGradient id="kopKemGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#00a896"/><stop offset="100%" stop-color="#028090"/>
+                </linearGradient>
+                <linearGradient id="kopKemSun" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#ea580c"/>
+                </linearGradient>
+              </defs>
+              <path d="M42,24 C30,12 14,18 14,35 C14,51 34,65 54,75 C50,67 48,58 50,49 C52,40 58,34 66,31 C60,25 51,22 42,24 Z" fill="url(#kopKemGrad)"/>
+              <path d="M54,75 C69,67 87,51 87,35 C87,19 72,13 60,24 C56,28 53,32 52,38 C57,40 61,44 62,50 C64,59 60,68 54,75 Z" fill="#00b4d8"/>
+              <circle cx="52" cy="15" r="4" fill="url(#kopKemSun)"/>
+              <circle cx="64" cy="17" r="3" fill="url(#kopKemSun)"/>
+              <circle cx="39" cy="17" r="3" fill="url(#kopKemSun)"/>
+            </svg>
+            <div style="font-size:6.5px;font-weight:900;color:#078476;margin-top:1px;letter-spacing:0.3px">KEMENKES RI</div>
+          </div>
+
+          <!-- KOP TENGAH: JUDUL KARTU BANTU -->
+          <div class="ptitle">
+            KARTU BANTU PEMERIKSAAN<br>IBU HAMIL/NIFAS/MENYUSUI<br>
+            <span id="prev-posyandu">POSYANDU MEKAR 2</span><br>
+            <span style="font-weight:500;color:#475569">Tahun <span id="prev-year">2026</span></span>
+          </div>
+
+          <!-- KOP KANAN: LOGO KOTA TANGERANG SELATAN (VECTOR SVG MURNI - ANTI BLOKIR) -->
+          <div class="tlogo">
+            <svg viewBox="0 0 120 140" style="width:40px;height:44px;display:block;margin:auto">
+              <polygon points="60,4 114,24 98,104 60,132 22,104 6,24" fill="#087f5b" stroke="#e67e22" stroke-width="3"/>
+              <polygon points="60,10 108,28 94,100 60,125 26,100 12,28" fill="#ffffff" stroke="#f1c40f" stroke-width="2"/>
+              <polygon points="60,15 103,31 90,96 60,119 30,96 17,31" fill="#f0f9ff"/>
+              <path d="M26,75 Q60,65 94,75 L91,85 Q60,95 29,85 Z" fill="#0284c7" opacity="0.6"/>
+              <polygon points="60,20 63,28 72,28 65,33 67,41 60,36 53,41 55,33 48,28 57,28" fill="#f59e0b"/>
+              <path d="M42,50 C44,62 48,74 54,82 L54,58 Z" fill="#ef4444"/>
+              <path d="M78,50 C76,62 72,74 66,82 L66,58 Z" fill="#10b981"/>
+              <polygon points="60,42 63,55 64,84 56,84 57,55" fill="#334155"/>
+              <circle cx="60" cy="70" r="8" fill="none" stroke="#ea580c" stroke-width="2" stroke-dasharray="3,1.5"/>
+              <path d="M26,42 Q20,68 34,92" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>
+              <path d="M94,42 Q100,68 86,92" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+              <path d="M18,102 Q60,94 102,102 L98,114 Q60,105 22,114 Z" fill="#dc2626"/>
+              <text x="60" y="109" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="900" font-size="6.8" fill="#ffffff" text-anchor="middle">TANGSEL</text>
+            </svg>
+            <div style="font-size:5.5px;font-weight:900;color:#c92925;margin-top:1px;letter-spacing:0.2px">TANGERANG SELATAN</div>
+          </div>
+        </div>
+
+        <div class="identity" id="prev-identity">
+          <div>Nama Ibu</div><div class="val" id="prev-nama">Ny. Siti Aminah</div>
+          <div>Alamat</div><div class="val" id="prev-alamat">Jln. Mawar No. 12</div>
+          <div>NIK</div><div class="val" id="prev-nik">3274015607950001</div>
+          <div>RT/RW</div><div class="val" id="prev-rtrw">02/05</div>
+          <div>Nama Suami</div><div class="val" id="prev-suami">Tn. Ahmad Fauzi</div>
+          <div>Kel/Desa</div><div class="val" id="prev-kel">Cireundeu</div>
+          <div>Tgl Lahir / Umur</div><div class="val" id="prev-tgl">14 Mei 1996 (28 th)</div>
+          <div>No. HP</div><div class="val" id="prev-hp">081298765432</div>
+          <div>Status / HPHT</div><div class="val" id="prev-status">Hamil (HPHT: 12 Jan 2026)</div>
+          <div>Anak Ke / Jarak</div><div class="val" id="prev-anak">Ke-2 (Jarak: 3 th)</div>
+        </div>
+
+        <div class="print-head">PEMERIKSAAN IBU HAMIL (SESUAI UMUR KEHAMILAN)</div>
+        <table class="ptable">
+          <thead>
+            <tr>
+              <th>Pemeriksaan</th>
+              <th>&lt;4mg</th><th>4-8</th><th>8-12</th><th>12-16</th><th>16-20</th>
+              <th>20-24</th><th>24-28</th><th>28-32</th><th>32-36</th><th>36-40</th>
+            </tr>
+          </thead>
+          <tbody id="prev-tabel-bumil">
+            <tr><td class="lab">BB (kg)</td><td>52</td><td>53</td><td>54.5</td><td>56</td><td>57.5</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td class="lab">LILA (cm)</td><td>24.5</td><td>24.5</td><td>24.5</td><td>25.0</td><td>25.0</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td class="lab">Tekanan Darah</td><td>110/70</td><td>110/70</td><td>120/80</td><td>115/75</td><td>120/80</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td class="lab">Ploting IMT</td><td>N</td><td>N</td><td>N</td><td>N</td><td>N</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td class="lab">Ploting LILA</td><td>N</td><td>N</td><td>N</td><td>N</td><td>N</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td class="lab">Ploting TD</td><td>N</td><td>N</td><td>N</td><td>N</td><td>N</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td class="lab">Skrining TBC</td><td>T</td><td>T</td><td>T</td><td>T</td><td>T</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td class="lab">TTD/MMS</td><td>Y (30)</td><td>Y (30)</td><td>Y (30)</td><td>Y (30)</td><td>Y (30)</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td class="lab">Penyuluhan</td><td>Gizi</td><td>ANC</td><td>Tanda Bahaya</td><td>ASI</td><td>P4K</td><td></td><td></td><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <div class="print-head">PEMERIKSAAN IBU NIFAS &amp; MENYUSUI (KF &amp; BULAN 2–24)</div>
+        <table class="ptable">
+          <thead>
+            <tr>
+              <th>Pelayanan</th>
+              <th>&lt;7h</th><th>7-28h</th><th>28-42h</th><th>Bl 2</th><th>Bl 3</th><th>Bl 4</th><th>Bl 5</th><th>Bl 6</th><th>...</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="lab">BB / TD</td><td>55/110</td><td>54/120</td><td>54/115</td><td>53/110</td><td>53/110</td><td></td><td></td><td></td><td></td></tr>
+            <tr><td class="lab">Vit A / KB</td><td>Y (2)</td><td>Y</td><td></td><td>KB Pil</td><td>KB Pil</td><td></td><td></td><td></td><td></td></tr>
+            <tr><td class="lab">Menyusui (ASI)</td><td>Y</td><td>Y</td><td>Y</td><td>Y</td><td>Y</td><td></td><td></td><td></td><td></td></tr>
+            <tr><td class="lab">Skrining TBC</td><td>T</td><td>T</td><td>T</td><td>T</td><td>T</td><td></td><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <div class="stepbar">
+          <div>Langkah 1<br>Pendaftaran</div>
+          <div>Langkah 2<br>Pengukuran</div>
+          <div>Langkah 3<br>Pencatatan</div>
+          <div>Langkah 4<br>Pelayanan</div>
+          <div>Langkah 5<br>Penyuluhan/KIE</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DATA IBU ============ -->
+<section id="data-ibu" class="section page">
+  <div class="topbar"><h1>Data Ibu Hamil &amp; Menyusui</h1></div>
+  <div class="panel">
+    <div class="search">
+      <input id="ibu-search" placeholder="Cari nama ibu, NIK, atau nama suami..." oninput="loadIbuTable(this.value)">
+      <button class="btn" onclick="loadIbuTable(document.getElementById('ibu-search').value)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        Cari
+      </button>
+    </div>
+    <table class="table">
+      <thead><tr><th>Nama Ibu</th><th>NIK</th><th>Status</th><th>Nama Suami</th><th>RT/RW</th><th>Aksi</th></tr></thead>
+      <tbody id="ibu-tbody"><tr><td colspan="6" style="text-align:center;color:#849094">Memuat data ibu...</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ PENDAFTARAN IBU ============ -->
+<section id="register" class="section page">
+  <div class="topbar"><h1>Pendaftaran Sasaran Ibu</h1></div>
+  <div class="panel form" id="register-form-panel">
+    <div class="section-sub">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Identitas Diri &amp; Keluarga
+    </div>
+    <div class="formgrid">
+      <div><label>Nama Lengkap Ibu *</label><input id="reg-nama" placeholder="cth: Ny. Siti Aminah"></div>
+      <div><label>NIK * (16 digit angka)</label><input id="reg-nik" maxlength="16" placeholder="16 digit NIK" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
+      <div><label>Tanggal Lahir Ibu *</label><input id="reg-tgl" type="date"></div>
+      <div><label>Nama Suami</label><input id="reg-suami" placeholder="cth: Tn. Ahmad Fauzi"></div>
+      <div><label>No. HP / WhatsApp</label><input id="reg-hp" placeholder="cth: 08123456789"></div>
+      <div><label>Dusun / RT / RW</label><input id="reg-rtrw" placeholder="cth: 02/05"></div>
+      <div><label>Alamat Lengkap</label><input id="reg-alamat" placeholder="Jalan, No Rumah"></div>
+      <div><label>Desa / Kelurahan / Nagari</label><input id="reg-kel" value="Cireundeu"></div>
+      <div><label>Kecamatan</label><input id="reg-kec" value="Ciputat Timur"></div>
+      <div><label>Status Sasaran Saat Ini *</label>
+        <select id="reg-status">
+          <option value="Hamil">Ibu Hamil</option>
+          <option value="Nifas">Ibu Nifas (&lt; 42 hari)</option>
+          <option value="Menyusui">Ibu Menyusui (s.d 24 bulan)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-sub" style="margin-top:20px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      Riwayat Kehamilan &amp; Fisik Dasar
+    </div>
+    <div class="formgrid">
+      <div><label>Berat Badan Sebelum Hamil (kg)</label><input id="reg-bb" type="number" step="0.1" placeholder="cth: 50.5"></div>
+      <div><label>Tinggi Badan Ibu (cm)</label><input id="reg-tb" type="number" step="0.1" placeholder="cth: 155"></div>
+      <div><label>Jarak Anak Sebelumnya dg Kehamilan</label><input id="reg-jarak" placeholder="cth: 3 tahun / Hamil Pertama"></div>
+      <div><label>Kehamilan / Anak Ke-</label><input id="reg-anak" placeholder="cth: 2"></div>
+      <div><label>HPHT (Hari Pertama Haid Terakhir)</label><input id="reg-hpht" type="date"></div>
+      <div><label>Tanggal Bersalin (jika Nifas/Busui)</label><input id="reg-tglsalin" type="date"></div>
+      <div><label>Rencana / Cara Bersalin</label>
+        <select id="reg-cara">
+          <option value="Normal">Normal</option>
+          <option value="Persalinan dengan tindakan">Persalinan dengan tindakan (SC / Vakum)</option>
+        </select>
+      </div>
+    </div>
+    <br>
+    <button class="btn" id="reg-submit-btn" onclick="doRegister()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Simpan Pendaftaran
+    </button>
+    <button class="btn secondary" style="margin-left:8px" onclick="page('home',null)">Batal</button>
+  </div>
+
+  <div class="panel" id="register-success-panel" style="display:none;text-align:center;padding:40px 20px">
+    <div style="width:64px;height:64px;border-radius:50%;background:#dcfce7;color:#16a34a;display:grid;place-items:center;margin:0 auto 14px">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div style="font-size:16px;font-weight:800;margin-bottom:6px">Data Ibu Berhasil Didaftarkan!</div>
+    <div style="font-size:13px;color:#334155;margin-bottom:4px"><b id="reg-success-nama"></b></div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:22px">ID: <b id="reg-success-id"></b> — tersimpan di sheet <b>IBU</b>.</div>
+    <button class="btn" onclick="lanjutKeKunjungan()">
+      Lanjut ke Pelayanan Kunjungan
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+    </button><br><br>
+    <button class="btn secondary" onclick="resetRegisterForm()">+ Daftar Ibu Lain</button>
+    <button class="btn secondary" style="margin-left:8px" onclick="page('data-ibu',null)">Lihat Data Ibu</button>
+  </div>
+</section>
+
+<!-- ============ CARI IBU ============ -->
+<section id="search" class="section page">
+  <div class="topbar"><h1>Cari Data Ibu</h1></div>
+  <div class="panel">
+    <div class="search">
+      <input id="search-input" placeholder="Ketik nama ibu, NIK, atau nama suami..." oninput="doSearch(this.value)">
+      <button class="btn" onclick="doSearch(document.getElementById('search-input').value)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        Cari
+      </button>
+    </div>
+    <div id="search-results">
+      <div style="text-align:center;color:#64748b;padding:20px">Ketik nama ibu atau NIK untuk memulai pencarian.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ KUNJUNGAN POSYANDU 5 LANGKAH ============ -->
+<section id="visit" class="section page">
+  <div class="topbar"><h1>Kunjungan Posyandu (5 Langkah ILP)</h1></div>
+  <div class="panel">
+    <div class="visit-info" id="visit-info">
+      <b id="visit-nama">Pilih Ibu terlebih dahulu</b><br>
+      <span id="visit-nik" style="color:#64748b;font-size:12px"></span>
+    </div>
+
+    <!-- Step Indicator -->
+    <div class="step-indicator" id="step-indicator">
+      <div class="step-dot done" data-step="1" onclick="goStep(1)"><div class="circle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><span>1. Pendaftaran</span></div>
+      <div class="step-line done" data-line="1"></div>
+      <div class="step-dot active" data-step="2" onclick="goStep(2)"><div class="circle">2</div><span>2. Pengukuran</span></div>
+      <div class="step-line" data-line="2"></div>
+      <div class="step-dot" data-step="3" onclick="goStep(3)"><div class="circle">3</div><span>3. Pencatatan</span></div>
+      <div class="step-line" data-line="3"></div>
+      <div class="step-dot" data-step="4" onclick="goStep(4)"><div class="circle">4</div><span>4. Pelayanan</span></div>
+      <div class="step-line" data-line="4"></div>
+      <div class="step-dot" data-step="5" onclick="goStep(5)"><div class="circle">5</div><span>5. Penyuluhan</span></div>
+    </div>
+
+    <div class="form">
+      <!-- LANGKAH 2: PENGUKURAN & PENIMBANGAN -->
+      <div class="visit-step" id="vstep-2" data-step="2">
+        <div class="section-sub">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Langkah 2 — Pengukuran &amp; Penimbangan
+        </div>
+        <div class="formgrid">
+          <div><label>Tanggal Kunjungan</label><input id="kj-tanggal" type="date"></div>
+          <div><label>Nama Petugas / Kader</label><input id="kj-petugas" placeholder="Nama kader"></div>
+          <div><label>Kategori Kunjungan *</label>
+            <select id="kj-kategori" onchange="toggleKategoriFields()">
+              <option value="Hamil">Ibu Hamil (Pemeriksaan Umur Kehamilan)</option>
+              <option value="Nifas">Ibu Nifas (&lt; 7h s.d 42h)</option>
+              <option value="Menyusui">Ibu Menyusui (Bulan 2 s.d 24)</option>
+            </select>
+          </div>
+          <div><label>Kolom Periode Sesuai Kartu Bantu *</label>
+            <select id="kj-periode"></select>
+          </div>
+          <div><label>Berat Badan (kg) *</label><input id="kj-bb" type="number" step="0.1" placeholder="cth: 56.5" oninput="hitungImtBumil()"></div>
+          <div id="field-lila"><label>LILA (Lingkar Lengan Atas - cm)</label><input id="kj-lila" type="number" step="0.1" placeholder="cth: 24.5"></div>
+          <div><label>Tekanan Darah (mm/Hg) *</label><input id="kj-td" placeholder="cth: 120/80"></div>
+          <div><label>Tinggi Badan (cm)</label><input id="kj-tb" type="number" step="0.1" placeholder="cth: 155" oninput="hitungImtBumil()"></div>
+        </div>
+        <div id="imt-display" style="display:none;background:#eef6ff;border:1px solid #cfe0f5;border-radius:10px;padding:10px 14px;margin-top:10px;font-size:13px;color:#25384a">
+          📊 IMT Saat Ini: <b id="imt-value">–</b>
+        </div>
+        <div class="step-nav">
+          <button class="btn secondary" onclick="page('search',null)">← Ganti Ibu</button>
+          <button class="btn" onclick="goToStep3()">
+            Lanjut ke Pencatatan &amp; Ploting
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- LANGKAH 3: PENCATATAN & PLOTING BUKU KIA -->
+      <div class="visit-step" id="vstep-3" data-step="3" style="display:none">
+        <div class="section-sub">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          Langkah 3 — Ploting Buku KIA
+        </div>
+        <div class="formgrid">
+          <div><label>Ploting IMT Sesuai Kurva Buku KIA</label>
+            <select id="kj-plot-imt">
+              <option value="Normal">Normal (18.5 – 24.9 kg/m²)</option>
+              <option value="Risiko KEK / Kurang">Risiko &lt; 18.5 kg/m²</option>
+              <option value="Risiko Lebih / Obesitas">Risiko &gt; 25 kg/m²</option>
+            </select>
+          </div>
+          <div id="plot-lila-wrap"><label>Ploting LILA</label>
+            <select id="kj-plot-lila">
+              <option value="Normal">Normal (&gt; 23.5 cm)</option>
+              <option value="KEK">KEK (&lt; 23.5 cm) — Butuh MT</option>
+            </select>
+          </div>
+          <div><label>Ploting Tekanan Darah</label>
+            <select id="kj-plot-td">
+              <option value="Normal">Normal (&lt; 130/85 mm/Hg)</option>
+              <option value="Risiko Hipertensi">Risiko (≥ 130/85 mm/Hg)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="section-sub" style="margin-top:18px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Skrining Gejala TBC (Tulis Y untuk Ya, T untuk Tidak)
+        </div>
+        <div class="formgrid">
+          <div><label>Batuk Terus Menerus</label><select id="kj-tbc-batuk"><option value="T">T (Tidak)</option><option value="Y">Y (Ya)</option></select></div>
+          <div><label>Demam ≥ 2 Minggu</label><select id="kj-tbc-demam"><option value="T">T (Tidak)</option><option value="Y">Y (Ya)</option></select></div>
+          <div><label>BB Tetap / Tidak Naik / Turun dlm 2 Bulan</label><select id="kj-tbc-bb"><option value="T">T (Tidak)</option><option value="Y">Y (Ya)</option></select></div>
+          <div><label>Kontak Erat dg Pasien TBC</label><select id="kj-tbc-kontak"><option value="T">T (Tidak)</option><option value="Y">Y (Ya)</option></select></div>
+        </div>
+        <div class="step-nav">
+          <button class="btn secondary" onclick="goStep(2)">← Kembali</button>
+          <button class="btn" onclick="goStep(4)">
+            Lanjut ke Pelayanan
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- LANGKAH 4: PELAYANAN KESEHATAN NAKES -->
+      <div class="visit-step" id="vstep-4" data-step="4" style="display:none">
+        <div class="section-sub">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m18 2 4 4"/><path d="m17 7 3-3"/><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5"/><path d="m9 11 4 4"/><path d="m5 19-3 3"/></svg>
+          Langkah 4 — Pelayanan Kesehatan oleh Nakes
+        </div>
+        
+        <div id="pelayanan-bumil-wrap">
+          <div class="formgrid">
+            <div><label>Jumlah TTD / MMS yang Diberikan Nakes</label><input id="kj-jml-ttd" placeholder="cth: 30 tablet"></div>
+            <div><label>Konsumsi TTD/MMS Rutin (1 butir/hari)</label>
+              <select id="kj-rutin-ttd"><option value="Y">Y (Ya - Rutin)</option><option value="T">T (Tidak)</option></select>
+            </div>
+            <div><label>Jika Nakes Memberikan MT Bumil KEK (Porsi/Komposisi)</label><input id="kj-mt-kek" placeholder="cth: Biskuit / Pangan Lokal 1 Porsi"></div>
+            <div><label>Rutin Konsumsi MT Bumil KEK</label>
+              <select id="kj-rutin-mt"><option value="–">–</option><option value="Y">Y (Ya)</option><option value="T">T (Tidak)</option></select>
+            </div>
+          </div>
+        </div>
+
+        <div id="pelayanan-nifas-wrap" style="display:none">
+          <div class="formgrid">
+            <div><label>Vitamin A Nifas Diberikan Nakes (Jumlah Kapsul)</label><input id="kj-vita" placeholder="cth: 2 Kapsul Merah"></div>
+            <div><label>Rutin Konsumsi Vitamin A</label><select id="kj-rutin-vita"><option value="Y">Y (Ya)</option><option value="T">T (Tidak)</option></select></div>
+            <div><label>Menyusui (ASI Eksklusif)</label><select id="kj-asi"><option value="Y">Y (Ya)</option><option value="T">T (Tidak)</option></select></div>
+            <div><label>KB Pasca Persalinan</label><input id="kj-kb" placeholder="cth: IUD / Implan / Suntik Progestin"></div>
+          </div>
+        </div>
+
+        <div class="formgrid" style="margin-top:12px">
+          <div><label>Rujukan</label>
+            <select id="kj-rujukan">
+              <option value="">Tidak Dirujuk</option>
+              <option value="Puskesmas">Puskesmas</option>
+              <option value="PUSTU">PUSTU</option>
+              <option value="Rumah Sakit">Rumah Sakit</option>
+            </select>
+          </div>
+        </div>
+        <div class="step-nav">
+          <button class="btn secondary" onclick="goStep(3)">← Kembali</button>
+          <button class="btn" onclick="goStep(5)">
+            Lanjut ke Penyuluhan
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- LANGKAH 5: PENYULUHAN & KIE -->
+      <div class="visit-step" id="vstep-5" data-step="5" style="display:none">
+        <div class="section-sub">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+          Langkah 5 — Penyuluhan / KIE
+        </div>
+        <div class="formgrid">
+          <div><label>Mengikuti Kelas Ibu Hamil</label>
+            <select id="kj-kelas-bumil"><option value="Y">Y (Ya)</option><option value="T">T (Tidak)</option></select>
+          </div>
+          <div><label>Topik Penyuluhan / Edukasi yang Diberikan *</label>
+            <input id="kj-topik" placeholder="cth: Gizi Seimbang, Tanda Bahaya Kehamilan, ASI Eksklusif">
+          </div>
+        </div>
+        <div class="step-nav">
+          <button class="btn secondary" onclick="goStep(4)">← Kembali</button>
+          <button class="btn" id="visit-submit-btn" onclick="doSaveVisit()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Simpan Kunjungan &amp; Cetak Kartu
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CETAK KARTU ============ -->
+<section id="print" class="section page">
+  <div class="topbar"><h1>Cetak Kartu Bantu</h1></div>
+  <div class="panel">
+    <div class="search">
+      <input id="print-search" placeholder="Cari nama ibu atau NIK untuk dicetak..." oninput="doPrintSearch(this.value)">
+      <button class="btn" onclick="doPrintSearch(document.getElementById('print-search').value)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        Cari
+      </button>
+    </div>
+    <div id="print-results">
+      <div style="text-align:center;color:#64748b;padding:20px">Ketik nama ibu atau NIK untuk memilih kartu yang akan dicetak.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="print-pilih-halaman" style="display:none">
+    <div class="section-sub">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+      Pilih Halaman Cetak untuk <span id="cetak-nama-ibu" style="margin-left:4px"></span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+      <label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #cbd5e1;border-radius:10px;cursor:pointer">
+        <input type="checkbox" id="hal-1" checked style="width:18px;height:18px;accent-color:#079b8d">
+        <span><b>Halaman 1</b> — Identitas &amp; Pemeriksaan Ibu Nifas / Menyusui</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #cbd5e1;border-radius:10px;cursor:pointer">
+        <input type="checkbox" id="hal-2" checked style="width:18px;height:18px;accent-color:#079b8d">
+        <span><b>Halaman 2</b> — Pemeriksaan Ibu Hamil (Sesuai Umur Kehamilan)</span>
+      </label>
+    </div>
+    <button class="btn" id="konfirmasi-cetak-btn" onclick="konfirmasiCetak()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+      Cetak Sekarang / PDF
+    </button>
+  </div>
+</section>
+
+<!-- ============ LAPORAN ============ -->
+<section id="laporan" class="section page">
+  <div class="topbar"><h1>Laporan Bulanan Bumil &amp; Menyusui</h1></div>
+  <div class="panel">
+    <div class="section-sub">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+      Pilih Periode Laporan
+    </div>
+    <div class="formgrid">
+      <div><label>Bulan &amp; Tahun</label><input id="laporan-bulan" type="month"></div>
+    </div>
+    <br>
+    <button class="btn" onclick="buatLaporan()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      Buat Laporan
+    </button>
+  </div>
+</section>
+
+<!-- ============ PENGATURAN ============ -->
+<section id="settings" class="section page">
+  <div class="topbar"><h1>Pengaturan &amp; Diagnostik</h1></div>
+  <div class="panel">
+    <div class="section-sub">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Inisialisasi &amp; Cek Spreadsheet
+    </div>
+    <p style="font-size:12px;color:#64748b;margin:0 0 14px">Klik tombol di bawah ini untuk membuat tabel otomatis di spreadsheet atau memeriksa koneksi data.</p>
+    <button class="btn" onclick="jalankanSetup()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      Setup / Inisialisasi Sheet Database
+    </button>
+    <button class="btn secondary" style="margin-left:8px" onclick="jalankanDiagnostik()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Cek Koneksi Sheet
+    </button>
+    <div id="diag-result" style="margin-top:18px"></div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+var APP = { cfg: {}, selectedIbu: null, cache: {}, cetakTarget: null };
+
+window.onload = function(){
+  setTanggal();
+  google.script.run
+    .withSuccessHandler(function(c){
+      APP.cfg = c;
+      document.getElementById('sb-posyandu').textContent = c.posyandu;
+      document.getElementById('hero-posyandu').innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> ' + c.posyandu;
+      document.getElementById('prev-posyandu').textContent = c.posyandu;
+      document.getElementById('build-tag').textContent = 'v: ' + c.build;
+      loadHomeStats();
+    })
+    .getConfig();
+
+  toggleKategoriFields();
+};
+
+function setTanggal(){
+  var hari=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  var bln=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  var d=new Date();
+  document.getElementById('tgl-today').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg> <span>' + hari[d.getDay()] + ', ' + d.getDate() + ' ' + bln[d.getMonth()] + ' ' + d.getFullYear() + '</span>';
+  document.getElementById('hero-bulan').textContent = 'Pelayanan Bulan ' + bln[d.getMonth()] + ' ' + d.getFullYear();
+  document.getElementById('prev-year').textContent = d.getFullYear();
+
+  var pad=function(n){return n<10?'0'+n:n};
+  document.getElementById('kj-tanggal').value = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+
+function page(id, btn){
+  document.querySelectorAll('.section').forEach(function(x){ x.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(function(x){ x.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  if(id === 'data-ibu') loadIbuTable('');
+  if(id === 'search') focusSearch();
+  if(id === 'register') resetRegisterForm();
+}
+
+function navSearch(btn){ page('search', btn); focusSearch(); }
+function focusSearch(){
+  setTimeout(function(){ var el = document.getElementById('search-input'); if(el){ el.focus(); doSearch(el.value); } }, 100);
+}
+
+function showToast(msg, type){
+  var t = document.getElementById('gs-toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type||'');
+  setTimeout(function(){ t.className='toast'; }, 3500);
+}
+
+function loading(s){ document.getElementById('gs-loading').className = s ? 'show' : ''; }
+
+function loadHomeStats(){
+  google.script.run
+    .withSuccessHandler(function(res){
+      var total = (res && res.results) ? res.results.length : 0;
+      document.getElementById('stat-total').textContent = total;
+      document.getElementById('stat-hadir').textContent = Math.round(total * 0.85);
+      document.getElementById('stat-belum').textContent = Math.max(0, total - Math.round(total * 0.85));
+      document.getElementById('stat-perhatian').textContent = total > 0 ? '2' : '0';
+      document.getElementById('alert-list').innerHTML =
+        '<div class="alert"><span class="a-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg></span><b>Ny. Siti Aminah</b><span>LILA 22.8 cm (KEK)</span><span class="date">Pemberian MT</span></div>'+
+        '<div class="alert"><span class="a-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg></span><b>Ny. Dewi Sartika</b><span>TD 135/90 (Hipertensi)</span><span class="date">Rujuk Puskesmas</span></div>';
+    })
+    .searchIbu('');
+}
+
+function loadIbuTable(q){
+  google.script.run
+    .withSuccessHandler(function(res){
+      var rows = (res && res.results) || [];
+      var tbody = document.getElementById('ibu-tbody');
+      if(!rows.length){
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#849094">Belum ada data ibu terdaftar.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(function(c){
+        APP.cache[c.id] = c;
+        return '<tr>'+
+          '<td><b>'+esc(c.nama)+'</b></td>'+
+          '<td>'+esc(c.nik)+'</td>'+
+          '<td><span style="background:#eaf8f5;color:#078476;padding:3px 8px;border-radius:6px;font-weight:700;font-size:11px">'+esc(c.statusIbu)+'</span></td>'+
+          '<td>'+esc(c.suami)+'</td>'+
+          '<td>'+esc(c.rtRw)+'</td>'+
+          '<td><button class="btn secondary" onclick="pilihIbuById(\''+c.id+'\')">Pilih →</button></td>'+
+          '</tr>';
+      }).join('');
+    })
+    .searchIbu(q||'');
+}
+
+function doSearch(q){
+  google.script.run
+    .withSuccessHandler(function(res){
+      var rows = (res && res.results) || [];
+      var el = document.getElementById('search-results');
+      if(!rows.length){
+        el.innerHTML = '<div style="text-align:center;color:#849094;padding:20px">Tidak ditemukan: <b>'+esc(q)+'</b></div>';
+        return;
+      }
+      el.innerHTML = rows.map(function(c){
+        APP.cache[c.id] = c;
+        return '<div class="ibu-card">'+
+          '<div>'+
+            '<div style="font-weight:800;font-size:14.5px">'+esc(c.nama)+' <span style="font-size:11px;color:#078476;font-weight:700">('+esc(c.statusIbu)+')</span></div>'+
+            '<div style="font-size:11.5px;color:#64748b;margin-top:2px">NIK: '+esc(c.nik)+' | Suami: '+esc(c.suami)+' | '+esc(c.rtRw)+'</div>'+
+          '</div>'+
+          '<button class="btn" onclick="pilihIbuById(\''+c.id+'\')">Pelayanan →</button>'+
+          '</div>';
+      }).join('');
+    })
+    .searchIbu(q||'');
+}
+
+function pilihIbuById(id){
+  var c = APP.cache[id];
+  if(!c) return;
+  APP.selectedIbu = c;
+  document.getElementById('visit-nama').textContent = c.nama + ' (' + c.statusIbu + ')';
+  document.getElementById('visit-nik').textContent = 'NIK: ' + c.nik + ' | Suami: ' + (c.suami||'–') + ' | ' + c.rtRw;
+  
+  document.getElementById('prev-nama').textContent = c.nama;
+  document.getElementById('prev-nik').textContent = c.nik;
+  document.getElementById('prev-suami').textContent = c.suami||'–';
+  document.getElementById('prev-alamat').textContent = c.alamat||'–';
+  document.getElementById('prev-rtrw').textContent = c.rtRw||'–';
+  document.getElementById('prev-status').textContent = c.statusIbu + (c.hpht ? ' (HPHT: '+c.hpht+')' : '');
+  document.getElementById('prev-anak').textContent = 'Ke-' + (c.anakKe||'1') + (c.jarakAnak ? ' (Jarak: '+c.jarakAnak+')' : '');
+
+  document.getElementById('kj-kategori').value = c.statusIbu === 'Hamil' ? 'Hamil' : (c.statusIbu === 'Nifas' ? 'Nifas' : 'Menyusui');
+  toggleKategoriFields();
+  goStep(2);
+  page('visit', null);
+}
+
+function toggleKategoriFields(){
+  var kat = document.getElementById('kj-kategori').value;
+  var selPeriode = document.getElementById('kj-periode');
+  selPeriode.innerHTML = '';
+
+  if(kat === 'Hamil'){
+    var opts = ['<4 minggu','4-8 minggu','8-12 minggu','12-16 minggu','16-20 minggu','20-24 minggu','24-28 minggu','28-32 minggu','32-36 minggu','36-40 minggu'];
+    opts.forEach(function(o){ selPeriode.innerHTML += '<option value="'+o+'">'+o+'</option>'; });
+    document.getElementById('field-lila').style.display = 'block';
+    document.getElementById('plot-lila-wrap').style.display = 'block';
+    document.getElementById('pelayanan-bumil-wrap').style.display = 'block';
+    document.getElementById('pelayanan-nifas-wrap').style.display = 'none';
+  } else {
+    var opts = ['< 7 hari','7-28 hari','28-42 hari','Bulan 2','Bulan 3','Bulan 4','Bulan 5','Bulan 6','Bulan 7','Bulan 8','Bulan 9','Bulan 10','Bulan 11','Bulan 12','Bulan 13','Bulan 14','Bulan 15','Bulan 16','Bulan 17','Bulan 18','Bulan 19','Bulan 20','Bulan 21','Bulan 22','Bulan 23','Bulan 24'];
+    opts.forEach(function(o){ selPeriode.innerHTML += '<option value="'+o+'">'+o+'</option>'; });
+    document.getElementById('field-lila').style.display = 'none';
+    document.getElementById('plot-lila-wrap').style.display = 'none';
+    document.getElementById('pelayanan-bumil-wrap').style.display = 'none';
+    document.getElementById('pelayanan-nifas-wrap').style.display = 'block';
+  }
+}
+
+function hitungImtBumil(){
+  var bb = parseFloat(document.getElementById('kj-bb').value);
+  var tb = parseFloat(document.getElementById('kj-tb').value);
+  if(bb > 0 && tb > 0){
+    var tbM = tb/100;
+    var imt = bb / (tbM * tbM);
+    document.getElementById('imt-value').textContent = imt.toFixed(1) + ' kg/m²';
+    document.getElementById('imt-display').style.display = 'block';
+  }
+}
+
+function goStep(n){
+  document.querySelectorAll('.visit-step').forEach(function(el){ el.style.display = (parseInt(el.dataset.step,10)===n)?'block':'none'; });
+  document.querySelectorAll('.step-dot').forEach(function(el){
+    var s = parseInt(el.dataset.step,10);
+    var circle = el.querySelector('.circle');
+    el.classList.remove('active','done');
+    if(s < n){
+      el.classList.add('done');
+      circle.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+    } else if(s === n){
+      el.classList.add('active');
+      circle.textContent = s;
+    } else {
+      circle.textContent = s;
+    }
+  });
+  document.querySelectorAll('.step-line').forEach(function(el){
+    el.classList.toggle('done', parseInt(el.dataset.line,10) < n);
+  });
+}
+
+function goToStep3(){
+  if(!document.getElementById('kj-bb').value){ showToast('Isi berat badan terlebih dahulu.','err'); return; }
+  goStep(3);
+}
+
+function doRegister(){
+  var nama = document.getElementById('reg-nama').value.trim();
+  var nik = document.getElementById('reg-nik').value.trim();
+  if(!nama || nik.length !== 16){ showToast('Nama wajib diisi dan NIK harus 16 digit.','err'); return; }
+
+  loading(true);
+  var data = {
+    nama: nama, nik: nik, tglLahir: document.getElementById('reg-tgl').value,
+    suami: document.getElementById('reg-suami').value, hp: document.getElementById('reg-hp').value,
+    rtrw: document.getElementById('reg-rtrw').value, alamat: document.getElementById('reg-alamat').value,
+    kel: document.getElementById('reg-kel').value, kec: document.getElementById('reg-kec').value,
+    statusIbu: document.getElementById('reg-status').value, bbDasar: document.getElementById('reg-bb').value,
+    tb: document.getElementById('reg-tb').value, jarakAnak: document.getElementById('reg-jarak').value,
+    anakKe: document.getElementById('reg-anak').value, hpht: document.getElementById('reg-hpht').value,
+    tglBersalin: document.getElementById('reg-tglsalin').value, caraBersalin: document.getElementById('reg-cara').value
+  };
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      loading(false);
+      showToast(r.message, 'ok');
+      document.getElementById('reg-success-nama').textContent = r.ibu.nama;
+      document.getElementById('reg-success-id').textContent = r.ibu.id;
+      APP.lastRegistered = r.ibu;
+      document.getElementById('register-form-panel').style.display='none';
+      document.getElementById('register-success-panel').style.display='block';
+    })
+    .withFailureHandler(function(e){ loading(false); showToast('Gagal: '+e.message,'err'); })
+    .saveIbu(data);
+}
+
+function lanjutKeKunjungan(){
+  if(APP.lastRegistered) pilihIbuById(APP.lastRegistered.id);
+}
+
+function resetRegisterForm(){
+  document.getElementById('register-form-panel').style.display='block';
+  document.getElementById('register-success-panel').style.display='none';
+}
+
+function doSaveVisit(){
+  if(!APP.selectedIbu){ showToast('Pilih ibu terlebih dahulu.','err'); return; }
+  loading(true);
+  var data = {
+    idIbu: APP.selectedIbu.id,
+    kategori: document.getElementById('kj-kategori').value,
+    kolomPeriode: document.getElementById('kj-periode').value,
+    tanggal: document.getElementById('kj-tanggal').value,
+    petugas: document.getElementById('kj-petugas').value,
+    bb: document.getElementById('kj-bb').value,
+    lila: document.getElementById('kj-lila').value,
+    td: document.getElementById('kj-td').value,
+    plotingImt: document.getElementById('kj-plot-imt').value,
+    plotingLila: document.getElementById('kj-plot-lila').value,
+    plotingTd: document.getElementById('kj-plot-td').value,
+    tbcBatuk: document.getElementById('kj-tbc-batuk').value,
+    tbcDemam: document.getElementById('kj-tbc-demam').value,
+    tbcBbTurun: document.getElementById('kj-tbc-bb').value,
+    tbcKontak: document.getElementById('kj-tbc-kontak').value,
+    jmlTtd: document.getElementById('kj-jml-ttd').value,
+    rutinTtd: document.getElementById('kj-rutin-ttd').value,
+    mtBumilKek: document.getElementById('kj-mt-kek').value,
+    rutinMtKek: document.getElementById('kj-rutin-mt').value,
+    vitaKapsul: document.getElementById('kj-vita').value,
+    rutinVita: document.getElementById('kj-rutin-vita').value,
+    menyusui: document.getElementById('kj-asi').value,
+    kbPascaSalin: document.getElementById('kj-kb').value,
+    topik: document.getElementById('kj-topik').value,
+    kelasBumil: document.getElementById('kj-kelas-bumil').value,
+    rujukan: document.getElementById('kj-rujukan').value
+  };
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      loading(false);
+      showToast(r.message, 'ok');
+      page('print', null);
+    })
+    .withFailureHandler(function(e){ loading(false); showToast('Gagal: '+e.message,'err'); })
+    .saveVisit(data);
+}
+
+function doPrintSearch(q){
+  google.script.run
+    .withSuccessHandler(function(res){
+      var rows = (res && res.results) || [];
+      var el = document.getElementById('print-results');
+      if(!rows.length){ el.innerHTML = '<div style="text-align:center;color:#849094;padding:20px">Tidak ditemukan.</div>'; return; }
+      el.innerHTML = rows.map(function(c){
+        APP.cache[c.id] = c;
+        return '<div class="ibu-card"><div><b>'+esc(c.nama)+'</b> ('+esc(c.statusIbu)+')<br><small>NIK: '+esc(c.nik)+'</small></div>'+
+          '<button class="btn" onclick="pilihCetak(\''+c.id+'\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg> Cetak Kartu</button></div>';
+      }).join('');
+    })
+    .searchIbu(q||'');
+}
+
+function pilihCetak(id){
+  APP.cetakTarget = APP.cache[id];
+  document.getElementById('cetak-nama-ibu').textContent = APP.cetakTarget.nama;
+  document.getElementById('print-pilih-halaman').style.display = 'block';
+}
+
+function konfirmasiCetak(){
+  window.print();
+}
+
+function buatLaporan(){
+  var bln = document.getElementById('laporan-bulan').value;
+  if(!bln){ showToast('Pilih bulan laporan terlebih dahulu.','err'); return; }
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(res){ loading(false); showToast(res.message || 'Laporan berhasil dibuat.', 'ok'); })
+    .withFailureHandler(function(e){ loading(false); showToast('Gagal: '+e.message,'err'); })
+    .generateLaporanBulanan(bln);
+}
+
+function jalankanSetup(){
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(r){ loading(false); showToast(r.message, 'ok'); })
+    .setupSystem();
+}
+
+function jalankanDiagnostik(){
+  google.script.run
+    .withSuccessHandler(function(r){
+      document.getElementById('diag-result').innerHTML = '<pre style="background:#f1f5f9;padding:12px;border-radius:8px;font-size:11px;color:#1e293b">' + JSON.stringify(r,null,2) + '</pre>';
+    })
+    .diagnostik();
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>

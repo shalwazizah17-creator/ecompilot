@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Wallet, ArrowRight, CheckCircle, AlertTriangle, Lightbulb, Archive } from 'lucide-react'
+import { Wallet, CheckCircle, Info, Archive, Sparkles, ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { BudgetManager } from '@/components/BudgetManager'
 import { BudgetArchiveModal } from '@/components/BudgetArchiveModal'
 
@@ -11,7 +11,6 @@ export default function BudgetManagerPage() {
   const [showArchive, setShowArchive] = useState(false)
   const [archiveData, setArchiveData] = useState<any[]>([])
   const [loadingArchive, setLoadingArchive] = useState(false)
-
   const [errorStatus, setErrorStatus] = useState<number | null>(null)
 
   useEffect(() => {
@@ -24,27 +23,16 @@ export default function BudgetManagerPage() {
           setErrorStatus(res.status)
           return
         }
-        const data = await res.json()
+        const d = await res.json()
+        if (d.error) { setErrorStatus(403); return }
 
-        if (data.error) {
-          console.error(data.error)
-          setErrorStatus(403)
-          return
+        if (d.approvedAllocations?.length > 0) {
+          const approvedMap = new Map(d.approvedAllocations.map((a: any) => [a.channel, a.amount]))
+          d.current = d.current.map((c: any) => ({ ...c, spend: approvedMap.get(c.channel) || c.spend }))
+          d.isApproved = true
         }
-
-        // If there are approved allocations, override the current spend
-        if (data.approvedAllocations && data.approvedAllocations.length > 0) {
-          const approvedMap = new Map(data.approvedAllocations.map((a: any) => [a.channel, a.amount]))
-          data.current = data.current.map((c: any) => ({
-            ...c,
-            spend: approvedMap.get(c.channel) || c.spend
-          }))
-          data.isApproved = true
-        }
-
-        setData(data)
+        setData(d)
       } catch (err) {
-        console.error(err)
         setErrorStatus(500)
       } finally {
         setLoading(false)
@@ -53,69 +41,90 @@ export default function BudgetManagerPage() {
     load()
   }, [])
 
-  const formatCurrency = (val: number) => `Rp ${(val/1000000).toFixed(1)} Juta`
+  const fmt = (val: number) => `Rp ${(val / 1000000).toFixed(1)} Juta`
+  const fmtShort = (val: number) => `Rp ${(val / 1000000).toFixed(0)} Jt`
 
-  if (loading) return <div>Memuat...</div>
-  if (errorStatus === 403) return <div>Kesalahan izin: Anda tidak memiliki akses ke ruang kerja ini.</div>
-  if (errorStatus === 404) return (
-    <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
-      <h3>Data marketplace diperlukan</h3>
-      <p>Impor data marketplace Anda untuk menghitung anggaran.</p>
-      <a href="/data-sources" className="btn-primary" style={{ display: 'inline-block', marginTop: '16px' }}>Impor Data Marketplace Excel</a>
+  // Loading state
+  if (loading) return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '20px', borderBottom: '1px solid var(--surface-border)' }}>
+        <div>
+          <div className="skeleton" style={{ width: '180px', height: '22px', marginBottom: '8px' }} />
+          <div className="skeleton" style={{ width: '280px', height: '14px' }} />
+        </div>
+        <div className="skeleton" style={{ width: '140px', height: '36px', borderRadius: '8px' }} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+        {[1,2,3,4].map(i => (
+          <div key={i} className="skeleton" style={{ height: '100px', borderRadius: '12px' }} />
+        ))}
+      </div>
     </div>
   )
-  if (errorStatus) return <div>Gagal memuat analitik</div>
-  if (!data) return <div>Gagal memuat data anggaran.</div>
+
+  if (errorStatus === 403) return (
+    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+      Anda tidak memiliki akses ke workspace ini.
+    </div>
+  )
+  if (errorStatus === 404) return (
+    <div className="card" style={{ textAlign: 'center', padding: '48px', maxWidth: '500px', margin: '0 auto' }}>
+      <Wallet size={32} style={{ color: 'var(--text-muted)', marginBottom: '16px' }} />
+      <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px' }}>Data marketplace belum tersedia</h3>
+      <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '24px' }}>
+        Impor data marketplace Anda untuk mulai menganalisis anggaran.
+      </p>
+      <a href="/data-sources" className="btn-primary">Impor data marketplace</a>
+    </div>
+  )
+  if (errorStatus) return (
+    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+      Gagal memuat data. Silakan coba lagi.
+    </div>
+  )
+  if (!data) return null
 
   let currentData = data.current || []
   let recommendedData = data.recommended || []
   let insightsData = data.insights || []
 
-  // If no data exists, inject mock data so user can simulate the features
   if (currentData.length === 0) {
     currentData = [
       { channel: 'Shopee Ads', spend: 4500000, roas: 10 },
       { channel: 'TikTok Ads', spend: 3000000, roas: 17.3 },
       { channel: 'Tokopedia Ads', spend: 1800000, roas: 15.2 },
-      { channel: 'Meta Ads', spend: 2100000, roas: 4.4 }
+      { channel: 'Meta Ads', spend: 2100000, roas: 4.4 },
     ]
     recommendedData = [
       { channel: 'Shopee Ads', spend: 10000000 },
       { channel: 'TikTok Ads', spend: 8000000 },
       { channel: 'Tokopedia Ads', spend: 2000000 },
-      { channel: 'Meta Ads', spend: 5000000 }
+      { channel: 'Meta Ads', spend: 5000000 },
     ]
     insightsData = [
-      'Shopee Ads dan TikTok Ads menunjukkan performa ROAS luar biasa. Disarankan untuk menaikkan anggaran secara signifikan.',
-      'Tokopedia Ads stabil, pertahankan anggaran saat ini.',
-      'Meta Ads perlu pemantauan lebih lanjut sebelum alokasi ditingkatkan.'
+      'TikTok Ads menghasilkan ROAS tertinggi sebesar 17.3x — kanal paling efisien saat ini.',
+      'Shopee Ads juga performa tinggi dengan ROAS 10x. Pertimbangkan untuk menaikkan anggaran.',
+      'Meta Ads memberikan ROAS 4.4x — masih positif, pantau konversi sebelum menaikkan budget.',
     ]
   }
 
   const currentTotal = currentData.reduce((sum: number, c: any) => sum + c.spend, 0)
   const recTotal = recommendedData.reduce((sum: number, c: any) => sum + c.spend, 0)
-  const isIncrease = recTotal > currentTotal
+  const delta = recTotal - currentTotal
+  const isIncrease = delta > 0
+  const isOptimal = delta === 0
+  const bestChannel = [...currentData].sort((a: any, b: any) => b.roas - a.roas)[0]
 
   const mappedCurrent = currentData.map((c: any) => ({
-    channel: c.channel,
-    allocated: c.spend,
-    spent: c.spend * 0.45,
-    historicalRoas: c.roas
+    channel: c.channel, allocated: c.spend, spent: c.spend * 0.45, historicalRoas: c.roas,
   }))
-
   const mappedRecommended = recommendedData.map((r: any) => {
     const curr = currentData.find((c: any) => c.channel === r.channel)
-    return {
-      channel: r.channel,
-      allocated: r.spend,
-      spent: curr ? curr.spend * 0.45 : 0,
-      historicalRoas: curr ? curr.roas : 0
-    }
+    return { channel: r.channel, allocated: r.spend, spent: curr ? curr.spend * 0.45 : 0, historicalRoas: curr ? curr.roas : 0 }
   })
 
   const fetchArchive = async () => {
-    setLoadingArchive(true)
-    setShowArchive(true)
+    setLoadingArchive(true); setShowArchive(true)
     try {
       const res = await fetch('/api/budget/archive')
       const json = await res.json()
@@ -127,125 +136,205 @@ export default function BudgetManagerPage() {
     }
   }
 
+  const getChannelStatus = (roas: number) => {
+    if (roas >= 10) return { label: 'Top Performer', color: 'var(--success)', bg: 'var(--success-light)', border: 'var(--success-border)' }
+    if (roas >= 4)  return { label: 'Healthy', color: '#2563EB', bg: '#EFF6FF', border: '#DBEAFE' }
+    if (roas >= 2)  return { label: 'Perlu Monitor', color: 'var(--warning)', bg: 'var(--warning-light)', border: 'var(--warning-border)' }
+    return { label: 'Tidak ada spend', color: 'var(--text-muted)', bg: '#F8FAFC', border: '#E2E8F0' }
+  }
+
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '1000px' }}>
-      
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+
+      {/* PAGE HEADER */}
+      <div className="page-header">
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>Manajer Anggaran & Simulasi AI</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Rekomendasi anggaran otomatis berdasarkan performa ROAS 30 hari.</p>
+          <h1 className="page-title">Manajer Anggaran</h1>
+          <p className="page-subtitle">Optimalkan distribusi anggaran berdasarkan performa kanal dan rekomendasi AI.</p>
         </div>
-        <button 
-          className="btn-outline" 
-          onClick={fetchArchive}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-        >
-          <Archive size={16} /> {loadingArchive ? 'Memuat...' : 'Lihat Arsip Anggaran'}
+        <button className="btn-outline" onClick={fetchArchive} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <Archive size={15} />
+          {loadingArchive ? 'Memuat…' : 'Lihat arsip anggaran'}
         </button>
       </div>
 
+      {/* STATUS BANNER */}
       {data?.isApproved ? (
-        <div style={{ padding: '12px 16px', backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '8px', color: 'var(--success)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <CheckCircle size={18} />
-          Anggaran untuk bulan ini telah ditetapkan dan disimpan di sistem EcomPilot. Harap samakan angka ini di dashboard Meta/Shopee/TikTok asli.
+        <div className="info-banner" style={{ backgroundColor: 'var(--success-light)', border: '1px solid var(--success-border)' }}>
+          <CheckCircle size={16} className="info-banner-icon" style={{ color: 'var(--success)' }} />
+          <p className="info-banner-text">
+            Anggaran bulan ini sudah ditetapkan dan tersimpan di sistem. Pastikan angka ini sesuai dengan dashboard Meta/Shopee/TikTok Anda.
+          </p>
         </div>
       ) : (
-        <div style={{ padding: '12px 16px', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '8px', color: 'var(--primary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <AlertTriangle size={18} />
-          HANYA SIMULASI / REKOMENDASI. Anggaran platform periklanan sebenarnya tidak dimodifikasi hingga disetujui secara eksplisit.
+        <div className="info-banner">
+          <Info size={16} className="info-banner-icon" />
+          <p className="info-banner-text">
+            Mode simulasi — perubahan ini tidak akan diterapkan ke platform iklan hingga Anda menyetujuinya.
+          </p>
         </div>
       )}
 
-      {/* STEP 1 */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>1</div>
-          <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Tinjau Performa & Rekomendasi AI</h2>
+      {/* KPI CARDS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+        {/* Total Budget */}
+        <div className="stat-card">
+          <div className="stat-label" style={{ marginBottom: '10px' }}>Total anggaran</div>
+          <div className="stat-value">{fmt(currentTotal)}</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>30 hari terakhir</div>
         </div>
-        
-        <div className="responsive-grid-2">
-          {/* TOTAL SUMMARY */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Anggaran 30 Hari Saat Ini</div>
-              <div style={{ fontSize: '2rem', fontWeight: 700 }}>{formatCurrency(currentTotal)}</div>
-            </div>
-            
-            <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-secondary)' }}><ArrowRight /></div>
-            
-            <div style={{ padding: '16px', backgroundColor: isIncrease ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', borderRadius: '8px' }}>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Anggaran Rekomendasi AI</div>
-              <div style={{ fontSize: '2rem', fontWeight: 700, color: isIncrease ? 'var(--danger)' : 'var(--success)' }}>
-                {formatCurrency(recTotal)}
-              </div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
-                Selisih: {formatCurrency(Math.abs(recTotal - currentTotal))}
-              </div>
-            </div>
-          </div>
 
-          {/* CHANNEL BREAKDOWN */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Rincian Saluran (ROAS)</h3>
-            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--surface-border)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                  <th style={{ padding: '8px 0', fontWeight: 600 }}>Saluran</th>
-                  <th style={{ padding: '8px 0', fontWeight: 600 }}>ROAS</th>
-                  <th style={{ padding: '8px 0', fontWeight: 600 }}>Saat Ini</th>
-                  <th style={{ padding: '8px 0', fontWeight: 600 }}>Rekomendasi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentData.map((c: any, i: number) => {
-                  const rec = recommendedData.find((r: any) => r.channel === c.channel)
-                  return (
-                    <tr key={c.channel} style={{ borderBottom: '1px solid var(--surface-border)' }}>
-                      <td style={{ padding: '12px 0', fontWeight: 500 }}>{c.channel}</td>
-                      <td style={{ padding: '12px 0', fontWeight: 700, color: c.roas >= 4 ? 'var(--success)' : c.roas < 2.5 ? 'var(--danger)' : 'var(--text-primary)' }}>{c.roas.toFixed(2)}x</td>
-                      <td style={{ padding: '12px 0' }}>{formatCurrency(c.spend)}</td>
-                      <td style={{ padding: '12px 0', fontWeight: 600, color: rec.spend > c.spend ? 'var(--danger)' : rec.spend < c.spend ? 'var(--success)' : 'var(--text-primary)' }}>
-                        {formatCurrency(rec.spend)}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+        {/* AI Recommendation */}
+        <div className="stat-card">
+          <div className="stat-label" style={{ marginBottom: '10px' }}>Rekomendasi AI</div>
+          <div className="stat-value">{fmt(recTotal)}</div>
+          <div style={{ marginTop: '6px' }}>
+            {isOptimal ? (
+              <span className="badge badge-success">Budget sudah optimal</span>
+            ) : isIncrease ? (
+              <span className="badge badge-warning">
+                <TrendingUp size={11} /> Naik {Math.abs(delta / currentTotal * 100).toFixed(0)}%
+              </span>
+            ) : (
+              <span className="badge badge-success">
+                <TrendingDown size={11} /> Turun {Math.abs(delta / currentTotal * 100).toFixed(0)}%
+              </span>
+            )}
           </div>
+        </div>
+
+        {/* Budget Delta */}
+        <div className="stat-card">
+          <div className="stat-label" style={{ marginBottom: '10px' }}>Selisih anggaran</div>
+          <div className="stat-value" style={{ color: isOptimal ? 'var(--text-primary)' : isIncrease ? 'var(--warning)' : 'var(--success)' }}>
+            {isOptimal ? 'Rp 0' : `${isIncrease ? '+' : '-'}${fmt(Math.abs(delta))}`}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+            {isOptimal ? 'Tidak ada perubahan' : `${isIncrease ? '+' : '-'}${Math.abs(delta / currentTotal * 100).toFixed(1)}% dari saat ini`}
+          </div>
+        </div>
+
+        {/* Best Channel */}
+        {bestChannel && (
+          <div className="stat-card">
+            <div className="stat-label" style={{ marginBottom: '10px' }}>Kanal terbaik</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+              {bestChannel.channel}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--success)' }}>
+                {bestChannel.roas.toFixed(2)}x ROAS
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* AI INSIGHT CARD */}
+      <div className="ai-card">
+        <div className="ai-card-header">
+          <div className="ai-card-icon">
+            <Sparkles size={16} />
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>Wawasan strategis AI</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Berdasarkan performa 30 hari terakhir</div>
+          </div>
+        </div>
+        <ul style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingLeft: '0', margin: 0, listStyle: 'none' }}>
+          {insightsData.map((insight: string, idx: number) => (
+            <li key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'rgba(37, 99, 235, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.625rem', fontWeight: 700, flexShrink: 0, marginTop: '1px' }}>
+                {idx + 1}
+              </div>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{insight}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* CHANNEL PERFORMANCE TABLE */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <TrendingUp size={18} style={{ color: 'var(--primary)' }} />
+          <h2 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>Performa & rekomendasi per kanal</h2>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Kanal</th>
+                <th>ROAS</th>
+                <th>Anggaran saat ini</th>
+                <th>Rekomendasi AI</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentData.map((c: any) => {
+                const rec = recommendedData.find((r: any) => r.channel === c.channel)
+                const recSpend = rec?.spend ?? c.spend
+                const statusInfo = getChannelStatus(c.roas)
+                const budgetChange = recSpend - c.spend
+                return (
+                  <tr key={c.channel}>
+                    <td>
+                      <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{c.channel}</div>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            fontSize: '0.875rem',
+                            fontVariantNumeric: 'tabular-nums',
+                            color: c.roas >= 10 ? 'var(--success)' : c.roas >= 4 ? 'var(--primary)' : c.roas >= 2 ? 'var(--warning)' : 'var(--text-muted)',
+                          }}
+                        >
+                          {c.roas.toFixed(2)}x
+                        </span>
+                        {/* ROAS bar */}
+                        <div style={{ width: '48px', height: '4px', backgroundColor: '#E2E8F0', borderRadius: '2px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${Math.min(c.roas / 20 * 100, 100)}%`, backgroundColor: c.roas >= 10 ? 'var(--success)' : c.roas >= 4 ? 'var(--primary)' : 'var(--warning)', borderRadius: '2px' }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.875rem' }}>{fmtShort(c.spend)}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', fontSize: '0.875rem' }}>{fmtShort(recSpend)}</span>
+                        {budgetChange !== 0 && (
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: budgetChange > 0 ? 'var(--warning)' : 'var(--success)' }}>
+                            {budgetChange > 0 ? '+' : ''}{fmtShort(budgetChange)}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <span
+                        className="badge"
+                        style={{ backgroundColor: statusInfo.bg, color: statusInfo.color, borderColor: statusInfo.border }}
+                      >
+                        {statusInfo.label}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* STEP 2 */}
+      {/* SIMULATION SECTION */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>2</div>
-          <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Pahami Alasan (Insights)</h2>
+        <div style={{ marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Simulasi & keputusan anggaran final</h2>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+            Gunakan slider di bawah untuk mengatur dan melihat simulasi perubahan anggaran. Jika sudah yakin, klik <strong>Setujui anggaran</strong>.
+          </p>
         </div>
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', backgroundColor: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
-            <Lightbulb size={18} /> Wawasan Strategis AI
-          </h3>
-          <ul style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingLeft: '20px', margin: 0 }}>
-            {insightsData.map((insight: string, idx: number) => (
-              <li key={idx} style={{ fontSize: '0.95rem', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-                {insight}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {/* STEP 3 */}
-      <div id="budget-manager-section">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>3</div>
-          <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Simulasi & Putuskan Anggaran Final</h2>
-        </div>
-        <div style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Gunakan <em>slider</em> di bawah ini untuk mengatur dan melihat simulasi efek dari perubahan anggaran yang akan Anda ambil. Jika sudah yakin, klik <strong>Setujui Anggaran</strong>.
-        </div>
-        <BudgetManager 
+        <BudgetManager
           initialTotal={currentTotal}
           initialData={mappedCurrent}
           recommendedTotal={recTotal}
@@ -254,10 +343,7 @@ export default function BudgetManagerPage() {
       </div>
 
       {showArchive && (
-        <BudgetArchiveModal 
-          onClose={() => setShowArchive(false)} 
-          data={archiveData} 
-        />
+        <BudgetArchiveModal onClose={() => setShowArchive(false)} data={archiveData} />
       )}
     </div>
   )
