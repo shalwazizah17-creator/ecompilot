@@ -59,6 +59,7 @@ const navTree: NavItem[] = [
     name: 'Data & Setup',
     icon: Database,
     children: [
+      { name: 'Laporan Marketplace', href: '/marketplace-intelligence', icon: BarChart3 },
       { name: 'Sumber Data', href: '/data-sources', icon: HardDrive },
       { name: 'Target Bisnis', href: '/settings/targets', icon: Target },
     ],

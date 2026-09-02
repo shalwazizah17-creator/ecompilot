@@ -697,3 +697,14 @@ input, select, textarea {
     padding: 16px !important;
   }
 }
+
+@media print {
+  .no-print, .sidebar-container, header { display: none !important; }
+  .print-only { display: block !important; }
+  body { background-color: white !important; }
+  .app-container { display: block !important; }
+  .main-content { padding: 0 !important; }
+  .card, .ai-card, .stat-card { border: 1px solid #ccc !important; box-shadow: none !important; break-inside: avoid; }
+  .print-charts-grid { display: block !important; }
+  .print-charts-grid > div { margin-bottom: 20px; page-break-inside: avoid; }
+}
