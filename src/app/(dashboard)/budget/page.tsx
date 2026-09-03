@@ -90,21 +90,17 @@ export default function BudgetManagerPage() {
 
   if (currentData.length === 0) {
     currentData = [
-      { channel: 'Shopee Ads', spend: 4500000, roas: 10 },
-      { channel: 'TikTok Ads', spend: 3000000, roas: 17.3 },
-      { channel: 'Tokopedia Ads', spend: 1800000, roas: 15.2 },
-      { channel: 'Meta Ads', spend: 2100000, roas: 4.4 },
+      { channel: 'Shopee Ads - Produk Best Seller', spend: 1350000, roas: 8.5 },
+      { channel: 'Shopee Ads - Iklan Toko', spend: 150000, roas: 4.2 },
     ]
     recommendedData = [
-      { channel: 'Shopee Ads', spend: 10000000 },
-      { channel: 'TikTok Ads', spend: 8000000 },
-      { channel: 'Tokopedia Ads', spend: 2000000 },
-      { channel: 'Meta Ads', spend: 5000000 },
+      { channel: 'Shopee Ads - Produk Best Seller', spend: 1350000 },
+      { channel: 'Shopee Ads - Iklan Toko', spend: 150000 },
     ]
     insightsData = [
-      'TikTok Ads menghasilkan ROAS tertinggi sebesar 17.3x — kanal paling efisien saat ini.',
-      'Shopee Ads juga performa tinggi dengan ROAS 10x. Pertimbangkan untuk menaikkan anggaran.',
-      'Meta Ads memberikan ROAS 4.4x — masih positif, pantau konversi sebelum menaikkan budget.',
+      'Alokasi budget bulanan Rp 1.500.000 (~Rp 25.000/hari) sudah proporsional.',
+      'Iklan Produk Best Seller menyumbang efisiensi tertinggi (ROAS 8.5x). Pertahankan Rp 22.500/hari.',
+      'Iklan Toko menghabiskan Rp 150.000 (Rp 2.500/hari) menjaga visibilitas pencarian brand.',
     ]
   }
 

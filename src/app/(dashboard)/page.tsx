@@ -346,9 +346,10 @@ export default function DashboardPage() {
               <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '12px' }}>Aksi cepat</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {[
-                  { label: 'Kelola budget', href: '/budget' },
-                  { label: 'Cek analitik marketplace', href: '/marketplace-intelligence' },
-                  { label: 'Intip kompetitor', href: '/competitors' },
+                  { label: 'Rekap closing promo (Jalur Ninja)', href: '/closing' },
+                  { label: 'Atur budget iklan', href: '/budget' },
+                  { label: 'Laporan marketplace', href: '/marketplace-intelligence' },
+                  { label: 'Jaga margin promo', href: '/margin-protection' },
                   { label: 'Upload data baru', href: '/data-sources' },
                 ].map((action) => (
                   <Link

@@ -23,6 +23,7 @@ import {
   HardDrive,
   LogOut,
   Zap,
+  Calculator,
 } from 'lucide-react'
 
 type NavItem = {
@@ -59,6 +60,7 @@ const navTree: NavItem[] = [
     name: 'Data & Setup',
     icon: Database,
     children: [
+      { name: 'Rekap Closing Promo', href: '/closing', icon: Calculator },
       { name: 'Laporan Marketplace', href: '/marketplace-intelligence', icon: BarChart3 },
       { name: 'Sumber Data', href: '/data-sources', icon: HardDrive },
       { name: 'Target Bisnis', href: '/settings/targets', icon: Target },
