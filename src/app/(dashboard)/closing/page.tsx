@@ -37,149 +37,8 @@ interface ClosingRow {
   biaya: number
 }
 
-// Data riil Theraskin dari Master Excel Closing FA 2 (Bukan data dummy ngasal)
-const INITIAL_ROWS: ClosingRow[] = [
-  {
-    id: '1',
-    bulan: 'September',
-    platform: 'Shopee',
-    kodePromosi: 'Voucher Toko',
-    namaPromosi: 'Voucher max 10K min order 120K',
-    kodeSku: 'Vitamin C Booster',
-    harga: 0,
-    diskonPersen: 0,
-    totalDiskon: 10000,
-    hargaSetelahDiskon: 0,
-    quantity: 3,
-    biaya: 30000
-  },
-  {
-    id: '2',
-    bulan: 'September',
-    platform: 'Shopee',
-    kodePromosi: 'Voucher Toko',
-    namaPromosi: 'Voucher New Follower 50% up to 5K all product',
-    kodeSku: 'All SKU',
-    harga: 0,
-    diskonPersen: 0,
-    totalDiskon: 5000,
-    hargaSetelahDiskon: 0,
-    quantity: 1,
-    biaya: 5000
-  },
-  {
-    id: '3',
-    bulan: 'September',
-    platform: 'Shopee',
-    kodePromosi: 'Voucher Toko',
-    namaPromosi: 'Voc Video max 5k min order 85k',
-    kodeSku: 'New Reguler',
-    harga: 0,
-    diskonPersen: 0,
-    totalDiskon: 5000,
-    hargaSetelahDiskon: 0,
-    quantity: 25,
-    biaya: 125000
-  },
-  {
-    id: '4',
-    bulan: 'September',
-    platform: 'Shopee',
-    kodePromosi: 'Voucher Brand Membership',
-    namaPromosi: 'Voucher Member Baru all new product',
-    kodeSku: 'New Reguler',
-    harga: 50000,
-    diskonPersen: 10,
-    totalDiskon: 5000,
-    hargaSetelahDiskon: 45000,
-    quantity: 5,
-    biaya: 25000
-  },
-  {
-    id: '5',
-    bulan: 'September',
-    platform: 'Shopee',
-    kodePromosi: 'Voucher Digital Marketing',
-    namaPromosi: 'Voucher Khusus Karyawan Agustus',
-    kodeSku: 'All SKU',
-    harga: 200000,
-    diskonPersen: 30,
-    totalDiskon: 60000,
-    hargaSetelahDiskon: 140000,
-    quantity: 1,
-    biaya: 60000
-  },
-  {
-    id: '6',
-    bulan: 'September',
-    platform: 'Shopee',
-    kodePromosi: 'Paket Diskon',
-    namaPromosi: 'Setiap pembelian 3pcs disc 4%, 4pcs disc 5% 5 pcs disc 6%',
-    kodeSku: 'New Reguler',
-    harga: 0,
-    diskonPersen: 0,
-    totalDiskon: 4000,
-    hargaSetelahDiskon: 0,
-    quantity: 51,
-    biaya: 421801
-  },
-  {
-    id: '7',
-    bulan: 'September',
-    platform: 'Shopee',
-    kodePromosi: 'Promo Flash Sale',
-    namaPromosi: 'Paket Theraskin Age Revival Anti Aging Paket Lengkap',
-    kodeSku: 'FPK00000033',
-    harga: 215000,
-    diskonPersen: 5,
-    totalDiskon: 10750,
-    hargaSetelahDiskon: 204250,
-    quantity: 3,
-    biaya: 32250
-  },
-  {
-    id: '8',
-    bulan: 'September',
-    platform: 'Shopee',
-    kodePromosi: 'Promo Flash Sale',
-    namaPromosi: 'Paket Hemat Acne Glow White',
-    kodeSku: 'FPK00000025',
-    harga: 74800,
-    diskonPersen: 6,
-    totalDiskon: 4488,
-    hargaSetelahDiskon: 70312,
-    quantity: 10,
-    biaya: 44880
-  },
-  {
-    id: '9',
-    bulan: 'September',
-    platform: 'Shopee',
-    kodePromosi: 'Promo Flash Sale',
-    namaPromosi: 'Theraskin The Ultimate Glow',
-    kodeSku: 'BUNDLEULTIMATEGLOW',
-    harga: 58800,
-    diskonPersen: 8,
-    totalDiskon: 4704,
-    hargaSetelahDiskon: 54096,
-    quantity: 1,
-    biaya: 4704
-  },
-  {
-    id: '10',
-    bulan: 'September',
-    platform: 'Shopee',
-    kodePromosi: 'Promo Flash Sale',
-    namaPromosi: 'Paket Hemat Extra Glow White + Perfect Glow Facial Wash',
-    kodeSku: 'BundlingExtraGlowFW',
-    harga: 117200,
-    diskonPersen: 6,
-    totalDiskon: 7032,
-    hargaSetelahDiskon: 110168,
-    quantity: 11,
-    biaya: 77352
-  }
-]
+// Mulai dengan tabel kosong (tanpa data dummy)
+const INITIAL_ROWS: ClosingRow[] = []
 
 export default function ClosingPage() {
   const [rows, setRows] = useState<ClosingRow[]>(INITIAL_ROWS)
@@ -188,7 +47,7 @@ export default function ClosingPage() {
   const [selectedPeriode, setSelectedPeriode] = useState('16-30/31')
   const [copied, setCopied] = useState(false)
   const [skippedCancelled, setSkippedCancelled] = useState(0)
-  const [processedOrders, setProcessedOrders] = useState(rows.reduce((sum, r) => sum + r.quantity, 0))
+  const [processedOrders, setProcessedOrders] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -442,7 +301,22 @@ export default function ClosingPage() {
           </div>
         </div>
 
-        <div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {rows.length > 0 && (
+            <button 
+              onClick={() => {
+                if (confirm('Yakin mau kosongkan semua data closing?')) {
+                  setRows([])
+                  setProcessedOrders(0)
+                  setSkippedCancelled(0)
+                }
+              }}
+              className="btn-outline" 
+              style={{ fontSize: '0.8125rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--danger)', borderColor: 'var(--danger-border)' }}
+            >
+              <Trash2 size={14} /> Kosongkan Data
+            </button>
+          )}
           <button 
             onClick={handleAddRow}
             className="btn-outline" 
@@ -548,8 +422,34 @@ export default function ClosingPage() {
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={12} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
-                    Belum ada data closing untuk filter ini. Silakan upload file order atau klik "Tambah Baris Manual".
+                  <td colSpan={12} style={{ textAlign: 'center', padding: '56px 24px', backgroundColor: 'var(--surface)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', maxWidth: '420px', margin: '0 auto', gap: '10px' }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', marginBottom: '4px' }}>
+                        <FileSpreadsheet size={24} />
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
+                        Tabel Closing Masih Kosong
+                      </div>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                        Data dummy sudah dibersihkan. Silakan <strong>upload file pesanan (.xlsx / .csv)</strong> dari Shopee/TikTok untuk hitung otomatis, atau klik <strong>"Tambah Baris Manual"</strong>.
+                      </p>
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+                        <button 
+                          onClick={() => fileInputRef.current?.click()} 
+                          className="btn-primary" 
+                          style={{ fontSize: '0.8125rem', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <UploadCloud size={14} /> Upload Pesanan
+                        </button>
+                        <button 
+                          onClick={handleAddRow} 
+                          className="btn-outline" 
+                          style={{ fontSize: '0.8125rem', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <Plus size={14} /> Tambah Baris
+                        </button>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ) : (
