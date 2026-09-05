@@ -99,7 +99,7 @@ export default function ClosingPage() {
       g.month,
       g.marketplace,
       g.promotionCategory,
-      g.namaPromosi || g.promotionName,
+      g.promotionName,
       g.sku,
       g.price > 0 ? g.price : '',
       g.discountPercent > 0 ? `${g.discountPercent}%` : '',

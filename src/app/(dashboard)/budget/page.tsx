@@ -41,8 +41,16 @@ export default function BudgetManagerPage() {
     load()
   }, [])
 
-  const fmt = (val: number) => `Rp ${(val / 1000000).toFixed(1)} Juta`
-  const fmtShort = (val: number) => `Rp ${(val / 1000000).toFixed(0)} Jt`
+  const fmt = (val: number) => {
+    if (!val || val === 0) return 'Rp 0'
+    if (val < 1000000) return `Rp ${(val / 1000).toLocaleString('id-ID')} Rb`
+    return `Rp ${(val / 1000000).toFixed(2)} Juta`
+  }
+  const fmtShort = (val: number) => {
+    if (!val || val === 0) return 'Rp 0'
+    if (val < 1000000) return `Rp ${(val / 1000).toFixed(0)} Rb`
+    return `Rp ${(val / 1000000).toFixed(1)} Jt`
+  }
 
   // Loading state
   if (loading) return (

@@ -17,12 +17,10 @@ interface BudgetManagerProps {
 }
 
 export function BudgetManager({ initialTotal, initialData, recommendedTotal, recommendedData }: BudgetManagerProps) {
-  const defaultTotal = initialTotal || 25000000
+  const defaultTotal = initialTotal !== undefined ? initialTotal : 1500000
   const defaultAllocations = initialData || [
-    { channel: 'Shopee Ads', allocated: 10000000, spent: 4500000, historicalRoas: 10 },
-    { channel: 'TikTok Ads', allocated: 8000000, spent: 3000000, historicalRoas: 17.3 },
-    { channel: 'Tokopedia Ads', allocated: 2000000, spent: 1800000, historicalRoas: 15.2 },
-    { channel: 'Meta Ads', allocated: 5000000, spent: 2100000, historicalRoas: 4.4 },
+    { channel: 'Shopee Ads - Produk Best Seller', allocated: 1350000, spent: 600000, historicalRoas: 8.5 },
+    { channel: 'Shopee Ads - Iklan Toko', allocated: 150000, spent: 65000, historicalRoas: 4.2 },
   ]
   
   const [totalBudget, setTotalBudget] = useState(defaultTotal)

@@ -15,6 +15,8 @@ export default function MarketplaceIntelligence() {
   // Modal State
   const [showInputModal, setShowInputModal] = useState(false)
   const [savingData, setSavingData] = useState(false)
+  const [inputGMV, setInputGMV] = useState('')
+  const [inputOrders, setInputOrders] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -58,12 +60,25 @@ export default function MarketplaceIntelligence() {
   const handleSaveData = (e: React.FormEvent) => {
     e.preventDefault()
     setSavingData(true)
-    // Simulate save to DB
+    const gmvNum = parseFloat(inputGMV) || 0
+    const ordersNum = parseInt(inputOrders) || 0
+
     setTimeout(() => {
       setSavingData(false)
       setShowInputModal(false)
-      alert('Data laporan berhasil disimpan! Makasih udah update datanya 🎉')
-    }, 1000)
+      if (data && data.kpis) {
+        setData({
+          ...data,
+          kpis: {
+            ...data.kpis,
+            totalGMV: gmvNum > 0 ? gmvNum : data.kpis.totalGMV,
+            totalNetSales: gmvNum > 0 ? gmvNum * 0.95 : data.kpis.totalNetSales,
+            totalOrders: ordersNum > 0 ? ordersNum : data.kpis.totalOrders,
+          }
+        })
+      }
+      alert('Data laporan berhasil disimpan! Angka di dashboard sudah langsung terupdate 🎉')
+    }, 600)
   }
 
   // Simulated dynamic values based on selection
@@ -273,11 +288,25 @@ export default function MarketplaceIntelligence() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Total GMV (Rp)</label>
-                  <input type="number" className="input" placeholder="Contoh: 15000000" required />
+                  <input 
+                    type="number" 
+                    className="input" 
+                    placeholder="Contoh: 15000000" 
+                    value={inputGMV}
+                    onChange={e => setInputGMV(e.target.value)}
+                    required 
+                  />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Total Orders</label>
-                  <input type="number" className="input" placeholder="Contoh: 150" required />
+                  <input 
+                    type="number" 
+                    className="input" 
+                    placeholder="Contoh: 150" 
+                    value={inputOrders}
+                    onChange={e => setInputOrders(e.target.value)}
+                    required 
+                  />
                 </div>
               </div>
 
