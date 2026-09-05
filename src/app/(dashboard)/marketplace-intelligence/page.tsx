@@ -1,21 +1,121 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts'
-import { Filter, Printer, FileText, PieChart, Store, Calendar, TrendingUp, Plus, X, Trash2, RotateCcw, ShoppingBag } from 'lucide-react'
+import { 
+  Filter, 
+  Printer, 
+  FileText, 
+  PieChart, 
+  Store, 
+  Calendar, 
+  TrendingUp, 
+  Plus, 
+  X, 
+  Trash2, 
+  RotateCcw, 
+  ShoppingBag, 
+  UploadCloud, 
+  FileSpreadsheet, 
+  CheckCircle2, 
+  AlertCircle,
+  Sparkles,
+  ArrowRight,
+  Check
+} from 'lucide-react'
 import Link from 'next/link'
+import Papa from 'papaparse'
+import * as xlsx from 'xlsx'
+
+// Helper to normalize dates from Excel or text strings into YYYY-MM-DD
+function normalizeDateStr(val: any): string {
+  if (!val) return new Date().toISOString().split('T')[0]
+  if (typeof val === 'number') {
+    const excelEpoch = new Date(1899, 11, 30)
+    const dateObj = new Date(excelEpoch.getTime() + val * 86400000)
+    return dateObj.toISOString().split('T')[0]
+  }
+  const str = val.toString().trim()
+  const ddmmyyyy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/)
+  if (ddmmyyyy) {
+    const day = ddmmyyyy[1].padStart(2, '0')
+    const month = ddmmyyyy[2].padStart(2, '0')
+    const year = ddmmyyyy[3]
+    return `${year}-${month}-${day}`
+  }
+  const yyyymmdd = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/)
+  if (yyyymmdd) {
+    const year = yyyymmdd[1]
+    const month = yyyymmdd[2].padStart(2, '0')
+    const day = yyyymmdd[3].padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+  const parsed = new Date(str)
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().split('T')[0]
+  }
+  return new Date().toISOString().split('T')[0]
+}
+
+// Helper to parse currency / numbers from Indonesian or formatted strings
+function parseCurrency(val: any): number {
+  if (typeof val === 'number') return val
+  if (!val) return 0
+  const str = val.toString().trim()
+  const cleaned = str
+    .replace(/^Rp\s*/i, '')
+    .replace(/\s+/g, '')
+    .replace(/\.(?=\d{3})/g, '')
+    .replace(',', '.')
+  const num = parseFloat(cleaned)
+  return isNaN(num) ? 0 : num
+}
+
+// Detect cancelled/batal order status
+function isCancelledStatus(statusStr: any): boolean {
+  if (!statusStr) return false
+  const s = statusStr.toString().toLowerCase()
+  return (
+    s.includes('batal') ||
+    s.includes('cancel') ||
+    s.includes('retur') ||
+    s.includes('kembali') ||
+    s.includes('refund') ||
+    s.includes('gagal')
+  )
+}
+
+interface ParsedFileAnalysis {
+  fileName: string
+  fileSize: number
+  platform: string
+  totalRows: number
+  totalOrders: number
+  validOrders: number
+  cancelledOrders: number
+  totalGMV: number
+  startDate: string
+  endDate: string
+  dailyBreakdown: Array<{ date: string; gmv: number; orders: number }>
+}
 
 export default function MarketplaceIntelligence() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   
-  // Controls
+  // Filter Controls
   const [platform, setPlatform] = useState('ALL') // ALL, Shopee, TikTok Shop, Tokopedia
   const [period, setPeriod] = useState('MONTHLY') // WEEKLY, MONTHLY, YEARLY
 
-  // Modal State
-  const [showInputModal, setShowInputModal] = useState(false)
+  // Modal & Tab State
+  const [showModal, setShowModal] = useState(false)
+  const [modalTab, setModalTab] = useState<'upload' | 'manual'>('upload')
+  const [isDragging, setIsDragging] = useState(false)
+  const [processingFile, setProcessingFile] = useState(false)
+  const [parsedAnalysis, setParsedAnalysis] = useState<ParsedFileAnalysis | null>(null)
   const [savingData, setSavingData] = useState(false)
+
+  // Manual Form State
   const [inputPlatform, setInputPlatform] = useState('Shopee')
   const [inputReportType, setInputReportType] = useState('bulanan')
   const [inputDate, setInputDate] = useState(() => new Date().toISOString().split('T')[0])
@@ -23,6 +123,9 @@ export default function MarketplaceIntelligence() {
   const [inputOrders, setInputOrders] = useState('')
   const [inputSpend, setInputSpend] = useState('')
   const [inputRefunds, setInputRefunds] = useState('')
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const directFileInputRef = useRef<HTMLInputElement>(null)
 
   const load = async () => {
     setLoading(true)
@@ -53,7 +156,222 @@ export default function MarketplaceIntelligence() {
     window.print()
   }
 
-  const handleSaveData = async (e: React.FormEvent) => {
+  // Parse Excel or CSV order file
+  const processUploadedFile = async (file: File) => {
+    setProcessingFile(true)
+    try {
+      let rawRows: any[] = []
+
+      if (file.name.endsWith('.csv')) {
+        const text = await file.text()
+        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true })
+        rawRows = parsed.data
+      } else {
+        const buffer = await file.arrayBuffer()
+        const workbook = xlsx.read(buffer, { type: 'array' })
+        const sheetName = workbook.SheetNames[0]
+        const sheet = workbook.Sheets[sheetName]
+        rawRows = xlsx.utils.sheet_to_json(sheet)
+      }
+
+      if (!rawRows || rawRows.length === 0) {
+        alert('File kosong atau format tidak sesuai. Pastikan file berisi kolom pesanan dari Shopee / TikTok.')
+        setProcessingFile(false)
+        return
+      }
+
+      // Auto-detect platform
+      let detectedPlatform = 'Shopee'
+      const fn = file.name.toLowerCase()
+      const headerKeys = Object.keys(rawRows[0] || {}).join(' ').toLowerCase()
+      if (fn.includes('tiktok') || headerKeys.includes('order id') || headerKeys.includes('tiktok')) {
+        detectedPlatform = 'TikTok Shop'
+      } else if (fn.includes('tokopedia') || fn.includes('tokped') || headerKeys.includes('invoice')) {
+        detectedPlatform = 'Tokopedia'
+      } else if (fn.includes('shopee') || headerKeys.includes('no. pesanan')) {
+        detectedPlatform = 'Shopee'
+      }
+
+      // Group orders by unique ID to avoid multi-row duplicate counts
+      const orderMap = new Map<string, {
+        orderId: string
+        isCancelled: boolean
+        date: string
+        orderAmount: number
+      }>()
+
+      rawRows.forEach((row, idx) => {
+        const orderId = (
+          row['No. Pesanan'] || 
+          row['Nomor Pesanan'] || 
+          row['Order ID'] || 
+          row['Order SN'] || 
+          row['Nomor Invoice'] || 
+          `ROW-${idx + 1}`
+        ).toString().trim()
+
+        const rawStatus = (
+          row['Status Pesanan'] || 
+          row['Order Status'] || 
+          row['Status'] || 
+          row['Status Terakhir'] || 
+          'Selesai'
+        ).toString()
+        const isCancelled = isCancelledStatus(rawStatus)
+
+        const rawDate = (
+          row['Waktu Pembayaran Dilakukan'] || 
+          row['Waktu Pesanan Dibuat'] || 
+          row['Created Time'] || 
+          row['Paid Time'] || 
+          row['Tanggal Pembayaran'] || 
+          row['Tanggal']
+        )
+        const date = normalizeDateStr(rawDate)
+
+        const orderLevelAmount = parseCurrency(
+          row['Total Pembayaran'] || 
+          row['Total Pesanan'] || 
+          row['Total Nilai Pesanan'] || 
+          row['Order Amount'] || 
+          row['Total Penjualan (IDR)'] ||
+          row['Total Amount']
+        )
+
+        const itemLevelAmount = parseCurrency(
+          row['Subtotal Produk'] || 
+          row['SKU Subtotal After Discount'] || 
+          row['Harga Setelah Diskon'] || 
+          row['Harga Jual'] ||
+          row['Harga Awal']
+        ) * (parseInt(row['Jumlah'] || row['Quantity'] || '1') || 1)
+
+        if (!orderMap.has(orderId)) {
+          orderMap.set(orderId, {
+            orderId,
+            isCancelled,
+            date,
+            orderAmount: orderLevelAmount > 0 ? orderLevelAmount : itemLevelAmount
+          })
+        } else {
+          const existing = orderMap.get(orderId)!
+          if (orderLevelAmount === 0 && itemLevelAmount > 0) {
+            existing.orderAmount += itemLevelAmount
+          }
+        }
+      })
+
+      // Calculate totals
+      let validOrders = 0
+      let cancelledOrders = 0
+      let totalGMV = 0
+      const dailyMap = new Map<string, { gmv: number; orders: number }>()
+      const dateList: string[] = []
+
+      orderMap.forEach((order) => {
+        if (order.isCancelled) {
+          cancelledOrders++
+        } else {
+          validOrders++
+          totalGMV += order.orderAmount
+          dateList.push(order.date)
+
+          const cur = dailyMap.get(order.date) || { gmv: 0, orders: 0 }
+          cur.gmv += order.orderAmount
+          cur.orders += 1
+          dailyMap.set(order.date, cur)
+        }
+      })
+
+      dateList.sort()
+      const startDate = dateList[0] || new Date().toISOString().split('T')[0]
+      const endDate = dateList[dateList.length - 1] || new Date().toISOString().split('T')[0]
+
+      const dailyBreakdown = Array.from(dailyMap.entries())
+        .map(([date, val]) => ({ date, gmv: val.gmv, orders: val.orders }))
+        .sort((a, b) => a.date.localeCompare(b.date))
+
+      setParsedAnalysis({
+        fileName: file.name,
+        fileSize: file.size,
+        platform: detectedPlatform,
+        totalRows: rawRows.length,
+        totalOrders: orderMap.size,
+        validOrders,
+        cancelledOrders,
+        totalGMV,
+        startDate,
+        endDate,
+        dailyBreakdown
+      })
+
+      setShowModal(true)
+      setModalTab('upload')
+
+    } catch (err) {
+      console.error('Failed to parse order file:', err)
+      alert('Gagal membaca file. Pastikan file adalah format .xlsx atau .csv dari Shopee / TikTok Seller Centre.')
+    } finally {
+      setProcessingFile(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      if (directFileInputRef.current) directFileInputRef.current.value = ''
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      processUploadedFile(e.target.files[0])
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragging(false)
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processUploadedFile(e.dataTransfer.files[0])
+    }
+  }
+
+  // Save parsed file data into database
+  const handleApplyParsedData = async () => {
+    if (!parsedAnalysis) return
+    setSavingData(true)
+
+    try {
+      const res = await fetch(`/api/marketplace-intelligence`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platformName: parsedAnalysis.platform,
+          bulkMetrics: parsedAnalysis.dailyBreakdown.map(d => ({
+            date: d.date,
+            gmv: d.gmv,
+            orders: d.orders,
+            spend: 0,
+            refunds: 0,
+            cancellations: 0,
+          }))
+        })
+      })
+
+      if (res.ok) {
+        setShowModal(false)
+        setParsedAnalysis(null)
+        await load()
+        alert(`Berhasil! ${parsedAnalysis.validOrders} pesanan valid (${formatIDR(parsedAnalysis.totalGMV)}) berhasil diterapkan ke dashboard! 🚀`)
+      } else {
+        alert('Gagal menyimpan data laporan ke server.')
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Terjadi kesalahan koneksi saat menyimpan data.')
+    } finally {
+      setSavingData(false)
+    }
+  }
+
+  // Handle manual submission fallback
+  const handleSaveManualData = async (e: React.FormEvent) => {
     e.preventDefault()
     setSavingData(true)
 
@@ -78,7 +396,7 @@ export default function MarketplaceIntelligence() {
       })
 
       if (res.ok) {
-        setShowInputModal(false)
+        setShowModal(false)
         setInputGMV('')
         setInputOrders('')
         setInputSpend('')
@@ -189,6 +507,15 @@ export default function MarketplaceIntelligence() {
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
+      {/* HIDDEN FILE INPUT FOR DIRECT UPLOAD */}
+      <input 
+        ref={directFileInputRef}
+        type="file" 
+        accept=".xlsx,.xls,.csv" 
+        style={{ display: 'none' }} 
+        onChange={handleFileChange}
+      />
+
       {/* PAGE HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div>
@@ -200,7 +527,7 @@ export default function MarketplaceIntelligence() {
           </p>
         </div>
         
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }} className="no-print">
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }} className="no-print">
           {recentEntries.length > 0 && (
             <button 
               onClick={handleClearAll} 
@@ -211,13 +538,32 @@ export default function MarketplaceIntelligence() {
               <RotateCcw size={15} /> Kosongkan Data
             </button>
           )}
+
+          {/* PRIMARY: UPLOAD EXCEL ORDER */}
           <button 
-            onClick={() => setShowInputModal(true)} 
+            onClick={() => {
+              setModalTab('upload')
+              setShowModal(true)
+            }} 
             className="btn-primary" 
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)' }}
           >
-            <Plus size={16} /> Input Data Laporan
+            <UploadCloud size={17} /> Upload Excel Pesanan
           </button>
+
+          {/* SECONDARY: MANUAL INPUT */}
+          <button 
+            onClick={() => {
+              setModalTab('manual')
+              setShowModal(true)
+            }} 
+            className="btn-outline" 
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Plus size={15} /> Input Manual
+          </button>
+
+          {/* EXPORT PDF */}
           <button 
             onClick={handlePrint} 
             className="btn-outline" 
@@ -287,7 +633,7 @@ export default function MarketplaceIntelligence() {
           </p>
         ) : (
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-            Belum ada data laporan penjualan yang diinput untuk {displayPlatform} periode {displayPeriod}. Halaman ini siap digunakan tanpa data dummy. Silakan klik tombol <strong>+ Input Data Laporan</strong> di atas untuk memasukkan data penjualan tokomu, atau upload file pesanan di menu <Link href="/data-sources" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Sumber Data</Link>. ✨
+            Belum ada data laporan yang masuk untuk {displayPlatform} periode {displayPeriod}. Halaman ini siap digunakan tanpa data dummy. Silakan klik <strong>Upload Excel Pesanan</strong> di atas untuk membaca file ekspor Shopee/TikTok secara otomatis tanpa hitung manual! ✨
           </p>
         )}
       </div>
@@ -317,6 +663,39 @@ export default function MarketplaceIntelligence() {
           </h2>
         </div>
       </div>
+
+      {/* DIRECT DRAG-AND-DROP CARD IF NO DATA YET */}
+      {!hasData && (
+        <div 
+          className="card no-print"
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          style={{
+            padding: '36px 24px',
+            textAlign: 'center',
+            border: `2px dashed ${isDragging ? 'var(--primary)' : 'var(--surface-border)'}`,
+            borderRadius: '12px',
+            backgroundColor: isDragging ? 'rgba(37, 99, 235, 0.04)' : 'var(--surface)',
+            transition: 'all 0.2s ease',
+            cursor: 'pointer'
+          }}
+          onClick={() => directFileInputRef.current?.click()}
+        >
+          <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'rgba(37, 99, 235, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <UploadCloud size={28} />
+          </div>
+          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: '0 0 6px', color: 'var(--text-primary)' }}>
+            Tarik & Lepas File Excel Pesanan Shopee / TikTok di Sini
+          </h3>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', maxWidth: '540px', margin: '0 auto 18px', lineHeight: 1.5 }}>
+            Sistem otomatis membaca data pesanan, <strong>mengecualikan pesanan yang dibatalkan</strong>, menghitung total GMV, dan langsung mengisi grafik pertumbuhan secara otomatis.
+          </p>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '8px', backgroundColor: 'var(--primary)', color: 'white', fontWeight: 600, fontSize: '0.875rem' }}>
+            <FileSpreadsheet size={16} /> Pilih File Excel (.xlsx / .csv)
+          </div>
+        </div>
+      )}
 
       {/* CHARTS */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }} className="print-charts-grid">
@@ -355,7 +734,7 @@ export default function MarketplaceIntelligence() {
             <div style={{ height: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '10px', backgroundColor: 'var(--surface-subtle, rgba(0,0,0,0.02))', borderRadius: '8px', border: '1px dashed var(--surface-border)' }}>
               <TrendingUp size={36} style={{ opacity: 0.35 }} />
               <p style={{ fontSize: '0.875rem', fontWeight: 600, margin: 0, color: 'var(--text-secondary)' }}>Belum ada histori grafik penjualan</p>
-              <p style={{ fontSize: '0.8125rem', margin: 0, color: 'var(--text-muted)' }}>Input data laporan penjualan toko untuk melihat visualisasi tren pertumbuhan di sini.</p>
+              <p style={{ fontSize: '0.8125rem', margin: 0, color: 'var(--text-muted)' }}>Upload file Excel pesanan untuk melihat grafik tren harian toko kamu.</p>
             </div>
           )}
         </div>
@@ -384,7 +763,7 @@ export default function MarketplaceIntelligence() {
             <div style={{ height: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '10px', backgroundColor: 'var(--surface-subtle, rgba(0,0,0,0.02))', borderRadius: '8px', border: '1px dashed var(--surface-border)' }}>
               <PieChart size={36} style={{ opacity: 0.35 }} />
               <p style={{ fontSize: '0.875rem', fontWeight: 600, margin: 0, color: 'var(--text-secondary)' }}>Belum ada data share platform</p>
-              <p style={{ fontSize: '0.8125rem', margin: 0, color: 'var(--text-muted)', textAlign: 'center', padding: '0 16px' }}>Data Shopee, TikTok Shop, & Tokopedia akan muncul setelah ada laporan tersimpan.</p>
+              <p style={{ fontSize: '0.8125rem', margin: 0, color: 'var(--text-muted)', textAlign: 'center', padding: '0 16px' }}>Data Shopee, TikTok Shop, & Tokopedia akan muncul setelah laporan diupload.</p>
             </div>
           )}
         </div>
@@ -392,18 +771,18 @@ export default function MarketplaceIntelligence() {
 
       {/* RIWAYAT INPUT DATA LAPORAN TABLE */}
       <div className="card no-print" style={{ padding: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-              Riwayat Data Laporan Yang Diinput
+              Riwayat Data Laporan Yang Masuk
             </h3>
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-              Data penjualan manual toko kamu yang tercatat di sistem.
+              Rincian laporan penjualan yang tercatat di sistem.
             </p>
           </div>
           {recentEntries.length > 0 && (
-            <span style={{ fontSize: '0.8125rem', padding: '4px 10px', backgroundColor: 'var(--surface-border)', borderRadius: '20px', fontWeight: 600 }}>
-              {recentEntries.length} data tersimpan
+            <span style={{ fontSize: '0.8125rem', padding: '4px 12px', backgroundColor: 'var(--surface-border)', borderRadius: '20px', fontWeight: 600 }}>
+              {recentEntries.length} catatan tersimpan
             </span>
           )}
         </div>
@@ -415,10 +794,17 @@ export default function MarketplaceIntelligence() {
               Belum ada data laporan yang dimasukkan
             </p>
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 16px' }}>
-              Mulai input data penjualan atau omzet toko kamu agar metrik dashboard langsung aktif.
+              Upload file pesanan (.xlsx / .csv) dari Shopee atau TikTok untuk mengisi data penjualan secara otomatis.
             </p>
-            <button onClick={() => setShowInputModal(true)} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}>
-              <Plus size={15} /> + Input Data Sekarang
+            <button 
+              onClick={() => {
+                setModalTab('upload')
+                setShowModal(true)
+              }} 
+              className="btn-primary" 
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}
+            >
+              <UploadCloud size={15} /> Upload File Excel Sekarang
             </button>
           </div>
         ) : (
@@ -479,141 +865,323 @@ export default function MarketplaceIntelligence() {
         )}
       </div>
 
-      {/* INPUT MODAL */}
-      {showInputModal && (
+      {/* INPUT & UPLOAD MODAL */}
+      {showModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(3px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="card fade-in" style={{ width: '100%', maxWidth: '500px', padding: '24px', backgroundColor: 'var(--surface)', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
+          <div className="card fade-in" style={{ width: '100%', maxWidth: '540px', padding: '24px', backgroundColor: 'var(--surface)', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)', maxHeight: '90vh', overflowY: 'auto' }}>
+            
+            {/* MODAL HEADER */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>Input Data Laporan Penjualan</h3>
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-                  Masukkan data real penjualan marketplace tokomu.
+                  Pilih cara memasukkan data: upload otomatis dari file pesanan atau isi manual.
                 </p>
               </div>
               <button 
-                onClick={() => setShowInputModal(false)} 
+                onClick={() => {
+                  setShowModal(false)
+                  setParsedAnalysis(null)
+                }} 
                 style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
               >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveData} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Platform</label>
-                  <select 
-                    className="input" 
-                    value={inputPlatform}
-                    onChange={e => setInputPlatform(e.target.value)}
-                    required
-                  >
-                    <option value="Shopee">Shopee</option>
-                    <option value="TikTok Shop">TikTok Shop</option>
-                    <option value="Tokopedia">Tokopedia</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Tipe Laporan</label>
-                  <select 
-                    className="input"
-                    value={inputReportType}
-                    onChange={e => setInputReportType(e.target.value)}
-                    required
-                  >
-                    <option value="harian">Harian</option>
-                    <option value="mingguan">Mingguan</option>
-                    <option value="bulanan">Bulanan</option>
-                    <option value="tahunan">Tahunan</option>
-                  </select>
-                </div>
-              </div>
+            {/* TAB SELECTOR */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--surface-border)', paddingBottom: '12px' }}>
+              <button
+                type="button"
+                onClick={() => setModalTab('upload')}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer',
+                  backgroundColor: modalTab === 'upload' ? 'var(--primary)' : 'transparent',
+                  color: modalTab === 'upload' ? 'white' : 'var(--text-secondary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <UploadCloud size={16} /> Upload Excel (Otomatis)
+              </button>
 
+              <button
+                type="button"
+                onClick={() => setModalTab('manual')}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer',
+                  backgroundColor: modalTab === 'manual' ? 'var(--primary)' : 'transparent',
+                  color: modalTab === 'manual' ? 'white' : 'var(--text-secondary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Plus size={16} /> Input Manual
+              </button>
+            </div>
+
+            {/* TAB 1: UPLOAD FILE EXCEL */}
+            {modalTab === 'upload' && (
               <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Periode / Tanggal</label>
                 <input 
-                  type="date" 
-                  className="input" 
-                  value={inputDate}
-                  onChange={e => setInputDate(e.target.value)}
-                  required 
+                  ref={fileInputRef}
+                  type="file" 
+                  accept=".xlsx,.xls,.csv" 
+                  style={{ display: 'none' }} 
+                  onChange={handleFileChange}
                 />
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {!parsedAnalysis ? (
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      padding: '36px 20px',
+                      textAlign: 'center',
+                      border: `2px dashed ${isDragging ? 'var(--primary)' : 'var(--surface-border)'}`,
+                      borderRadius: '10px',
+                      backgroundColor: isDragging ? 'rgba(37, 99, 235, 0.05)' : 'var(--surface-subtle, rgba(0,0,0,0.01))',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(37, 99, 235, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                      <FileSpreadsheet size={24} />
+                    </div>
+                    <p style={{ fontSize: '0.9375rem', fontWeight: 600, margin: '0 0 4px', color: 'var(--text-primary)' }}>
+                      {processingFile ? 'Membaca data file...' : 'Klik atau seret file Excel/CSV di sini'}
+                    </p>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 14px' }}>
+                      File ekspor seluruh pesanan dari <strong>Shopee Seller Centre</strong> atau <strong>TikTok Shop</strong> (.xlsx, .xls, .csv).
+                    </p>
+                    <span style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: '4px', backgroundColor: 'var(--surface-border)', color: 'var(--text-secondary)' }}>
+                      Pesanan Batal otomatis dikeluarkan (Count = 0)
+                    </span>
+                  </div>
+                ) : (
+                  <div>
+                    {/* ANALYSIS RESULT PREVIEW */}
+                    <div style={{ padding: '16px', borderRadius: '10px', border: '1px solid var(--surface-border)', backgroundColor: 'var(--surface-subtle, rgba(0,0,0,0.02))', marginBottom: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <FileSpreadsheet size={20} color="var(--primary)" />
+                          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {parsedAnalysis.fileName}
+                          </span>
+                        </div>
+                        <span style={{ 
+                          padding: '3px 8px', 
+                          borderRadius: '4px', 
+                          fontSize: '0.75rem', 
+                          fontWeight: 700,
+                          backgroundColor: parsedAnalysis.platform === 'Shopee' ? '#fff1ee' : '#f1f5f9',
+                          color: parsedAnalysis.platform === 'Shopee' ? '#ee4d2d' : '#0f172a',
+                          border: `1px solid ${parsedAnalysis.platform === 'Shopee' ? '#fed7aa' : '#cbd5e1'}`
+                        }}>
+                          {parsedAnalysis.platform}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '12px' }}>
+                        <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: 'var(--surface)', border: '1px solid var(--surface-border)' }}>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 2px' }}>Total Pesanan di File</p>
+                          <p style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                            {parsedAnalysis.totalOrders.toLocaleString('id-ID')}
+                          </p>
+                        </div>
+
+                        <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--error, #ef4444)', margin: '0 0 2px' }}>Pesanan Batal (Dikeluarkan)</p>
+                          <p style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--error, #ef4444)' }}>
+                            {parsedAnalysis.cancelledOrders.toLocaleString('id-ID')}
+                          </p>
+                        </div>
+
+                        <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: 'var(--success-light)', border: '1px solid var(--success-border)' }}>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--success)', margin: '0 0 2px' }}>Pesanan Valid (Dihitung)</p>
+                          <p style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--success)' }}>
+                            {parsedAnalysis.validOrders.toLocaleString('id-ID')}
+                          </p>
+                        </div>
+
+                        <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: 'rgba(37, 99, 235, 0.06)', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--primary)', margin: '0 0 2px' }}>Total GMV Penjualan</p>
+                          <p style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--primary)' }}>
+                            {formatIDR(parsedAnalysis.totalGMV)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--surface-border)', paddingTop: '8px' }}>
+                        <span>Periode: <strong>{parsedAnalysis.startDate}</strong> s/d <strong>{parsedAnalysis.endDate}</strong></span>
+                        <span>{parsedAnalysis.dailyBreakdown.length} hari data grafik</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setParsedAnalysis(null)
+                          if (fileInputRef.current) fileInputRef.current.value = ''
+                        }} 
+                        className="btn-outline"
+                      >
+                        Ganti File
+                      </button>
+
+                      <button 
+                        type="button" 
+                        onClick={handleApplyParsedData} 
+                        className="btn-primary"
+                        disabled={savingData}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                      >
+                        {savingData ? 'Menerapkan...' : '🚀 Simpan & Terapkan ke Dashboard'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 2: MANUAL INPUT */}
+            {modalTab === 'manual' && (
+              <form onSubmit={handleSaveManualData} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Platform</label>
+                    <select 
+                      className="input" 
+                      value={inputPlatform}
+                      onChange={e => setInputPlatform(e.target.value)}
+                      required
+                    >
+                      <option value="Shopee">Shopee</option>
+                      <option value="TikTok Shop">TikTok Shop</option>
+                      <option value="Tokopedia">Tokopedia</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Tipe Laporan</label>
+                    <select 
+                      className="input"
+                      value={inputReportType}
+                      onChange={e => setInputReportType(e.target.value)}
+                      required
+                    >
+                      <option value="harian">Harian</option>
+                      <option value="mingguan">Mingguan</option>
+                      <option value="bulanan">Bulanan</option>
+                      <option value="tahunan">Tahunan</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Total GMV (Rp) *</label>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Periode / Tanggal</label>
                   <input 
-                    type="number" 
+                    type="date" 
                     className="input" 
-                    placeholder="Contoh: 15000000" 
-                    value={inputGMV}
-                    onChange={e => setInputGMV(e.target.value)}
+                    value={inputDate}
+                    onChange={e => setInputDate(e.target.value)}
                     required 
-                    min="0"
                   />
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Total Pesanan (Orders) *</label>
-                  <input 
-                    type="number" 
-                    className="input" 
-                    placeholder="Contoh: 150" 
-                    value={inputOrders}
-                    onChange={e => setInputOrders(e.target.value)}
-                    required 
-                    min="0"
-                  />
-                </div>
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Biaya Iklan (Rp) (Opsional)</label>
-                  <input 
-                    type="number" 
-                    className="input" 
-                    placeholder="Contoh: 2500000" 
-                    value={inputSpend}
-                    onChange={e => setInputSpend(e.target.value)}
-                    min="0"
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Total GMV (Rp) *</label>
+                    <input 
+                      type="number" 
+                      className="input" 
+                      placeholder="Contoh: 15000000" 
+                      value={inputGMV}
+                      onChange={e => setInputGMV(e.target.value)}
+                      required 
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Total Pesanan (Orders) *</label>
+                    <input 
+                      type="number" 
+                      className="input" 
+                      placeholder="Contoh: 150" 
+                      value={inputOrders}
+                      onChange={e => setInputOrders(e.target.value)}
+                      required 
+                      min="0"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Pesanan Batal / Retur (Rp)</label>
-                  <input 
-                    type="number" 
-                    className="input" 
-                    placeholder="Contoh: 500000" 
-                    value={inputRefunds}
-                    onChange={e => setInputRefunds(e.target.value)}
-                    min="0"
-                  />
-                </div>
-              </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
-                <button 
-                  type="button" 
-                  onClick={() => setShowInputModal(false)} 
-                  className="btn-outline"
-                >
-                  Batal
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn-primary" 
-                  disabled={savingData}
-                >
-                  {savingData ? 'Menyimpan...' : 'Simpan Laporan'}
-                </button>
-              </div>
-            </form>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Biaya Iklan (Rp) (Opsional)</label>
+                    <input 
+                      type="number" 
+                      className="input" 
+                      placeholder="Contoh: 2500000" 
+                      value={inputSpend}
+                      onChange={e => setInputSpend(e.target.value)}
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>Pesanan Batal / Retur (Rp)</label>
+                    <input 
+                      type="number" 
+                      className="input" 
+                      placeholder="Contoh: 500000" 
+                      value={inputRefunds}
+                      onChange={e => setInputRefunds(e.target.value)}
+                      min="0"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowModal(false)} 
+                    className="btn-outline"
+                  >
+                    Batal
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn-primary" 
+                    disabled={savingData}
+                  >
+                    {savingData ? 'Menyimpan...' : 'Simpan Laporan'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
     </div>
   )
 }
-

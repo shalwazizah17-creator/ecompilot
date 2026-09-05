@@ -137,7 +137,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    const { platformName, date, gmv, orders, spend, refunds, cancellations } = body
+    const { platformName, bulkMetrics, date, gmv, orders, spend, refunds, cancellations } = body
 
     const targetPlatformName = platformName || 'Shopee'
     let platform = await prisma.platform.findFirst({
@@ -149,6 +149,28 @@ export async function POST(request: Request) {
       })
     }
 
+    // Handle bulk metrics from parsed Excel/CSV file
+    if (Array.isArray(bulkMetrics) && bulkMetrics.length > 0) {
+      const recordsToCreate = bulkMetrics.map((item: any) => ({
+        brand_id: brand.id,
+        platform_id: platform.id,
+        source_type: 'MARKETPLACE_SALES',
+        date: item.date ? new Date(item.date) : new Date(),
+        sales: Number(item.gmv) || 0,
+        orders: Number(item.orders) || 0,
+        spend: Number(item.spend) || 0,
+        refunds: Number(item.refunds) || 0,
+        cancellations: Number(item.cancellations) || 0,
+      }))
+
+      await prisma.dailyMetric.createMany({
+        data: recordsToCreate
+      })
+
+      return NextResponse.json({ success: true, count: recordsToCreate.length })
+    }
+
+    // Handle single metric entry
     const metricDate = date ? new Date(date) : new Date()
 
     const created = await prisma.dailyMetric.create({
