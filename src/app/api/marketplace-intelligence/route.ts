@@ -90,7 +90,21 @@ export async function GET(request: Request) {
       })
     }
 
+    const recentEntries = salesMetrics.map(s => ({
+      id: s.id,
+      date: s.date.toISOString().split('T')[0],
+      platform: s.platform?.name || 'Shopee',
+      sales: s.sales,
+      orders: s.orders,
+      spend: s.spend,
+      refunds: s.refunds,
+      cancellations: s.cancellations,
+    }))
+
+    const hasData = totalGMV > 0 || totalOrders > 0 || recentEntries.length > 0
+
     return NextResponse.json({
+      hasData,
       kpis: {
         totalGMV,
         totalNetSales,
@@ -103,12 +117,89 @@ export async function GET(request: Request) {
         totalAffiliateCommission,
         profit
       },
-      chartData,
-      platformGrowth: Array.from(platformGrowth.entries()).map(([name, gmv]) => ({ name, gmv }))
+      chartData: hasData ? chartData : [],
+      platformGrowth: Array.from(platformGrowth.entries()).map(([name, gmv]) => ({ name, gmv })),
+      recentEntries
     })
 
   } catch (error) {
     console.error(error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
+}
+
+export async function POST(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const brandIdParam = searchParams.get('brandId')
+  
+  const brand = await assertBrandAccess(brandIdParam)
+  if (!brand) return NextResponse.json({ error: 'Forbidden. You do not have access to this workspace/brand.' }, { status: 403 })
+
+  try {
+    const body = await request.json()
+    const { platformName, date, gmv, orders, spend, refunds, cancellations } = body
+
+    const targetPlatformName = platformName || 'Shopee'
+    let platform = await prisma.platform.findFirst({
+      where: { name: { equals: targetPlatformName, mode: 'insensitive' } }
+    })
+    if (!platform) {
+      platform = await prisma.platform.create({
+        data: { name: targetPlatformName, is_marketplace: true }
+      })
+    }
+
+    const metricDate = date ? new Date(date) : new Date()
+
+    const created = await prisma.dailyMetric.create({
+      data: {
+        brand_id: brand.id,
+        platform_id: platform.id,
+        source_type: 'MARKETPLACE_SALES',
+        date: metricDate,
+        sales: Number(gmv) || 0,
+        orders: Number(orders) || 0,
+        spend: Number(spend) || 0,
+        refunds: Number(refunds) || 0,
+        cancellations: Number(cancellations) || 0,
+      }
+    })
+
+    return NextResponse.json({ success: true, metric: created })
+  } catch (error) {
+    console.error('Error saving marketplace intelligence metric:', error)
+    return NextResponse.json({ error: 'Gagal menyimpan data laporan' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const brandIdParam = searchParams.get('brandId')
+  
+  const brand = await assertBrandAccess(brandIdParam)
+  if (!brand) return NextResponse.json({ error: 'Forbidden. You do not have access to this workspace/brand.' }, { status: 403 })
+
+  try {
+    const id = searchParams.get('id')
+    const clearAll = searchParams.get('clearAll')
+
+    if (clearAll === 'true') {
+      await prisma.dailyMetric.deleteMany({
+        where: { brand_id: brand.id }
+      })
+      return NextResponse.json({ success: true, message: 'Semua data laporan berhasil dibersihkan' })
+    }
+
+    if (id) {
+      await prisma.dailyMetric.deleteMany({
+        where: { id, brand_id: brand.id }
+      })
+      return NextResponse.json({ success: true, message: 'Data laporan berhasil dihapus' })
+    }
+
+    return NextResponse.json({ error: 'ID atau clearAll diperlukan' }, { status: 400 })
+  } catch (error) {
+    console.error('Error deleting marketplace intelligence metric:', error)
+    return NextResponse.json({ error: 'Gagal menghapus data laporan' }, { status: 500 })
   }
 }
