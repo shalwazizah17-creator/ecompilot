@@ -51,6 +51,8 @@ const navTree: NavItem[] = [
     name: 'Growth',
     icon: TrendingUp,
     children: [
+      { name: 'Promo Planner', href: '/promo-planner', icon: Calendar },
+      { name: 'Campaign Opportunity', href: '/campaign-opportunity', icon: Sparkles },
       { name: 'Atur Budget', href: '/budget', icon: Wallet },
       { name: 'Intel Affiliate', href: '/affiliate', icon: Users },
       { name: 'Cari Affiliate', href: '/affiliate/discovery', icon: Search },
@@ -62,7 +64,6 @@ const navTree: NavItem[] = [
     icon: Database,
     children: [
       { name: 'Rekap Closing Promo', href: '/closing', icon: Calculator },
-      { name: 'Plan & Kalender Promo', href: '/promo-planner', icon: Calendar },
       { name: 'Laporan Marketplace', href: '/marketplace-intelligence', icon: BarChart3 },
       { name: 'Sumber Data', href: '/data-sources', icon: HardDrive },
       { name: 'Target Bisnis', href: '/settings/targets', icon: Target },

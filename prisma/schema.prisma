@@ -88,6 +88,7 @@ model Brand {
   customer_reviews   CustomerReview[]
   recommendations    Recommendation[]
   decisions          DecisionHistory[]
+  campaign_opportunities CampaignOpportunity[]
 
   workspace                Workspace            @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 
@@ -794,3 +795,48 @@ model DecisionOutcome {
   
   decision           DecisionHistory @relation(fields: [decision_history_id], references: [id], onDelete: Cascade)
 }
+
+// ==========================================
+// PHASE 17: CAMPAIGN OPPORTUNITY & RESEARCH
+// ==========================================
+
+model CampaignOpportunity {
+  id                    String    @id @default(cuid())
+  brand_id              String
+  marketplace           String    // Shopee, TikTok Shop, Lazada, Tokopedia
+  campaign_name         String
+  campaign_type         String    // Double Date, Payday, Flash Sale, Live Streaming, BAU, NPD, Brand Membership, Voucher, Bundle, Free Shipping, Other
+  status                String    @default("Opportunity") // Opportunity, Recommended, Applied, Joined, Skipped, Expired
+  start_date            DateTime
+  end_date              DateTime
+  registration_start    DateTime?
+  registration_end      DateTime?
+  product_type          String    @default("Existing") // Existing Product, NPD, Both
+  description           String?   @db.Text
+  source                String    @default("Manual") // Manual, Marketplace, Internal, Other
+  source_url            String?
+  last_checked_at       DateTime  @default(now())
+  data_status           String    @default("Verified Manually") // Verified Manually, Synced API, Stale Data
+  eligibility_status    String    @default("Manual Check Required") // Eligible, Partial Match, Not Eligible, Manual Check Required
+  eligible_sku_count    Int       @default(0)
+  matched_sku_count     Int       @default(0)
+  required_discount     Float?    // Percentage (e.g. 5 for 5%)
+  minimum_stock         Int?      // Minimum stock commitment
+  estimated_orders      Int?
+  estimated_gmv         Float?
+  estimated_margin      Float?
+  opportunity_score     Int       @default(0) // 0 - 100
+  opportunity_level     String    @default("Medium") // High, Medium, Low
+  recommendation        String    @default("Consider") // Recommended, Consider, Low Priority, Skip
+  recommendation_reason String?   @db.Text
+  notes                 String?   @db.Text
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  brand                 Brand     @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+
+  @@index([brand_id, status])
+  @@index([brand_id, marketplace])
+  @@index([brand_id, campaign_type])
+}
+
