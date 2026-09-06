@@ -39,7 +39,9 @@ import {
   LayoutGrid,
   MoreHorizontal,
   TrendingUp,
-  CheckCircle2
+  CheckCircle2,
+  Maximize2,
+  Minimize2
 } from 'lucide-react'
 import * as xlsx from 'xlsx'
 
@@ -621,11 +623,109 @@ function parseCampaignDays(tanggal: string): { startDay: number; endDay: number 
   return { startDay: 1, endDay: 30 }
 }
 
+// Dedicated Marketplace Badge Matching Official App Icons
+export function MarketplaceBadge({ platform }: { platform: string }) {
+  if (platform === 'TikTok Shop' || platform.toLowerCase().includes('tiktok')) {
+    return (
+      <span style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '5px',
+        padding: '3px 8px',
+        borderRadius: '5px',
+        fontSize: '0.72rem',
+        fontWeight: 700,
+        backgroundColor: '#010101',
+        color: '#ffffff',
+        border: '1px solid #27272a',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+        whiteSpace: 'nowrap',
+        lineHeight: 1.2
+      }}>
+        {/* Authentic TikTok Musical Note SVG with Cyan and Magenta Accents */}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+          <path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-2.891 2.891 2.896 2.896 0 0 1-2.891-2.891 2.896 2.896 0 0 1 2.891-2.891c.368 0 .717.072 1.037.2v-3.52a6.34 6.34 0 0 0-1.037-.085A6.335 6.335 0 0 0 3 15.672 6.335 6.335 0 0 0 9.344 22a6.335 6.335 0 0 0 6.336-6.328V9.124a8.17 8.17 0 0 0 4.909 1.63v-3.5a4.764 4.764 0 0 1-1-.568z" fill="#FE2C55" />
+          <path d="M18.589 5.686a4.793 4.793 0 0 1-3.77-4.245V1h-3.445v13.672a2.896 2.896 0 0 1-2.891 2.891 2.896 2.896 0 0 1-2.891-2.891 2.896 2.896 0 0 1 2.891-2.891c.368 0 .717.072 1.037.2v-3.52a6.34 6.34 0 0 0-1.037-.085A6.335 6.335 0 0 0 2 15.672 6.335 6.335 0 0 0 8.344 22a6.335 6.335 0 0 0 6.336-6.328V8.124a8.17 8.17 0 0 0 4.909 1.63v-3.5a4.764 4.764 0 0 1-1-.568z" fill="#25F4EE" />
+          <path d="M19.089 6.186a4.793 4.793 0 0 1-3.77-4.245V1.5h-3.445v13.672a2.896 2.896 0 0 1-2.891 2.891 2.896 2.896 0 0 1-2.891-2.891 2.896 2.896 0 0 1 2.891-2.891c.368 0 .717.072 1.037.2v-3.52a6.34 6.34 0 0 0-1.037-.085A6.335 6.335 0 0 0 2.5 15.672 6.335 6.335 0 0 0 8.844 22a6.335 6.335 0 0 0 6.336-6.328V8.624a8.17 8.17 0 0 0 4.909 1.63v-3.5a4.764 4.764 0 0 1-1-.568z" fill="#FFFFFF" />
+        </svg>
+        <span style={{ letterSpacing: '-0.01em' }}>TikTok Shop</span>
+      </span>
+    )
+  }
+
+  // Shopee
+  if (platform === 'Shopee') {
+    return (
+      <span style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '5px',
+        padding: '3px 8px',
+        borderRadius: '5px',
+        fontSize: '0.72rem',
+        fontWeight: 700,
+        backgroundColor: '#fff1ee',
+        color: '#ee4d2d',
+        border: '1px solid #fed7aa',
+        whiteSpace: 'nowrap',
+        lineHeight: 1.2
+      }}>
+        <ShoppingBag size={12} color="#ee4d2d" />
+        <span>Shopee</span>
+      </span>
+    )
+  }
+
+  // Tokopedia
+  if (platform === 'Tokopedia') {
+    return (
+      <span style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '5px',
+        padding: '3px 8px',
+        borderRadius: '5px',
+        fontSize: '0.72rem',
+        fontWeight: 700,
+        backgroundColor: '#f0fdf4',
+        color: '#15803d',
+        border: '1px solid #bbf7d0',
+        whiteSpace: 'nowrap',
+        lineHeight: 1.2
+      }}>
+        <span>Tokopedia</span>
+      </span>
+    )
+  }
+
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '5px',
+      padding: '3px 8px',
+      borderRadius: '5px',
+      fontSize: '0.72rem',
+      fontWeight: 700,
+      backgroundColor: '#eff6ff',
+      color: '#1d4ed8',
+      border: '1px solid #bfdbfe',
+      whiteSpace: 'nowrap',
+      lineHeight: 1.2
+    }}>
+      <span>{platform}</span>
+    </span>
+  )
+}
+
 export default function PromoPlannerPage() {
   const [promoList, setPromoList] = useState<PromoPlanItem[]>(INITIAL_PROMO_PLANS)
   
   // View mode switcher: 'list' | 'board' | 'calendar'
   const [activeView, setActiveView] = useState<'list' | 'board' | 'calendar'>('list')
+
+  // Table Density Mode: 'compact' (Fit Layar - No Scroll) | 'spread' (17 Kolom Sheet Melebar)
+  const [tableDensity, setTableDensity] = useState<'compact' | 'spread'>('compact')
 
   // Filter states
   const [filterBulan, setFilterBulan] = useState<string>('ALL') // ALL, Oktober, November, Desember
@@ -985,40 +1085,6 @@ export default function PromoPlannerPage() {
     }))
   }
 
-  // Marketplace Badge Styler
-  const getMarketplaceBadge = (mp: string) => {
-    switch (mp) {
-      case 'Shopee':
-        return {
-          bg: '#fff7ed',
-          color: '#c2410c',
-          border: '#fed7aa',
-          label: 'Shopee'
-        }
-      case 'TikTok Shop':
-        return {
-          bg: '#f8fafc',
-          color: '#0f172a',
-          border: '#cbd5e1',
-          label: 'TikTok Shop'
-        }
-      case 'Tokopedia':
-        return {
-          bg: '#f0fdf4',
-          color: '#15803d',
-          border: '#bbf7d0',
-          label: 'Tokopedia'
-        }
-      default:
-        return {
-          bg: '#eff6ff',
-          color: '#1d4ed8',
-          border: '#bfdbfe',
-          label: mp
-        }
-    }
-  }
-
   // Status Badge Styler
   const getStatusBadge = (status: CampaignStatus) => {
     switch (status) {
@@ -1058,7 +1124,7 @@ export default function PromoPlannerPage() {
   }
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
       
       {/* ========================================================================= */}
       {/* SECTION C: REDESIGNED HEADER */}
@@ -1069,7 +1135,7 @@ export default function PromoPlannerPage() {
         alignItems: 'center', 
         flexWrap: 'wrap', 
         gap: '16px',
-        paddingBottom: '8px'
+        paddingBottom: '4px'
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
@@ -1121,7 +1187,7 @@ export default function PromoPlannerPage() {
                 top: '100%',
                 right: 0,
                 marginTop: '6px',
-                width: '230px',
+                width: '240px',
                 backgroundColor: 'var(--surface)',
                 border: '1px solid var(--surface-border)',
                 borderRadius: '8px',
@@ -1235,73 +1301,73 @@ export default function PromoPlannerPage() {
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', 
-        gap: '14px' 
+        gap: '12px' 
       }}>
         {/* Card 1: Campaign Aktif */}
-        <div className="stat-card" style={{ padding: '16px 18px', borderRadius: '10px' }}>
+        <div className="stat-card" style={{ padding: '14px 16px', borderRadius: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Campaign Aktif
             </span>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '6px' }}>
-            <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '4px' }}>
+            <span style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
               {metrics.runningCount}
             </span>
-            <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>Sedang jalan</span>
+            <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>Sedang jalan</span>
           </div>
-          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>Oktober Twindate &amp; Membership</p>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '3px 0 0' }}>Oktober Twindate &amp; Membership</p>
         </div>
 
         {/* Card 2: Akan Dimulai */}
-        <div className="stat-card" style={{ padding: '16px 18px', borderRadius: '10px' }}>
+        <div className="stat-card" style={{ padding: '14px 16px', borderRadius: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Akan Dimulai
             </span>
             <Clock size={14} color="#3b82f6" />
           </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '6px' }}>
-            <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '4px' }}>
+            <span style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
               {metrics.scheduledCount}
             </span>
-            <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600 }}>Terjadwal</span>
+            <span style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 600 }}>Terjadwal</span>
           </div>
-          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>Payday Okt, 11.11 &amp; Harbolnas 12.12</p>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '3px 0 0' }}>Payday Okt, 11.11 &amp; Harbolnas 12.12</p>
         </div>
 
         {/* Card 3: SKU Dipromosikan */}
-        <div className="stat-card" style={{ padding: '16px 18px', borderRadius: '10px' }}>
+        <div className="stat-card" style={{ padding: '14px 16px', borderRadius: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               SKU Dipromosikan
             </span>
             <ShoppingBag size={14} color="#f97316" />
           </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '6px' }}>
-            <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '4px' }}>
+            <span style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
               {metrics.totalSKUs}
             </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Item Q4</span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Item Q4</span>
           </div>
-          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>Acne, Glow, Retinol &amp; Bundling</p>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '3px 0 0' }}>Acne, Glow, Retinol &amp; Bundling</p>
         </div>
 
         {/* Card 4: Estimasi GMV */}
-        <div className="stat-card" style={{ padding: '16px 18px', borderRadius: '10px' }}>
+        <div className="stat-card" style={{ padding: '14px 16px', borderRadius: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Estimasi GMV
             </span>
             <TrendingUp size={14} color="#8b5cf6" />
           </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '6px' }}>
-            <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '4px' }}>
+            <span style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
               Rp {(metrics.totalGMV / 1000000).toFixed(1).replace('.', ',')} jt
             </span>
           </div>
-          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>Rp {metrics.totalGMV.toLocaleString('id-ID')} target</p>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '3px 0 0' }}>Rp {metrics.totalGMV.toLocaleString('id-ID')} target</p>
         </div>
       </div>
 
@@ -1309,7 +1375,7 @@ export default function PromoPlannerPage() {
       {/* SECTION P: TODAY'S FOCUS BANNER */}
       {/* ========================================================================= */}
       <div style={{
-        padding: '12px 18px',
+        padding: '10px 16px',
         backgroundColor: 'var(--surface)',
         border: '1px solid var(--surface-border)',
         borderRadius: '10px',
@@ -1317,27 +1383,27 @@ export default function PromoPlannerPage() {
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '12px'
+        gap: '10px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
-            width: '28px',
-            height: '28px',
+            width: '26px',
+            height: '26px',
             borderRadius: '6px',
             backgroundColor: 'rgba(37, 99, 235, 0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            <Sparkles size={16} color="var(--primary)" />
+            <Sparkles size={15} color="var(--primary)" />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-primary)' }}>Today&apos;s Focus:</span>
               <span style={{ 
-                fontSize: '0.72rem', 
+                fontSize: '0.7rem', 
                 fontWeight: 600, 
-                padding: '1px 7px', 
+                padding: '1px 6px', 
                 borderRadius: '4px', 
                 backgroundColor: '#ecfdf5', 
                 color: '#047857' 
@@ -1348,7 +1414,7 @@ export default function PromoPlannerPage() {
                 Shopee TwinDate 10.10 Flash Sale (50 Pcs Twinpack Day Cream &amp; 120 Pcs Acne Wash)
               </span>
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
               Next Up: TikTok Payday Anti-Aging Prime &bull; Proteksi Bottom Price Finance <strong>100% AMAN</strong>
             </div>
           </div>
@@ -1361,8 +1427,8 @@ export default function PromoPlannerPage() {
           }}
           className="btn-outline"
           style={{ 
-            fontSize: '0.75rem', 
-            padding: '5px 12px', 
+            fontSize: '0.72rem', 
+            padding: '4px 10px', 
             display: 'flex', 
             alignItems: 'center', 
             gap: '5px',
@@ -1398,7 +1464,7 @@ export default function PromoPlannerPage() {
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '6px 16px',
+              padding: '6px 14px',
               borderRadius: '6px',
               fontSize: '0.8125rem',
               fontWeight: 600,
@@ -1419,7 +1485,7 @@ export default function PromoPlannerPage() {
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '6px 16px',
+              padding: '6px 14px',
               borderRadius: '6px',
               fontSize: '0.8125rem',
               fontWeight: 600,
@@ -1440,7 +1506,7 @@ export default function PromoPlannerPage() {
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '6px 16px',
+              padding: '6px 14px',
               borderRadius: '6px',
               fontSize: '0.8125rem',
               fontWeight: 600,
@@ -1456,18 +1522,64 @@ export default function PromoPlannerPage() {
           </button>
         </div>
 
-        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          Total <strong>{filteredList.length}</strong> campaign terfilter
-        </span>
+        {/* DENSITY TOGGLE (KOMPAK FIT LAYAR vs MASTER SHEET MELEBAR) */}
+        {activeView === 'list' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Format Tampilan:</span>
+            <div style={{ display: 'inline-flex', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: '6px' }}>
+              <button
+                onClick={() => setTableDensity('compact')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '5px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  border: 'none',
+                  backgroundColor: tableDensity === 'compact' ? 'var(--surface)' : 'transparent',
+                  color: tableDensity === 'compact' ? 'var(--primary)' : 'var(--text-secondary)',
+                  boxShadow: tableDensity === 'compact' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+                title="Tampilan pas layar tanpa perlu geser horizontal"
+              >
+                <Minimize2 size={12} /> Fit Layar (Tanpa Geser)
+              </button>
+
+              <button
+                onClick={() => setTableDensity('spread')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '5px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  border: 'none',
+                  backgroundColor: tableDensity === 'spread' ? 'var(--surface)' : 'transparent',
+                  color: tableDensity === 'spread' ? 'var(--primary)' : 'var(--text-secondary)',
+                  boxShadow: tableDensity === 'spread' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+                title="Tampilan lengkap 17 kolom melebar sesuai spreadsheet"
+              >
+                <Maximize2 size={12} /> Master Sheet (17 Kolom)
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
       {/* SECTION F: MODERN COMPACT FILTER BAR */}
       {/* ========================================================================= */}
       <div className="card-flat no-print" style={{ 
-        padding: '12px 16px', 
+        padding: '10px 14px', 
         display: 'flex', 
-        gap: '10px', 
+        gap: '8px', 
         alignItems: 'center', 
         backgroundColor: 'var(--surface)', 
         border: '1px solid var(--surface-border)', 
@@ -1475,15 +1587,15 @@ export default function PromoPlannerPage() {
         flexWrap: 'wrap' 
       }}>
         {/* Search Input */}
-        <div style={{ display: 'flex', alignItems: 'center', flex: '1', minWidth: '220px', position: 'relative' }}>
-          <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', flex: '1', minWidth: '200px', position: 'relative' }}>
+          <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: '10px' }} />
           <input
             type="text"
             placeholder="Cari campaign, SKU, atau produk..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="input-field"
-            style={{ paddingLeft: '32px', paddingRight: searchQuery ? '28px' : '10px', fontSize: '0.8125rem', width: '100%', height: '36px' }}
+            style={{ paddingLeft: '32px', paddingRight: searchQuery ? '28px' : '10px', fontSize: '0.8125rem', width: '100%', height: '34px' }}
           />
           {searchQuery && (
             <button
@@ -1513,7 +1625,7 @@ export default function PromoPlannerPage() {
           value={filterPlatform} 
           onChange={(e) => setFilterPlatform(e.target.value)}
           className="filter-select"
-          style={{ minWidth: '130px', fontSize: '0.8125rem', height: '36px' }}
+          style={{ minWidth: '130px', fontSize: '0.78rem', height: '34px' }}
         >
           <option value="ALL">Semua Marketplace</option>
           <option value="Shopee">Shopee</option>
@@ -1525,7 +1637,7 @@ export default function PromoPlannerPage() {
           value={filterKategori} 
           onChange={(e) => setFilterKategori(e.target.value)}
           className="filter-select"
-          style={{ minWidth: '135px', fontSize: '0.8125rem', height: '36px' }}
+          style={{ minWidth: '125px', fontSize: '0.78rem', height: '34px' }}
         >
           <option value="ALL">Semua Channel</option>
           <option value="Live Streaming">Live Streaming</option>
@@ -1539,7 +1651,7 @@ export default function PromoPlannerPage() {
           value={filterStatus} 
           onChange={(e) => setFilterStatus(e.target.value)}
           className="filter-select"
-          style={{ minWidth: '120px', fontSize: '0.8125rem', height: '36px' }}
+          style={{ minWidth: '115px', fontSize: '0.78rem', height: '34px' }}
         >
           <option value="ALL">Semua Status</option>
           <option value="Running">Running</option>
@@ -1553,7 +1665,7 @@ export default function PromoPlannerPage() {
           value={filterBulan} 
           onChange={(e) => setFilterBulan(e.target.value)}
           className="filter-select"
-          style={{ minWidth: '120px', fontSize: '0.8125rem', height: '36px' }}
+          style={{ minWidth: '115px', fontSize: '0.78rem', height: '34px' }}
         >
           <option value="ALL">Semua Bulan</option>
           <option value="Oktober">Oktober 2026</option>
@@ -1567,50 +1679,47 @@ export default function PromoPlannerPage() {
             onClick={handleResetFilters}
             className="btn-outline"
             style={{ 
-              fontSize: '0.75rem', 
-              padding: '5px 10px', 
+              fontSize: '0.72rem', 
+              padding: '4px 8px', 
               display: 'flex', 
               alignItems: 'center', 
               gap: '4px',
               color: 'var(--danger)',
               borderColor: 'var(--danger-border)',
               cursor: 'pointer',
-              height: '36px'
+              height: '34px'
             }}
             title="Reset semua filter"
           >
-            <RotateCcw size={13} /> Reset
+            <RotateCcw size={12} /> Reset
           </button>
         )}
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION G & H & I & J: LIST VIEW (REDESIGNED RESTRUCTURED TABLE) */}
+      {/* SECTION G & H & I & J: LIST VIEW (OPTIMIZED ZERO-HORIZONTAL-SCROLL TABLE) */}
       {/* ========================================================================= */}
       {activeView === 'list' && (
         <div>
-          {/* DESKTOP TABLE */}
-          <div className="card" style={{ padding: '0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ overflowX: 'auto' }}>
+          {tableDensity === 'compact' ? (
+            /* ================= COMPACT TABLE: 100% FIT LAYAR - TANPA GESER ================= */
+            <div className="card" style={{ padding: '0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f8fafc', color: '#475569', fontWeight: 600, borderBottom: '1px solid var(--surface-border)' }}>
-                    <th style={{ padding: '12px 16px', width: '110px' }}>Marketplace</th>
-                    <th style={{ padding: '12px 16px', minWidth: '200px' }}>Campaign</th>
-                    <th style={{ padding: '12px 16px', minWidth: '220px' }}>Product &amp; SKU</th>
-                    <th style={{ padding: '12px 14px', width: '110px', textAlign: 'center' }}>Status</th>
-                    <th style={{ padding: '12px 14px', textAlign: 'right' }}>Harga Normal</th>
-                    <th style={{ padding: '12px 14px', textAlign: 'center' }}>Diskon</th>
-                    <th style={{ padding: '12px 14px', textAlign: 'right' }}>Harga Promo</th>
-                    <th style={{ padding: '12px 14px', textAlign: 'center' }}>Target</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'right' }}>Estimasi GMV</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'center', width: '70px' }}>Detail</th>
+                    <th style={{ padding: '12px 14px', width: '14%' }}>Marketplace &amp; Channel</th>
+                    <th style={{ padding: '12px 14px', width: '20%' }}>Campaign &amp; Periode</th>
+                    <th style={{ padding: '12px 14px', width: '25%' }}>Produk &amp; SKU</th>
+                    <th style={{ padding: '12px 14px', width: '16%', textAlign: 'right' }}>Harga Promo &amp; Diskon</th>
+                    <th style={{ padding: '12px 14px', width: '13%', textAlign: 'right' }}>Target &amp; GMV</th>
+                    <th style={{ padding: '12px 14px', width: '8%', textAlign: 'center' }}>Proteksi Margin</th>
+                    <th style={{ padding: '12px 10px', width: '4%', textAlign: 'center' }}>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredList.length === 0 ? (
                     <tr>
-                      <td colSpan={10} style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <td colSpan={7} style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Tidak ada campaign yang cocok dengan filter Anda.</span>
                           <button
@@ -1625,9 +1734,10 @@ export default function PromoPlannerPage() {
                     </tr>
                   ) : (
                     filteredList.map((item) => {
-                      const mpBadge = getMarketplaceBadge(item.marketplace)
                       const stBadge = getStatusBadge(item.status)
                       const estGMV = item.hargaPromo * item.qty
+                      const marginSafety = item.hargaPromo - item.bottomPrice
+                      const isSafe = marginSafety >= 0
 
                       return (
                         <tr 
@@ -1641,102 +1751,121 @@ export default function PromoPlannerPage() {
                           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
                           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                         >
-                          {/* 1. Marketplace */}
-                          <td style={{ padding: '12px 16px' }}>
-                            <span style={{ 
-                              padding: '2px 8px', 
-                              borderRadius: '4px', 
-                              fontSize: '0.72rem', 
-                              fontWeight: 700,
-                              backgroundColor: mpBadge.bg,
-                              color: mpBadge.color,
-                              border: `1px solid ${mpBadge.border}`
-                            }}>
-                              {item.marketplace}
-                            </span>
+                          {/* 1. Marketplace & Channel */}
+                          <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
+                            <div style={{ marginBottom: '4px' }}>
+                              <MarketplaceBadge platform={item.marketplace} />
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                              {item.kategori}
+                            </div>
+                            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                              {item.subKategori}
+                            </div>
                           </td>
 
-                          {/* 2. Campaign (Focal Point Hierarchy) */}
-                          <td style={{ padding: '12px 16px' }}>
-                            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.875rem' }}>
+                          {/* 2. Campaign & Periode */}
+                          <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.84rem', lineHeight: 1.3 }}>
                               {item.campaignName}
                             </div>
-                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span>{item.kategori} &bull; {item.subKategori}</span>
-                            </div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                              {item.tanggal}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '1px 6px',
+                                borderRadius: '9999px',
+                                fontSize: '0.68rem',
+                                fontWeight: 600,
+                                backgroundColor: stBadge.bg,
+                                color: stBadge.color,
+                                border: `1px solid ${stBadge.border}`
+                              }}>
+                                <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: stBadge.dot }}></span>
+                                {stBadge.label}
+                              </span>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                {item.tanggal}
+                              </span>
                             </div>
                           </td>
 
-                          {/* 3. Product & SKU */}
-                          <td style={{ padding: '12px 16px' }}>
-                            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {/* 3. Produk & SKU */}
+                          <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.8125rem', lineHeight: 1.35 }}>
                               {item.productName}
                             </div>
-                            <span style={{ 
-                              display: 'inline-block', 
-                              marginTop: '3px',
-                              padding: '1px 5px', 
-                              borderRadius: '3px', 
-                              fontFamily: 'monospace', 
-                              fontSize: '0.68rem', 
-                              backgroundColor: '#f1f5f9', 
-                              color: '#334155' 
-                            }}>
-                              {item.sku}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                              <span style={{ 
+                                padding: '1px 5px', 
+                                borderRadius: '3px', 
+                                fontFamily: 'monospace', 
+                                fontSize: '0.68rem', 
+                                backgroundColor: '#f1f5f9', 
+                                color: '#334155',
+                                fontWeight: 600
+                              }}>
+                                {item.sku}
+                              </span>
+                              {item.notes && (
+                                <span style={{ fontSize: '0.68rem', color: 'var(--primary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '160px' }} title={item.notes}>
+                                  💡 {item.notes}
+                                </span>
+                              )}
+                            </div>
                           </td>
 
-                          {/* 4. Status */}
-                          <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                          {/* 4. Harga Promo & Diskon */}
+                          <td style={{ padding: '12px 14px', textAlign: 'right', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '0.875rem' }}>
+                              Rp {item.hargaPromo.toLocaleString('id-ID')}
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                              <del>Rp {item.hargaBulanan.toLocaleString('id-ID')}</del>{' '}
+                              <span style={{ color: '#f97316', fontWeight: 700 }}>(-{item.diskonPercent}%)</span>
+                            </div>
+                            <div style={{ fontSize: '0.68rem', color: '#f97316', marginTop: '1px' }}>
+                              Hemat Rp {item.totalDiskon.toLocaleString('id-ID')}
+                            </div>
+                          </td>
+
+                          {/* 5. Target & Est. GMV */}
+                          <td style={{ padding: '12px 14px', textAlign: 'right', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.84rem' }}>
+                              {item.qty} pcs
+                            </div>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
+                              Rp {estGMV.toLocaleString('id-ID')}
+                            </div>
+                            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '1px' }}>
+                              Biaya: Rp {item.totalPromosi.toLocaleString('id-ID')}
+                            </div>
+                          </td>
+
+                          {/* 6. Proteksi Margin Finance */}
+                          <td style={{ padding: '12px 14px', textAlign: 'center', verticalAlign: 'top' }}>
                             <span style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '5px',
-                              padding: '2px 8px',
-                              borderRadius: '9999px',
-                              fontSize: '0.72rem',
-                              fontWeight: 600,
-                              backgroundColor: stBadge.bg,
-                              color: stBadge.color,
-                              border: `1px solid ${stBadge.border}`
+                              gap: '4px',
+                              padding: '2px 7px',
+                              borderRadius: '4px',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              backgroundColor: isSafe ? 'var(--success-light)' : 'var(--danger-light)',
+                              color: isSafe ? 'var(--success)' : 'var(--danger)',
+                              border: `1px solid ${isSafe ? 'var(--success-border)' : 'var(--danger-border)'}`
                             }}>
-                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: stBadge.dot }}></span>
-                              {stBadge.label}
+                              <ShieldCheck size={11} /> {isSafe ? 'AMAN' : 'BAHAYA'}
                             </span>
+                            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '3px' }}>
+                              Buffer: +Rp {marginSafety.toLocaleString('id-ID')}
+                            </div>
                           </td>
 
-                          {/* 5. Normal Price */}
-                          <td style={{ padding: '12px 14px', textAlign: 'right', color: 'var(--text-secondary)' }}>
-                            Rp {item.hargaBulanan.toLocaleString('id-ID')}
-                          </td>
-
-                          {/* 6. Diskon */}
-                          <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                            <span style={{ fontWeight: 700, color: '#f97316' }}>{item.diskonPercent}%</span>
-                            <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                              -Rp {item.totalDiskon.toLocaleString('id-ID')}
-                            </span>
-                          </td>
-
-                          {/* 7. Harga Promo */}
-                          <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>
-                            Rp {item.hargaPromo.toLocaleString('id-ID')}
-                          </td>
-
-                          {/* 8. Target Qty */}
-                          <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 600 }}>
-                            {item.qty} pcs
-                          </td>
-
-                          {/* 9. Estimated GMV */}
-                          <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
-                            Rp {estGMV.toLocaleString('id-ID')}
-                          </td>
-
-                          {/* 10. Actions */}
-                          <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                          {/* 7. Actions */}
+                          <td style={{ padding: '12px 10px', textAlign: 'center', verticalAlign: 'top' }}>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -1761,7 +1890,76 @@ export default function PromoPlannerPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          ) : (
+            /* ================= SPREAD TABLE: 17 KOLOM MASTER SHEET MELEBAR ================= */
+            <div className="card" style={{ padding: '0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem', minWidth: '1350px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f8fafc', color: '#475569', fontWeight: 600, borderBottom: '1px solid var(--surface-border)' }}>
+                      <th style={{ padding: '10px 12px' }}>Marketplace</th>
+                      <th style={{ padding: '10px 12px' }}>Kategori</th>
+                      <th style={{ padding: '10px 12px' }}>Sub Kategori</th>
+                      <th style={{ padding: '10px 12px' }}>Periode</th>
+                      <th style={{ padding: '10px 12px' }}>Tanggal</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'center' }}>Closing</th>
+                      <th style={{ padding: '10px 12px' }}>SKU</th>
+                      <th style={{ padding: '10px 12px', minWidth: '200px' }}>Product Name</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right' }}>HARGA Bulanan</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'center' }}>Diskon</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right' }}>Total Diskon</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right' }}>Harga Promo</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'center' }}>Qty</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right' }}>Total Promosi</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right', backgroundColor: '#e2e8f0' }}>Bottom Price</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Status Margin</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'center', width: '50px' }}>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredList.map((item) => {
+                      const marginSafety = item.hargaPromo - item.bottomPrice
+                      const isSafe = marginSafety >= 0
+                      return (
+                        <tr key={item.id} onClick={() => setSelectedCampaign(item)} style={{ borderBottom: '1px solid var(--surface-border)', cursor: 'pointer' }}>
+                          <td style={{ padding: '10px 12px' }}>
+                            <MarketplaceBadge platform={item.marketplace} />
+                          </td>
+                          <td style={{ padding: '10px 12px', fontWeight: 600 }}>{item.kategori}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{item.subKategori}</td>
+                          <td style={{ padding: '10px 12px' }}>{item.periode}</td>
+                          <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{item.tanggal}</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>{item.closing}</td>
+                          <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontWeight: 600 }}>{item.sku}</td>
+                          <td style={{ padding: '10px 12px', fontWeight: 500 }}>{item.productName}</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right' }}>Rp {item.hargaBulanan.toLocaleString('id-ID')}</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#f97316' }}>{item.diskonPercent}%</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', color: '#f97316' }}>Rp {item.totalDiskon.toLocaleString('id-ID')}</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>Rp {item.hargaPromo.toLocaleString('id-ID')}</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600 }}>{item.qty}</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: '#8b5cf6' }}>Rp {item.totalPromosi.toLocaleString('id-ID')}</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', backgroundColor: '#f8fafc' }}>Rp {item.bottomPrice.toLocaleString('id-ID')}</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: isSafe ? 'var(--success)' : 'var(--danger)' }}>
+                              {isSafe ? 'AMAN' : 'BAHAYA'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setSelectedCampaign(item) }}
+                              style={{ background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer' }}
+                            >
+                              <Eye size={15} />
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1771,8 +1969,8 @@ export default function PromoPlannerPage() {
       {activeView === 'board' && (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '16px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))',
+          gap: '14px',
           alignItems: 'start'
         }}>
           {(['Draft', 'Scheduled', 'Running', 'Completed'] as CampaignStatus[]).map((statusCol) => {
@@ -1787,10 +1985,10 @@ export default function PromoPlannerPage() {
                   backgroundColor: '#f8fafc',
                   border: '1px solid var(--surface-border)',
                   borderRadius: '10px',
-                  padding: '14px',
+                  padding: '12px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '12px'
+                  gap: '10px'
                 }}
               >
                 {/* Column Header */}
@@ -1801,7 +1999,7 @@ export default function PromoPlannerPage() {
                       {statusCol}
                     </h3>
                     <span style={{ 
-                      fontSize: '0.72rem', 
+                      fontSize: '0.7rem', 
                       fontWeight: 700, 
                       padding: '1px 6px', 
                       borderRadius: '9999px', 
@@ -1819,7 +2017,7 @@ export default function PromoPlannerPage() {
                 </div>
 
                 {/* Cards Container */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minHeight: '120px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: '120px' }}>
                   {itemsInCol.length === 0 ? (
                     <div style={{
                       padding: '28px 14px',
@@ -1833,7 +2031,6 @@ export default function PromoPlannerPage() {
                     </div>
                   ) : (
                     itemsInCol.map((item) => {
-                      const mpBadge = getMarketplaceBadge(item.marketplace)
                       const itemGMV = item.hargaPromo * item.qty
 
                       return (
@@ -1844,7 +2041,7 @@ export default function PromoPlannerPage() {
                             backgroundColor: '#ffffff',
                             border: '1px solid #e2e8f0',
                             borderRadius: '8px',
-                            padding: '12px 14px',
+                            padding: '12px',
                             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                             cursor: 'pointer',
                             transition: 'all 0.15s ease'
@@ -1860,17 +2057,7 @@ export default function PromoPlannerPage() {
                         >
                           {/* Card Top: Marketplace & Period */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                            <span style={{
-                              padding: '2px 7px',
-                              borderRadius: '4px',
-                              fontSize: '0.68rem',
-                              fontWeight: 700,
-                              backgroundColor: mpBadge.bg,
-                              color: mpBadge.color,
-                              border: `1px solid ${mpBadge.border}`
-                            }}>
-                              {item.marketplace}
-                            </span>
+                            <MarketplaceBadge platform={item.marketplace} />
                             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                               {item.tanggal}
                             </span>
@@ -1922,7 +2109,7 @@ export default function PromoPlannerPage() {
           
           {/* CALENDAR HEADER BAR */}
           <div style={{
-            padding: '16px 20px',
+            padding: '14px 18px',
             borderBottom: '1px solid var(--surface-border)',
             display: 'flex',
             justifyContent: 'space-between',
@@ -1932,19 +2119,19 @@ export default function PromoPlannerPage() {
             gap: '12px'
           }}>
             {/* Left Month Controls: [ ← ] Month YYYY [ → ] [ Today ] */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <button
                   onClick={() => setCalendarMonthIndex(prev => Math.max(8, prev - 1))}
                   disabled={calendarMonthIndex <= 8}
                   className="btn-outline"
-                  style={{ padding: '6px 8px', borderRadius: '6px', cursor: calendarMonthIndex <= 8 ? 'not-allowed' : 'pointer' }}
+                  style={{ padding: '5px 8px', borderRadius: '6px', cursor: calendarMonthIndex <= 8 ? 'not-allowed' : 'pointer' }}
                   title="Bulan sebelumnya"
                 >
-                  <ChevronLeft size={16} />
+                  <ChevronLeft size={15} />
                 </button>
 
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: '0 10px', color: 'var(--text-primary)' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 800, margin: '0 8px', color: 'var(--text-primary)' }}>
                   {currentMonthInfo.name} {currentMonthInfo.year}
                 </h3>
 
@@ -1952,10 +2139,10 @@ export default function PromoPlannerPage() {
                   onClick={() => setCalendarMonthIndex(prev => Math.min(11, prev + 1))}
                   disabled={calendarMonthIndex >= 11}
                   className="btn-outline"
-                  style={{ padding: '6px 8px', borderRadius: '6px', cursor: calendarMonthIndex >= 11 ? 'not-allowed' : 'pointer' }}
+                  style={{ padding: '5px 8px', borderRadius: '6px', cursor: calendarMonthIndex >= 11 ? 'not-allowed' : 'pointer' }}
                   title="Bulan berikutnya"
                 >
-                  <ChevronRight size={16} />
+                  <ChevronRight size={15} />
                 </button>
               </div>
 
@@ -1976,7 +2163,7 @@ export default function PromoPlannerPage() {
                 value={calendarMonthIndex}
                 onChange={(e) => setCalendarMonthIndex(Number(e.target.value))}
                 className="filter-select"
-                style={{ fontSize: '0.8125rem', height: '34px', minWidth: '130px' }}
+                style={{ fontSize: '0.78rem', height: '32px', minWidth: '130px' }}
               >
                 <option value={8}>September 2026</option>
                 <option value={9}>Oktober 2026</option>
@@ -1997,13 +2184,13 @@ export default function PromoPlannerPage() {
             fontWeight: 700,
             color: 'var(--text-secondary)'
           }}>
-            <div style={{ padding: '10px' }}>Senin</div>
-            <div style={{ padding: '10px' }}>Selasa</div>
-            <div style={{ padding: '10px' }}>Rabu</div>
-            <div style={{ padding: '10px' }}>Kamis</div>
-            <div style={{ padding: '10px' }}>Jumat</div>
-            <div style={{ padding: '10px', color: '#f97316' }}>Sabtu</div>
-            <div style={{ padding: '10px', color: '#dc2626' }}>Minggu</div>
+            <div style={{ padding: '8px' }}>Senin</div>
+            <div style={{ padding: '8px' }}>Selasa</div>
+            <div style={{ padding: '8px' }}>Rabu</div>
+            <div style={{ padding: '8px' }}>Kamis</div>
+            <div style={{ padding: '8px' }}>Jumat</div>
+            <div style={{ padding: '8px', color: '#f97316' }}>Sabtu</div>
+            <div style={{ padding: '8px', color: '#dc2626' }}>Minggu</div>
           </div>
 
           {/* CALENDAR DAYS GRID */}
@@ -2030,8 +2217,8 @@ export default function PromoPlannerPage() {
                   key={idx}
                   style={{
                     backgroundColor: cell.isCurrentMonth ? '#ffffff' : '#f8fafc',
-                    minHeight: '130px',
-                    padding: '8px',
+                    minHeight: '120px',
+                    padding: '6px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '4px',
@@ -2041,11 +2228,11 @@ export default function PromoPlannerPage() {
                   {/* Day Number Header */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
                     <span style={{
-                      fontSize: '0.8125rem',
+                      fontSize: '0.78rem',
                       fontWeight: isToday ? 800 : cell.isCurrentMonth ? 600 : 400,
                       color: isToday ? '#ffffff' : cell.isCurrentMonth ? 'var(--text-primary)' : '#94a3b8',
-                      width: isToday ? '22px' : 'auto',
-                      height: isToday ? '22px' : 'auto',
+                      width: isToday ? '20px' : 'auto',
+                      height: isToday ? '20px' : 'auto',
                       borderRadius: isToday ? '50%' : '0',
                       backgroundColor: isToday ? 'var(--primary)' : 'transparent',
                       display: 'flex',
@@ -2056,7 +2243,7 @@ export default function PromoPlannerPage() {
                     </span>
 
                     {isToday && (
-                      <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase' }}>
                         Hari Ini
                       </span>
                     )}
@@ -2065,10 +2252,8 @@ export default function PromoPlannerPage() {
                   {/* Campaign Event Bars */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1 }}>
                     {dayCampaigns.slice(0, 2).map((camp) => {
-                      const mpBadge = getMarketplaceBadge(camp.marketplace)
                       const stBadge = getStatusBadge(camp.status)
-                      const { startDay, endDay } = parseCampaignDays(camp.tanggal)
-                      const isMultiDay = startDay !== endDay
+                      const isTiktok = camp.marketplace.toLowerCase().includes('tiktok')
 
                       return (
                         <div
@@ -2076,13 +2261,13 @@ export default function PromoPlannerPage() {
                           onClick={() => setSelectedCampaign(camp)}
                           title={`${camp.campaignName} (${camp.marketplace} - ${camp.status})`}
                           style={{
-                            padding: '3px 6px',
+                            padding: '2px 5px',
                             borderRadius: '4px',
-                            fontSize: '0.68rem',
+                            fontSize: '0.67rem',
                             fontWeight: 600,
-                            backgroundColor: mpBadge.bg,
-                            color: mpBadge.color,
-                            border: `1px solid ${mpBadge.border}`,
+                            backgroundColor: isTiktok ? '#010101' : '#fff1ee',
+                            color: isTiktok ? '#ffffff' : '#ee4d2d',
+                            border: `1px solid ${isTiktok ? '#27272a' : '#fed7aa'}`,
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
@@ -2112,14 +2297,14 @@ export default function PromoPlannerPage() {
                           campaigns: dayCampaigns
                         })}
                         style={{
-                          fontSize: '0.68rem',
+                          fontSize: '0.67rem',
                           fontWeight: 700,
                           color: 'var(--primary)',
                           background: 'transparent',
                           border: 'none',
                           cursor: 'pointer',
                           textAlign: 'left',
-                          padding: '1px 4px',
+                          padding: '1px 3px',
                           marginTop: 'auto'
                         }}
                       >
@@ -2174,17 +2359,7 @@ export default function PromoPlannerPage() {
             }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                  <span style={{
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    backgroundColor: getMarketplaceBadge(selectedCampaign.marketplace).bg,
-                    color: getMarketplaceBadge(selectedCampaign.marketplace).color,
-                    border: `1px solid ${getMarketplaceBadge(selectedCampaign.marketplace).border}`
-                  }}>
-                    {selectedCampaign.marketplace}
-                  </span>
+                  <MarketplaceBadge platform={selectedCampaign.marketplace} />
                   
                   <span style={{
                     display: 'inline-flex',
@@ -2390,7 +2565,6 @@ export default function PromoPlannerPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '360px', overflowY: 'auto' }}>
               {activeDayModal.campaigns.map(c => {
-                const mpBadge = getMarketplaceBadge(c.marketplace)
                 return (
                   <div
                     key={c.id}
@@ -2417,16 +2591,7 @@ export default function PromoPlannerPage() {
                         {c.productName} &bull; {c.qty} pcs
                       </div>
                     </div>
-                    <span style={{
-                      padding: '2px 7px',
-                      borderRadius: '4px',
-                      fontSize: '0.68rem',
-                      fontWeight: 700,
-                      backgroundColor: mpBadge.bg,
-                      color: mpBadge.color
-                    }}>
-                      {c.marketplace}
-                    </span>
+                    <MarketplaceBadge platform={c.marketplace} />
                   </div>
                 )
               })}
