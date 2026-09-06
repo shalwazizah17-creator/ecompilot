@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { 
-  Calendar, 
+  Calendar as CalendarIcon, 
   Copy, 
   Check, 
   Download, 
@@ -29,18 +29,32 @@ import {
   Percent,
   Eye,
   X,
-  RotateCcw
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  ArrowUpRight,
+  SlidersHorizontal,
+  Kanban,
+  LayoutGrid,
+  MoreHorizontal,
+  TrendingUp,
+  CheckCircle2
 } from 'lucide-react'
 import * as xlsx from 'xlsx'
 
+export type CampaignStatus = 'Draft' | 'Scheduled' | 'Running' | 'Completed'
+
 export interface PromoPlanItem {
   id: string
+  campaignName: string // Hero campaign label (e.g. "TwinDate 10.10 Flash Sale")
+  status: CampaignStatus
   bulan: 'Oktober' | 'November' | 'Desember'
-  marketplace: 'Shopee' | 'TikTok Shop'
+  marketplace: 'Shopee' | 'TikTok Shop' | 'Tokopedia' | 'Lazada'
   kategori: 'Live Streaming' | 'Toko' | 'Campaign' | 'Brand Membership'
   subKategori: string // Flash Sale, Paket diskon, Voucher NPD, Promo Flash Sale, Diskon Toko
   periode: string // Twindate 10.10, Payday, Twindate 11.11, Harbolnas 12.12, Full Month Regular, DD & Payday, BAU
-  tanggal: string // e.g. "1 - 31 Oktober", "10-12 Okt 2026", "25-31 Okt 2026"
+  tanggal: string // e.g. "10 - 12 Oktober", "25 - 31 Oktober", "1 - 31 Oktober"
   closing: 'All' | 'Pusat' | 'Cabang'
   sku: string
   productName: string // Matches "Product Name" column
@@ -60,6 +74,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   // ================= OKTOBER 2026 =================
   {
     id: 'okt-1',
+    campaignName: 'TwinDate 10.10 Flash Sale Live',
+    status: 'Running',
     bulan: 'Oktober',
     marketplace: 'Shopee',
     kategori: 'Live Streaming',
@@ -81,6 +97,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'okt-2',
+    campaignName: 'TwinDate 10.10 Volume Wash Mega Deal',
+    status: 'Running',
     bulan: 'Oktober',
     marketplace: 'Shopee',
     kategori: 'Live Streaming',
@@ -102,6 +120,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'okt-3',
+    campaignName: 'TwinDate 10.10 Midnight Retinol Sale',
+    status: 'Running',
     bulan: 'Oktober',
     marketplace: 'Shopee',
     kategori: 'Campaign',
@@ -123,6 +143,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'okt-4',
+    campaignName: 'TwinDate 10.10 Cleanser Twinpack Deal',
+    status: 'Running',
     bulan: 'Oktober',
     marketplace: 'Shopee',
     kategori: 'Live Streaming',
@@ -144,6 +166,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'okt-5',
+    campaignName: 'TikTok 10.10 Host Live Yellow Basket',
+    status: 'Running',
     bulan: 'Oktober',
     marketplace: 'TikTok Shop',
     kategori: 'Live Streaming',
@@ -165,6 +189,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'okt-6',
+    campaignName: 'Payday Acne Series + Free Pouch',
+    status: 'Scheduled',
     bulan: 'Oktober',
     marketplace: 'Shopee',
     kategori: 'Toko',
@@ -186,6 +212,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'okt-7',
+    campaignName: 'Payday Glow Series AOV Booster',
+    status: 'Scheduled',
     bulan: 'Oktober',
     marketplace: 'Shopee',
     kategori: 'Toko',
@@ -207,6 +235,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'okt-8',
+    campaignName: 'TikTok Payday Anti-Aging Prime',
+    status: 'Scheduled',
     bulan: 'Oktober',
     marketplace: 'TikTok Shop',
     kategori: 'Live Streaming',
@@ -228,6 +258,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'okt-9',
+    campaignName: 'Brand Membership Member Baru NPD',
+    status: 'Running',
     bulan: 'Oktober',
     marketplace: 'Shopee',
     kategori: 'Brand Membership',
@@ -249,6 +281,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'okt-10',
+    campaignName: 'Brand Membership Glow Flash Sale',
+    status: 'Running',
     bulan: 'Oktober',
     marketplace: 'Shopee',
     kategori: 'Brand Membership',
@@ -272,6 +306,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   // ================= NOVEMBER 2026 =================
   {
     id: 'nov-1',
+    campaignName: 'Mega 11.11 Puncak Volume Acne Wash',
+    status: 'Scheduled',
     bulan: 'November',
     marketplace: 'Shopee',
     kategori: 'Campaign',
@@ -293,6 +329,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'nov-2',
+    campaignName: 'Mega 11.11 Triplepack Sunscreen Deal',
+    status: 'Scheduled',
     bulan: 'November',
     marketplace: 'Shopee',
     kategori: 'Live Streaming',
@@ -314,6 +352,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'nov-3',
+    campaignName: 'Super Brand Day 11.11 Retinol Serum',
+    status: 'Scheduled',
     bulan: 'November',
     marketplace: 'Shopee',
     kategori: 'Campaign',
@@ -335,6 +375,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'nov-4',
+    campaignName: 'TikTok Mega 11.11 Live 24 Jam Nonstop',
+    status: 'Scheduled',
     bulan: 'November',
     marketplace: 'TikTok Shop',
     kategori: 'Live Streaming',
@@ -356,6 +398,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'nov-5',
+    campaignName: '11.11 Gentle Cleanser Hero Bundling',
+    status: 'Scheduled',
     bulan: 'November',
     marketplace: 'Shopee',
     kategori: 'Live Streaming',
@@ -377,6 +421,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'nov-6',
+    campaignName: 'Payday Nov & Black Friday Weekend',
+    status: 'Scheduled',
     bulan: 'November',
     marketplace: 'Shopee',
     kategori: 'Toko',
@@ -398,6 +444,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'nov-7',
+    campaignName: 'CeraMoist Skin Barrier Payday',
+    status: 'Scheduled',
     bulan: 'November',
     marketplace: 'Shopee',
     kategori: 'Toko',
@@ -421,6 +469,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   // ================= DESEMBER 2026 =================
   {
     id: 'des-1',
+    campaignName: 'Harbolnas 12.12 Puncak Nasional Wash',
+    status: 'Scheduled',
     bulan: 'Desember',
     marketplace: 'Shopee',
     kategori: 'Campaign',
@@ -442,6 +492,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'des-2',
+    campaignName: 'Harbolnas 12.12 Perfect Glow Best Seller',
+    status: 'Scheduled',
     bulan: 'Desember',
     marketplace: 'Shopee',
     kategori: 'Campaign',
@@ -463,6 +515,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'des-3',
+    campaignName: 'Harbolnas 12.12 Live Host Special Deal',
+    status: 'Scheduled',
     bulan: 'Desember',
     marketplace: 'Shopee',
     kategori: 'Live Streaming',
@@ -484,6 +538,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'des-4',
+    campaignName: 'TikTok 12.12 Anti-Aging Grand Finale',
+    status: 'Scheduled',
     bulan: 'Desember',
     marketplace: 'TikTok Shop',
     kategori: 'Live Streaming',
@@ -505,6 +561,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'des-5',
+    campaignName: 'Cuci Gudang Akhir Tahun 2026',
+    status: 'Scheduled',
     bulan: 'Desember',
     marketplace: 'Shopee',
     kategori: 'Toko',
@@ -526,6 +584,8 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   },
   {
     id: 'des-6',
+    campaignName: 'New Year Glowing Holiday Gift Set',
+    status: 'Scheduled',
     bulan: 'Desember',
     marketplace: 'Shopee',
     kategori: 'Toko',
@@ -547,30 +607,51 @@ const INITIAL_PROMO_PLANS: PromoPlanItem[] = [
   }
 ]
 
+// Day Range Parser for Calendar
+function parseCampaignDays(tanggal: string): { startDay: number; endDay: number } {
+  const rangeMatch = tanggal.match(/(\d+)\s*[-–]\s*(\d+)/)
+  if (rangeMatch) {
+    return { startDay: parseInt(rangeMatch[1], 10), endDay: parseInt(rangeMatch[2], 10) }
+  }
+  const singleMatch = tanggal.match(/(\d+)/)
+  if (singleMatch) {
+    const d = parseInt(singleMatch[1], 10)
+    return { startDay: d, endDay: d }
+  }
+  return { startDay: 1, endDay: 30 }
+}
+
 export default function PromoPlannerPage() {
   const [promoList, setPromoList] = useState<PromoPlanItem[]>(INITIAL_PROMO_PLANS)
   
-  // Tab View Modes:
-  // 'table' -> Format Persis Sheet September (Exact Columns)
-  // 'calendar' -> Visual Weekly/Monthly Matrix (Persis Tab Kalender Promo September)
-  // 'vouchers' -> Strategi Voucher, Tiered Bundling & GWP
-  const [activeView, setActiveView] = useState<'table' | 'calendar' | 'vouchers'>('table')
+  // View mode switcher: 'list' | 'board' | 'calendar'
+  const [activeView, setActiveView] = useState<'list' | 'board' | 'calendar'>('list')
 
   // Filter states
   const [filterBulan, setFilterBulan] = useState<string>('ALL') // ALL, Oktober, November, Desember
   const [filterPlatform, setFilterPlatform] = useState<string>('ALL') // ALL, Shopee, TikTok Shop
   const [filterKategori, setFilterKategori] = useState<string>('ALL') // ALL, Live Streaming, Toko, Campaign, Brand Membership
+  const [filterStatus, setFilterStatus] = useState<string>('ALL') // ALL, Draft, Scheduled, Running, Completed
   const [searchQuery, setSearchQuery] = useState<string>('')
 
-  // Calendar specific state
-  const [calendarMonth, setCalendarMonth] = useState<'Oktober' | 'November' | 'Desember'>('Oktober')
+  // Calendar specific state (Year: 2026, Month: 9 for Oct, 10 for Nov, 11 for Dec)
+  const [calendarMonthIndex, setCalendarMonthIndex] = useState<number>(9) // 9 = Oktober 2026
+
+  // Drawer detail state
+  const [selectedCampaign, setSelectedCampaign] = useState<PromoPlanItem | null>(null)
+
+  // Calendar Day popover state for +X more
+  const [activeDayModal, setActiveDayModal] = useState<{ day: number; monthName: string; campaigns: PromoPlanItem[] } | null>(null)
 
   // Clipboard copy state
   const [copied, setCopied] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
 
-  // Modal State for custom promo
+  // Modal State for custom promo / create campaign
   const [showModal, setShowModal] = useState(false)
   const [newPromo, setNewPromo] = useState<Partial<PromoPlanItem>>({
+    campaignName: '',
+    status: 'Scheduled',
     bulan: 'Oktober',
     marketplace: 'Shopee',
     kategori: 'Live Streaming',
@@ -591,34 +672,7 @@ export default function PromoPlannerPage() {
     notes: ''
   })
 
-  // Filtered list
-  const filteredList = useMemo(() => {
-    return promoList.filter(item => {
-      const matchBulan = filterBulan === 'ALL' || item.bulan === filterBulan
-      const matchPlatform = filterPlatform === 'ALL' || item.marketplace === filterPlatform
-      const matchKategori = filterKategori === 'ALL' || item.kategori === filterKategori
-      const matchSearch = !searchQuery.trim() || 
-        item.sku.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        item.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.periode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.notes && item.notes.toLowerCase().includes(searchQuery.toLowerCase()))
-
-      return matchBulan && matchPlatform && matchKategori && matchSearch
-    })
-  }, [promoList, filterBulan, filterPlatform, filterKategori, searchQuery])
-
-  // Aggregate Metrics
-  const metrics = useMemo(() => {
-    const totalPromos = filteredList.length
-    const totalTargetQty = filteredList.reduce((acc, curr) => acc + curr.qty, 0)
-    const totalPromoCost = filteredList.reduce((acc, curr) => acc + curr.totalPromosi, 0)
-    const safeCount = filteredList.filter(i => i.hargaPromo >= i.bottomPrice).length
-    const isAllSafe = safeCount === totalPromos
-
-    return { totalPromos, totalTargetQty, totalPromoCost, safeCount, isAllSafe }
-  }, [filteredList])
-
-  // Helper for safe clipboard copy with fallback
+  // Safe clipboard copy helper with infallible fallback
   const safeCopyToClipboard = async (text: string) => {
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
@@ -645,8 +699,87 @@ export default function PromoPlannerPage() {
     }
   }
 
+  // Filtered List
+  const filteredList = useMemo(() => {
+    return promoList.filter(item => {
+      const matchBulan = filterBulan === 'ALL' || item.bulan === filterBulan
+      const matchPlatform = filterPlatform === 'ALL' || item.marketplace === filterPlatform
+      const matchKategori = filterKategori === 'ALL' || item.kategori === filterKategori
+      const matchStatus = filterStatus === 'ALL' || item.status === filterStatus
+      const matchSearch = !searchQuery.trim() || 
+        item.campaignName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.sku.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        item.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.periode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.notes && item.notes.toLowerCase().includes(searchQuery.toLowerCase()))
+
+      return matchBulan && matchPlatform && matchKategori && matchStatus && matchSearch
+    })
+  }, [promoList, filterBulan, filterPlatform, filterKategori, filterStatus, searchQuery])
+
+  // Summary Metrics (Computed directly from existing data)
+  const metrics = useMemo(() => {
+    const runningCount = promoList.filter(i => i.status === 'Running').length
+    const scheduledCount = promoList.filter(i => i.status === 'Scheduled').length
+    const totalSKUs = promoList.length
+    const totalGMV = promoList.reduce((acc, curr) => acc + (curr.hargaPromo * curr.qty), 0)
+    const totalPromosiCost = promoList.reduce((acc, curr) => acc + curr.totalPromosi, 0)
+    const safeCount = promoList.filter(i => i.hargaPromo >= i.bottomPrice).length
+    const isAllSafe = safeCount === promoList.length
+
+    return {
+      runningCount,
+      scheduledCount,
+      totalSKUs,
+      totalGMV,
+      totalPromosiCost,
+      safeCount,
+      isAllSafe
+    }
+  }, [promoList])
+
+  // Calendar month data
+  const calendarMonths = [
+    { index: 8, name: 'September', year: 2026 },
+    { index: 9, name: 'Oktober', year: 2026 },
+    { index: 10, name: 'November', year: 2026 },
+    { index: 11, name: 'Desember', year: 2026 }
+  ]
+  const currentMonthInfo = calendarMonths.find(m => m.index === calendarMonthIndex) || calendarMonths[1]
+
+  // Month grid generator (Monday first)
+  const calendarDays = useMemo(() => {
+    const year = currentMonthInfo.year
+    const month = currentMonthInfo.index
+    const firstDay = new Date(year, month, 1)
+    let startDayOfWeek = firstDay.getDay() // 0 = Sun, 1 = Mon ...
+    startDayOfWeek = (startDayOfWeek + 6) % 7 // Convert to 0 = Mon, 6 = Sun
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const daysInPrevMonth = new Date(year, month, 0).getDate()
+
+    const result: { day: number; isCurrentMonth: boolean; dateNum: number }[] = []
+
+    // Prev month padding
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+      result.push({ day: daysInPrevMonth - i, isCurrentMonth: false, dateNum: daysInPrevMonth - i })
+    }
+
+    // Current month days
+    for (let d = 1; d <= daysInMonth; d++) {
+      result.push({ day: d, isCurrentMonth: true, dateNum: d })
+    }
+
+    // Next month padding
+    const remainder = (7 - (result.length % 7)) % 7
+    for (let d = 1; d <= remainder; d++) {
+      result.push({ day: d, isCurrentMonth: false, dateNum: d })
+    }
+
+    return result
+  }, [currentMonthInfo])
+
   // 1-Click Copy Format for Google Sheets (Matches Tab September 1:1)
-  // Headers match: Marketplace, Kategori, Sub Kategori, Periode, Tanggal, Closing, SKU, Product Name, HARGA Bulanan, Diskon, Total Diskon, Harga Promo, Qty, Total Promosi, Harga OB, Bottom Price, Status Margin
   const handleCopyToGoogleSheet = async () => {
     const headers = [
       'Marketplace',
@@ -696,6 +829,7 @@ export default function PromoPlannerPage() {
     const fullText = `${headers}\n${rows}`
     await safeCopyToClipboard(fullText)
     setCopied(true)
+    setExportOpen(false)
     setTimeout(() => setCopied(false), 3500)
   }
 
@@ -731,17 +865,23 @@ export default function PromoPlannerPage() {
     const workbook = xlsx.utils.book_new()
     xlsx.utils.book_append_sheet(workbook, worksheet, 'Plan Promo Q4')
     xlsx.writeFile(workbook, `Plan_Promo_Theraskin_Format_September_Q4.xlsx`)
+    setExportOpen(false)
   }
 
-  const handleDeleteItem = (id: string) => {
-    if (!confirm('Hapus baris promo ini dari plan?')) return
+  const handleDeleteItem = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    if (!confirm('Hapus campaign ini dari rencana promosi?')) return
     setPromoList(prev => prev.filter(p => p.id !== id))
+    if (selectedCampaign?.id === id) {
+      setSelectedCampaign(null)
+    }
   }
 
   const handleResetFilters = () => {
     setFilterBulan('ALL')
     setFilterPlatform('ALL')
     setFilterKategori('ALL')
+    setFilterStatus('ALL')
     setSearchQuery('')
   }
 
@@ -760,6 +900,8 @@ export default function PromoPlannerPage() {
 
     const itemToAdd: PromoPlanItem = {
       id: `custom-${Date.now()}`,
+      campaignName: newPromo.campaignName || `${newPromo.periode || 'Campaign'} Promo`,
+      status: (newPromo.status as CampaignStatus) || 'Scheduled',
       bulan: newPromo.bulan as any || 'Oktober',
       marketplace: newPromo.marketplace as any || 'Shopee',
       kategori: newPromo.kategori as any || 'Live Streaming',
@@ -782,6 +924,8 @@ export default function PromoPlannerPage() {
 
     setPromoList(prev => [itemToAdd, ...prev])
     setNewPromo({
+      campaignName: '',
+      status: 'Scheduled',
       bulan: 'Oktober',
       marketplace: 'Shopee',
       kategori: 'Live Streaming',
@@ -841,62 +985,225 @@ export default function PromoPlannerPage() {
     }))
   }
 
+  // Marketplace Badge Styler
+  const getMarketplaceBadge = (mp: string) => {
+    switch (mp) {
+      case 'Shopee':
+        return {
+          bg: '#fff7ed',
+          color: '#c2410c',
+          border: '#fed7aa',
+          label: 'Shopee'
+        }
+      case 'TikTok Shop':
+        return {
+          bg: '#f8fafc',
+          color: '#0f172a',
+          border: '#cbd5e1',
+          label: 'TikTok Shop'
+        }
+      case 'Tokopedia':
+        return {
+          bg: '#f0fdf4',
+          color: '#15803d',
+          border: '#bbf7d0',
+          label: 'Tokopedia'
+        }
+      default:
+        return {
+          bg: '#eff6ff',
+          color: '#1d4ed8',
+          border: '#bfdbfe',
+          label: mp
+        }
+    }
+  }
+
+  // Status Badge Styler
+  const getStatusBadge = (status: CampaignStatus) => {
+    switch (status) {
+      case 'Running':
+        return {
+          bg: '#ecfdf5',
+          color: '#047857',
+          border: '#a7f3d0',
+          dot: '#10b981',
+          label: 'Running'
+        }
+      case 'Scheduled':
+        return {
+          bg: '#eff6ff',
+          color: '#1d4ed8',
+          border: '#bfdbfe',
+          dot: '#3b82f6',
+          label: 'Scheduled'
+        }
+      case 'Draft':
+        return {
+          bg: '#fefce8',
+          color: '#a16207',
+          border: '#fef08a',
+          dot: '#eab308',
+          label: 'Draft'
+        }
+      case 'Completed':
+        return {
+          bg: '#f1f5f9',
+          color: '#475569',
+          border: '#cbd5e1',
+          dot: '#64748b',
+          label: 'Completed'
+        }
+    }
+  }
+
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
       
-      {/* PAGE HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+      {/* ========================================================================= */}
+      {/* SECTION C: REDESIGNED HEADER */}
+      {/* ========================================================================= */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        flexWrap: 'wrap', 
+        gap: '16px',
+        paddingBottom: '8px'
+      }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-              Plan &amp; Kalender Promo Marketplace
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
+              Promo Planner
             </h1>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: '12px', backgroundColor: 'rgba(37, 99, 235, 0.1)', color: 'var(--primary)' }}>
-              Format Sheet September 1:1
+            <span style={{ 
+              fontSize: '0.75rem', 
+              fontWeight: 700, 
+              padding: '3px 9px', 
+              borderRadius: '9999px', 
+              backgroundColor: '#eff6ff', 
+              color: 'var(--primary)',
+              border: '1px solid #bfdbfe'
+            }}>
+              Q4 2026
             </span>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', margin: 0 }}>
-            Master draft promosi Q4 Theraskin: nama kolom identik dengan template sheet September, proteksi Bottom Price (-3% dr OB), &amp; kalender visual matriks.
+            Rencanakan, monitor, dan evaluasi seluruh campaign marketplace.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }} className="no-print">
-          {/* 1-CLICK COPY TO SPREADSHEET (PRIMARY STAR FEATURE) */}
-          <button 
-            onClick={handleCopyToGoogleSheet} 
-            className="btn-primary" 
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              backgroundColor: copied ? '#059669' : 'var(--primary)',
-              borderColor: copied ? '#059669' : 'var(--primary)',
-              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
-              transition: 'all 0.2s',
-              cursor: 'pointer'
+        {/* HEADER ACTIONS */}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }} className="no-print">
+          
+          {/* EXPORT DROPDOWN / BUTTON */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setExportOpen(!exportOpen)}
+              className="btn-outline"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '7px',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                padding: '9px 14px',
+                cursor: 'pointer',
+                borderRadius: '8px'
+              }}
+            >
+              <Download size={15} /> Export <ChevronRight size={14} style={{ transform: exportOpen ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.15s' }} />
+            </button>
+
+            {exportOpen && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: '6px',
+                width: '230px',
+                backgroundColor: 'var(--surface)',
+                border: '1px solid var(--surface-border)',
+                borderRadius: '8px',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+                zIndex: 100,
+                padding: '6px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px'
+              }}>
+                <button
+                  onClick={handleCopyToGoogleSheet}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 10px',
+                    fontSize: '0.8125rem',
+                    color: 'var(--text-primary)',
+                    background: 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    width: '100%'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--surface-subtle, #f8fafc)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  <Copy size={14} color="var(--primary)" />
+                  <div>
+                    <div style={{ fontWeight: 600 }}>1-Click Copy Sheet</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Format 1:1 Tab September</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={handleExportExcel}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 10px',
+                    fontSize: '0.8125rem',
+                    color: 'var(--text-primary)',
+                    background: 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    width: '100%'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--surface-subtle, #f8fafc)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  <Download size={14} color="#059669" />
+                  <div>
+                    <div style={{ fontWeight: 600 }}>Download .xlsx</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>File Excel Lengkap</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* PRIMARY CTA: + BUAT CAMPAIGN */}
+          <button
+            onClick={() => setShowModal(true)}
+            className="btn-primary"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              padding: '9px 18px',
+              cursor: 'pointer',
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)'
             }}
-            title="Klik untuk menyalin format tabel siap paste (Ctrl + V) ke Google Sheets"
           >
-            {copied ? <Check size={16} /> : <Copy size={16} />}
-            {copied ? 'Tersalin ke Clipboard! 🎉' : '📋 1-Click Copy ke Spreadsheet'}
-          </button>
-
-          {/* DOWNLOAD EXCEL */}
-          <button 
-            onClick={handleExportExcel} 
-            className="btn-outline" 
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-          >
-            <Download size={15} /> Download .xlsx
-          </button>
-
-          {/* TAMBAH PROMO CUSTOM */}
-          <button 
-            onClick={() => setShowModal(true)} 
-            className="btn-outline" 
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-          >
-            <Plus size={15} /> Tambah Promo
+            <Plus size={16} /> + Buat Campaign
           </button>
         </div>
       </div>
@@ -904,465 +1211,547 @@ export default function PromoPlannerPage() {
       {/* COPIED ALERT NOTIFICATION */}
       {copied && (
         <div style={{ 
-          padding: '14px 20px', 
-          borderRadius: '10px', 
+          padding: '12px 18px', 
+          borderRadius: '8px', 
           backgroundColor: '#ecfdf5', 
           border: '1px solid #a7f3d0', 
           color: '#065f46', 
-          fontSize: '0.875rem', 
+          fontSize: '0.8125rem', 
           display: 'flex', 
           alignItems: 'center', 
-          gap: '12px',
-          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)'
+          gap: '10px',
+          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.12)'
         }}>
-          <Check size={20} color="#059669" />
+          <Check size={18} color="#059669" />
           <div>
-            <strong>Tabel Berhasil Disalin!</strong> Format kolom (<em>Marketplace, Kategori, Sub Kategori, Periode, Tanggal, Closing, SKU, Product Name, HARGA Bulanan, Diskon, Total Diskon, Harga Promo, Qty, Total Promosi, Harga OB, Bottom Price, Status Margin</em>) siap dipaste ke Google Sheet. Cukup tekan <strong>Ctrl + V</strong> di sel tujuan!
+            <strong>Tersalin ke Clipboard!</strong> Format kolom siap dipaste langsung ke Google Sheet (tekan <strong>Ctrl + V</strong> di sel tujuan).
           </div>
         </div>
       )}
 
-      {/* STRATEGIC SUMMARY BADGES */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-        <div className="stat-card" style={{ padding: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.8125rem', marginBottom: '6px' }}>
-            <CalendarDays size={16} color="var(--primary)" />
-            <span>Total Promo Terjadwal</span>
-          </div>
-          <h2 className="stat-value" style={{ fontSize: '1.5rem', margin: 0 }}>{metrics.totalPromos} Item</h2>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>Oktober, November, Desember</p>
-        </div>
-
-        <div className="stat-card" style={{ padding: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.8125rem', marginBottom: '6px' }}>
-            <ShoppingBag size={16} color="#f97316" />
-            <span>Target Alokasi Qty</span>
-          </div>
-          <h2 className="stat-value" style={{ fontSize: '1.5rem', margin: 0, color: '#f97316' }}>{metrics.totalTargetQty.toLocaleString('id-ID')} Pcs</h2>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>Estimasi stok promo flash sale &amp; toko</p>
-        </div>
-
-        <div className="stat-card" style={{ padding: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.8125rem', marginBottom: '6px' }}>
-            <BadgePercent size={16} color="#8b5cf6" />
-            <span>Est. Total Biaya Promosi</span>
-          </div>
-          <h2 className="stat-value" style={{ fontSize: '1.5rem', margin: 0, color: '#8b5cf6' }}>Rp {metrics.totalPromoCost.toLocaleString('id-ID')}</h2>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>Investasi diskon (Qty × Total Diskon)</p>
-        </div>
-
-        <div className="stat-card" style={{ padding: '16px', backgroundColor: metrics.isAllSafe ? 'var(--success-light)' : 'var(--danger-light)', borderColor: metrics.isAllSafe ? 'var(--success-border)' : 'var(--danger-border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: metrics.isAllSafe ? 'var(--success)' : 'var(--danger)', fontSize: '0.8125rem', marginBottom: '6px' }}>
-            {metrics.isAllSafe ? <ShieldCheck size={16} /> : <AlertTriangle size={16} />}
-            <span>Proteksi Bottom Price</span>
-          </div>
-          <h2 className="stat-value" style={{ fontSize: '1.5rem', margin: 0, color: metrics.isAllSafe ? 'var(--success)' : 'var(--danger)' }}>
-            {metrics.isAllSafe ? '100% AMAN' : 'PERIKSA MARGIN'}
-          </h2>
-          <p style={{ fontSize: '0.75rem', color: metrics.isAllSafe ? 'var(--success)' : 'var(--danger)', margin: '4px 0 0' }}>
-            {metrics.safeCount}/{metrics.totalPromos} item di atas Bottom Price (-3% dr OB)
-          </p>
-        </div>
-      </div>
-
-      {/* VIEW SWITCHER TABS */}
-      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--surface-border)', paddingBottom: '4px' }}>
-        <button
-          onClick={() => setActiveView('table')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 18px',
-            borderRadius: '8px 8px 0 0',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            border: 'none',
-            backgroundColor: activeView === 'table' ? 'var(--surface)' : 'transparent',
-            color: activeView === 'table' ? 'var(--primary)' : 'var(--text-secondary)',
-            borderBottom: activeView === 'table' ? '3px solid var(--primary)' : '3px solid transparent',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-        >
-          <List size={16} /> 📋 Tabel Format Sheet (Persis Sheet September)
-        </button>
-
-        <button
-          onClick={() => setActiveView('calendar')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 18px',
-            borderRadius: '8px 8px 0 0',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            border: 'none',
-            backgroundColor: activeView === 'calendar' ? 'var(--surface)' : 'transparent',
-            color: activeView === 'calendar' ? 'var(--primary)' : 'var(--text-secondary)',
-            borderBottom: activeView === 'calendar' ? '3px solid var(--primary)' : '3px solid transparent',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-        >
-          <Grid size={16} /> 📅 Kalender Visual Promo (Persis Tab Kalender September)
-        </button>
-
-        <button
-          onClick={() => setActiveView('vouchers')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 18px',
-            borderRadius: '8px 8px 0 0',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            border: 'none',
-            backgroundColor: activeView === 'vouchers' ? 'var(--surface)' : 'transparent',
-            color: activeView === 'vouchers' ? 'var(--primary)' : 'var(--text-secondary)',
-            borderBottom: activeView === 'vouchers' ? '3px solid var(--primary)' : '3px solid transparent',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-        >
-          <Gift size={16} /> 🎁 Mekanisme Voucher, Tiered Bundling &amp; GWP
-        </button>
-      </div>
-
       {/* ========================================================================= */}
-      {/* VIEW 1: TABLE FORMAT (PERSIS GOOGLE SHEET SEPTEMBER) */}
+      {/* SECTION D: COMPACT SUMMARY / KPI CARDS */}
       {/* ========================================================================= */}
-      {activeView === 'table' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
-          {/* SEARCH & FILTER BAR */}
-          <div className="card-flat no-print" style={{ padding: '14px 20px', display: 'flex', gap: '14px', alignItems: 'center', backgroundColor: 'var(--surface)', border: '1px solid var(--surface-border)', borderRadius: '10px', flexWrap: 'wrap' }}>
-            
-            {/* Search Input */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1', minWidth: '220px', position: 'relative' }}>
-              <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '10px' }} />
-              <input
-                type="text"
-                placeholder="Cari SKU, Nama Produk, atau Periode..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-field"
-                style={{ paddingLeft: '34px', paddingRight: searchQuery ? '30px' : '12px', fontSize: '0.8125rem', width: '100%' }}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  title="Hapus pencarian"
-                  style={{
-                    position: 'absolute',
-                    right: '8px',
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    padding: '2px',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', 
+        gap: '14px' 
+      }}>
+        {/* Card 1: Campaign Aktif */}
+        <div className="stat-card" style={{ padding: '16px 18px', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Campaign Aktif
+            </span>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '6px' }}>
+            <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+              {metrics.runningCount}
+            </span>
+            <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>Sedang jalan</span>
+          </div>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>Oktober Twindate &amp; Membership</p>
+        </div>
 
-            <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--surface-border)' }}></div>
+        {/* Card 2: Akan Dimulai */}
+        <div className="stat-card" style={{ padding: '16px 18px', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Akan Dimulai
+            </span>
+            <Clock size={14} color="#3b82f6" />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '6px' }}>
+            <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+              {metrics.scheduledCount}
+            </span>
+            <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600 }}>Terjadwal</span>
+          </div>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>Payday Okt, 11.11 &amp; Harbolnas 12.12</p>
+        </div>
 
-            {/* Filter Bulan */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Calendar size={14} color="var(--text-muted)" />
-              <select 
-                value={filterBulan} 
-                onChange={(e) => setFilterBulan(e.target.value)}
-                className="filter-select"
-                style={{ minWidth: '125px', fontSize: '0.8125rem' }}
-              >
-                <option value="ALL">Semua Bulan</option>
-                <option value="Oktober">Oktober 2026</option>
-                <option value="November">November 2026</option>
-                <option value="Desember">Desember 2026</option>
-              </select>
-            </div>
+        {/* Card 3: SKU Dipromosikan */}
+        <div className="stat-card" style={{ padding: '16px 18px', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              SKU Dipromosikan
+            </span>
+            <ShoppingBag size={14} color="#f97316" />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '6px' }}>
+            <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+              {metrics.totalSKUs}
+            </span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Item Q4</span>
+          </div>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>Acne, Glow, Retinol &amp; Bundling</p>
+        </div>
 
-            {/* Filter Marketplace */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Store size={14} color="var(--text-muted)" />
-              <select 
-                value={filterPlatform} 
-                onChange={(e) => setFilterPlatform(e.target.value)}
-                className="filter-select"
-                style={{ minWidth: '130px', fontSize: '0.8125rem' }}
-              >
-                <option value="ALL">Semua Marketplace</option>
-                <option value="Shopee">Shopee</option>
-                <option value="TikTok Shop">TikTok Shop</option>
-              </select>
-            </div>
-
-            {/* Filter Kategori */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Tag size={14} color="var(--text-muted)" />
-              <select 
-                value={filterKategori} 
-                onChange={(e) => setFilterKategori(e.target.value)}
-                className="filter-select"
-                style={{ minWidth: '135px', fontSize: '0.8125rem' }}
-              >
-                <option value="ALL">Semua Kategori</option>
-                <option value="Live Streaming">Live Streaming</option>
-                <option value="Toko">Toko</option>
-                <option value="Campaign">Campaign</option>
-                <option value="Brand Membership">Brand Membership</option>
-              </select>
-            </div>
-
-            {/* RESET FILTER BUTTON */}
-            {(filterBulan !== 'ALL' || filterPlatform !== 'ALL' || filterKategori !== 'ALL' || searchQuery !== '') && (
-              <button
-                onClick={handleResetFilters}
-                className="btn-outline"
-                style={{ 
-                  fontSize: '0.75rem', 
-                  padding: '5px 10px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '4px',
-                  color: 'var(--danger)',
-                  borderColor: 'var(--danger-border)',
-                  cursor: 'pointer'
-                }}
-                title="Reset semua filter ke kondisi awal"
-              >
-                <RotateCcw size={13} /> Reset Filter
-              </button>
-            )}
-
-            <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Menampilkan <strong>{filteredList.length}</strong> promo
+        {/* Card 4: Estimasi GMV */}
+        <div className="stat-card" style={{ padding: '16px 18px', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Estimasi GMV
+            </span>
+            <TrendingUp size={14} color="#8b5cf6" />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '6px' }}>
+            <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+              Rp {(metrics.totalGMV / 1000000).toFixed(1).replace('.', ',')} jt
             </span>
           </div>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>Rp {metrics.totalGMV.toLocaleString('id-ID')} target</p>
+        </div>
+      </div>
 
-          {/* TABLE CONTAINER */}
-          <div className="card" style={{ padding: '0', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
-              <div>
-                <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                  Matriks Promosi Produk — Format Kolom Sheet September
-                </h3>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
-                  Urutan dan nama kolom: <code>Marketplace</code>, <code>Kategori</code>, <code>Sub Kategori</code>, <code>Periode</code>, <code>Tanggal</code>, <code>Closing</code>, <code>SKU</code>, <code>Product Name</code>, <code>HARGA Bulanan</code>, <code>Diskon</code>, <code>Total Diskon</code>, <code>Harga Promo</code>, <code>Qty</code>, <code>Total Promosi</code>.
-                </p>
-              </div>
-              <button 
-                onClick={handleCopyToGoogleSheet} 
-                className="btn-outline" 
-                style={{ fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-              >
-                {copied ? <Check size={14} color="#059669" /> : <Copy size={14} />} Salin Kolom Sheet
-              </button>
+      {/* ========================================================================= */}
+      {/* SECTION P: TODAY'S FOCUS BANNER */}
+      {/* ========================================================================= */}
+      <div style={{
+        padding: '12px 18px',
+        backgroundColor: 'var(--surface)',
+        border: '1px solid var(--surface-border)',
+        borderRadius: '10px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '6px',
+            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Sparkles size={16} color="var(--primary)" />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-primary)' }}>Today&apos;s Focus:</span>
+              <span style={{ 
+                fontSize: '0.72rem', 
+                fontWeight: 600, 
+                padding: '1px 7px', 
+                borderRadius: '4px', 
+                backgroundColor: '#ecfdf5', 
+                color: '#047857' 
+              }}>
+                Running
+              </span>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                Shopee TwinDate 10.10 Flash Sale (50 Pcs Twinpack Day Cream &amp; 120 Pcs Acne Wash)
+              </span>
             </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+              Next Up: TikTok Payday Anti-Aging Prime &bull; Proteksi Bottom Price Finance <strong>100% AMAN</strong>
+            </div>
+          </div>
+        </div>
 
+        <button
+          onClick={() => {
+            setFilterStatus('Running')
+            setActiveView('list')
+          }}
+          className="btn-outline"
+          style={{ 
+            fontSize: '0.75rem', 
+            padding: '5px 12px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '5px',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}
+        >
+          Lihat Campaign Berjalan <ArrowUpRight size={13} />
+        </button>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION E: VIEW SWITCHER (SEGMENTED CONTROL) & CONTROLS BAR */}
+      {/* ========================================================================= */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        {/* SEGMENTED CONTROL: [ List ] [ Board ] [ Calendar ] */}
+        <div style={{
+          display: 'inline-flex',
+          backgroundColor: '#f1f5f9',
+          padding: '3px',
+          borderRadius: '8px',
+          border: '1px solid var(--surface-border)'
+        }}>
+          <button
+            onClick={() => setActiveView('list')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 16px',
+              borderRadius: '6px',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              border: 'none',
+              backgroundColor: activeView === 'list' ? 'var(--surface)' : 'transparent',
+              color: activeView === 'list' ? 'var(--primary)' : 'var(--text-secondary)',
+              boxShadow: activeView === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s'
+            }}
+          >
+            <List size={15} /> List
+          </button>
+
+          <button
+            onClick={() => setActiveView('board')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 16px',
+              borderRadius: '6px',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              border: 'none',
+              backgroundColor: activeView === 'board' ? 'var(--surface)' : 'transparent',
+              color: activeView === 'board' ? 'var(--primary)' : 'var(--text-secondary)',
+              boxShadow: activeView === 'board' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s'
+            }}
+          >
+            <Kanban size={15} /> Board
+          </button>
+
+          <button
+            onClick={() => setActiveView('calendar')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 16px',
+              borderRadius: '6px',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              border: 'none',
+              backgroundColor: activeView === 'calendar' ? 'var(--surface)' : 'transparent',
+              color: activeView === 'calendar' ? 'var(--primary)' : 'var(--text-secondary)',
+              boxShadow: activeView === 'calendar' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s'
+            }}
+          >
+            <CalendarDays size={15} /> Calendar
+          </button>
+        </div>
+
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          Total <strong>{filteredList.length}</strong> campaign terfilter
+        </span>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION F: MODERN COMPACT FILTER BAR */}
+      {/* ========================================================================= */}
+      <div className="card-flat no-print" style={{ 
+        padding: '12px 16px', 
+        display: 'flex', 
+        gap: '10px', 
+        alignItems: 'center', 
+        backgroundColor: 'var(--surface)', 
+        border: '1px solid var(--surface-border)', 
+        borderRadius: '10px', 
+        flexWrap: 'wrap' 
+      }}>
+        {/* Search Input */}
+        <div style={{ display: 'flex', alignItems: 'center', flex: '1', minWidth: '220px', position: 'relative' }}>
+          <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px' }} />
+          <input
+            type="text"
+            placeholder="Cari campaign, SKU, atau produk..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input-field"
+            style={{ paddingLeft: '32px', paddingRight: searchQuery ? '28px' : '10px', fontSize: '0.8125rem', width: '100%', height: '36px' }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              title="Hapus pencarian"
+              style={{
+                position: 'absolute',
+                right: '8px',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: '2px',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+
+        <div style={{ width: '1px', height: '20px', backgroundColor: 'var(--surface-border)' }}></div>
+
+        {/* Filter Marketplace */}
+        <select 
+          value={filterPlatform} 
+          onChange={(e) => setFilterPlatform(e.target.value)}
+          className="filter-select"
+          style={{ minWidth: '130px', fontSize: '0.8125rem', height: '36px' }}
+        >
+          <option value="ALL">Semua Marketplace</option>
+          <option value="Shopee">Shopee</option>
+          <option value="TikTok Shop">TikTok Shop</option>
+        </select>
+
+        {/* Filter Kategori / Channel */}
+        <select 
+          value={filterKategori} 
+          onChange={(e) => setFilterKategori(e.target.value)}
+          className="filter-select"
+          style={{ minWidth: '135px', fontSize: '0.8125rem', height: '36px' }}
+        >
+          <option value="ALL">Semua Channel</option>
+          <option value="Live Streaming">Live Streaming</option>
+          <option value="Toko">Promo Toko</option>
+          <option value="Campaign">Campaign</option>
+          <option value="Brand Membership">Brand Membership</option>
+        </select>
+
+        {/* Filter Status */}
+        <select 
+          value={filterStatus} 
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="filter-select"
+          style={{ minWidth: '120px', fontSize: '0.8125rem', height: '36px' }}
+        >
+          <option value="ALL">Semua Status</option>
+          <option value="Running">Running</option>
+          <option value="Scheduled">Scheduled</option>
+          <option value="Draft">Draft</option>
+          <option value="Completed">Completed</option>
+        </select>
+
+        {/* Filter Bulan */}
+        <select 
+          value={filterBulan} 
+          onChange={(e) => setFilterBulan(e.target.value)}
+          className="filter-select"
+          style={{ minWidth: '120px', fontSize: '0.8125rem', height: '36px' }}
+        >
+          <option value="ALL">Semua Bulan</option>
+          <option value="Oktober">Oktober 2026</option>
+          <option value="November">November 2026</option>
+          <option value="Desember">Desember 2026</option>
+        </select>
+
+        {/* RESET FILTER BUTTON */}
+        {(filterBulan !== 'ALL' || filterPlatform !== 'ALL' || filterKategori !== 'ALL' || filterStatus !== 'ALL' || searchQuery !== '') && (
+          <button
+            onClick={handleResetFilters}
+            className="btn-outline"
+            style={{ 
+              fontSize: '0.75rem', 
+              padding: '5px 10px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '4px',
+              color: 'var(--danger)',
+              borderColor: 'var(--danger-border)',
+              cursor: 'pointer',
+              height: '36px'
+            }}
+            title="Reset semua filter"
+          >
+            <RotateCcw size={13} /> Reset
+          </button>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION G & H & I & J: LIST VIEW (REDESIGNED RESTRUCTURED TABLE) */}
+      {/* ========================================================================= */}
+      {activeView === 'list' && (
+        <div>
+          {/* DESKTOP TABLE */}
+          <div className="card" style={{ padding: '0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem', minWidth: '1300px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#f1f5f9', color: '#334155', fontWeight: 700, borderBottom: '2px solid #cbd5e1' }}>
-                    <th style={{ padding: '10px 12px' }}>Marketplace</th>
-                    <th style={{ padding: '10px 12px' }}>Kategori</th>
-                    <th style={{ padding: '10px 12px' }}>Sub Kategori</th>
-                    <th style={{ padding: '10px 12px' }}>Periode</th>
-                    <th style={{ padding: '10px 12px' }}>Tanggal</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'center' }}>Closing</th>
-                    <th style={{ padding: '10px 12px' }}>SKU</th>
-                    <th style={{ padding: '10px 12px', minWidth: '220px' }}>Product Name</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'right' }}>HARGA Bulanan</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'center' }}>Diskon</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'right' }}>Total Diskon</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'right' }}>Harga Promo</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'center' }}>Qty</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'right' }}>Total Promosi</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'right', backgroundColor: '#e2e8f0' }}>Bottom Price</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'center', backgroundColor: '#e2e8f0' }}>Status Margin</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'center', width: '50px' }}>Aksi</th>
+                  <tr style={{ backgroundColor: '#f8fafc', color: '#475569', fontWeight: 600, borderBottom: '1px solid var(--surface-border)' }}>
+                    <th style={{ padding: '12px 16px', width: '110px' }}>Marketplace</th>
+                    <th style={{ padding: '12px 16px', minWidth: '200px' }}>Campaign</th>
+                    <th style={{ padding: '12px 16px', minWidth: '220px' }}>Product &amp; SKU</th>
+                    <th style={{ padding: '12px 14px', width: '110px', textAlign: 'center' }}>Status</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'right' }}>Harga Normal</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'center' }}>Diskon</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'right' }}>Harga Promo</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'center' }}>Target</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right' }}>Estimasi GMV</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', width: '70px' }}>Detail</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredList.length === 0 ? (
                     <tr>
-                      <td colSpan={17} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <td colSpan={10} style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                          <span>Tidak ada promo yang cocok dengan filter atau pencarian Anda.</span>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Tidak ada campaign yang cocok dengan filter Anda.</span>
                           <button
                             onClick={handleResetFilters}
                             className="btn-outline"
                             style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
                           >
-                            <RotateCcw size={13} /> Reset Semua Filter
+                            <RotateCcw size={13} /> Reset Filter
                           </button>
                         </div>
                       </td>
                     </tr>
                   ) : (
                     filteredList.map((item) => {
-                      const isSafe = item.hargaPromo >= item.bottomPrice
-                      const diffToBottom = item.hargaPromo - item.bottomPrice
+                      const mpBadge = getMarketplaceBadge(item.marketplace)
+                      const stBadge = getStatusBadge(item.status)
+                      const estGMV = item.hargaPromo * item.qty
 
                       return (
-                        <tr key={item.id} style={{ borderBottom: '1px solid var(--surface-border)', transition: 'background-color 0.15s' }}>
+                        <tr 
+                          key={item.id} 
+                          onClick={() => setSelectedCampaign(item)}
+                          style={{ 
+                            borderBottom: '1px solid var(--surface-border)', 
+                            transition: 'background-color 0.12s',
+                            cursor: 'pointer'
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                        >
                           {/* 1. Marketplace */}
-                          <td style={{ padding: '10px 12px' }}>
+                          <td style={{ padding: '12px 16px' }}>
                             <span style={{ 
                               padding: '2px 8px', 
                               borderRadius: '4px', 
                               fontSize: '0.72rem', 
                               fontWeight: 700,
-                              backgroundColor: item.marketplace === 'Shopee' ? '#fff1ee' : '#f1f5f9',
-                              color: item.marketplace === 'Shopee' ? '#ee4d2d' : '#0f172a',
-                              border: `1px solid ${item.marketplace === 'Shopee' ? '#fed7aa' : '#cbd5e1'}`
+                              backgroundColor: mpBadge.bg,
+                              color: mpBadge.color,
+                              border: `1px solid ${mpBadge.border}`
                             }}>
                               {item.marketplace}
                             </span>
                           </td>
 
-                          {/* 2. Kategori */}
-                          <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {item.kategori}
+                          {/* 2. Campaign (Focal Point Hierarchy) */}
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.875rem' }}>
+                              {item.campaignName}
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>{item.kategori} &bull; {item.subKategori}</span>
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                              {item.tanggal}
+                            </div>
                           </td>
 
-                          {/* 3. Sub Kategori */}
-                          <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
-                            {item.subKategori}
-                          </td>
-
-                          {/* 4. Periode */}
-                          <td style={{ padding: '10px 12px' }}>
+                          {/* 3. Product & SKU */}
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                              {item.productName}
+                            </div>
                             <span style={{ 
-                              padding: '2px 6px', 
-                              borderRadius: '4px', 
-                              fontSize: '0.72rem', 
-                              fontWeight: 600,
-                              backgroundColor: item.periode.includes('10.10') || item.periode.includes('11.11') || item.periode.includes('12.12') ? '#fef3c7' : item.periode.includes('Payday') ? '#ecfdf5' : '#f8fafc',
-                              color: item.periode.includes('10.10') || item.periode.includes('11.11') || item.periode.includes('12.12') ? '#b45309' : item.periode.includes('Payday') ? '#047857' : '#475569'
+                              display: 'inline-block', 
+                              marginTop: '3px',
+                              padding: '1px 5px', 
+                              borderRadius: '3px', 
+                              fontFamily: 'monospace', 
+                              fontSize: '0.68rem', 
+                              backgroundColor: '#f1f5f9', 
+                              color: '#334155' 
                             }}>
-                              {item.periode}
+                              {item.sku}
                             </span>
                           </td>
 
-                          {/* 5. Tanggal */}
-                          <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
-                            {item.tanggal}
+                          {/* 4. Status */}
+                          <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              padding: '2px 8px',
+                              borderRadius: '9999px',
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              backgroundColor: stBadge.bg,
+                              color: stBadge.color,
+                              border: `1px solid ${stBadge.border}`
+                            }}>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: stBadge.dot }}></span>
+                              {stBadge.label}
+                            </span>
                           </td>
 
-                          {/* 6. Closing */}
-                          <td style={{ padding: '10px 12px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                            {item.closing}
-                          </td>
-
-                          {/* 7. SKU */}
-                          <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontWeight: 600, color: '#1e293b' }}>
-                            {item.sku}
-                          </td>
-
-                          {/* 8. Product Name */}
-                          <td style={{ padding: '10px 12px', fontWeight: 500 }}>
-                            <div style={{ color: 'var(--text-primary)' }}>{item.productName}</div>
-                            {item.notes && (
-                              <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--primary)', marginTop: '2px' }}>
-                                💡 {item.notes}
-                              </span>
-                            )}
-                          </td>
-
-                          {/* 9. HARGA Bulanan */}
-                          <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-secondary)' }}>
+                          {/* 5. Normal Price */}
+                          <td style={{ padding: '12px 14px', textAlign: 'right', color: 'var(--text-secondary)' }}>
                             Rp {item.hargaBulanan.toLocaleString('id-ID')}
                           </td>
 
-                          {/* 10. Diskon */}
-                          <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#f97316' }}>
-                            {item.diskonPercent}%
+                          {/* 6. Diskon */}
+                          <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                            <span style={{ fontWeight: 700, color: '#f97316' }}>{item.diskonPercent}%</span>
+                            <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                              -Rp {item.totalDiskon.toLocaleString('id-ID')}
+                            </span>
                           </td>
 
-                          {/* 11. Total Diskon */}
-                          <td style={{ padding: '10px 12px', textAlign: 'right', color: '#f97316', fontWeight: 600 }}>
-                            Rp {item.totalDiskon.toLocaleString('id-ID')}
-                          </td>
-
-                          {/* 12. Harga Promo */}
-                          <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>
+                          {/* 7. Harga Promo */}
+                          <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>
                             Rp {item.hargaPromo.toLocaleString('id-ID')}
                           </td>
 
-                          {/* 13. Qty */}
-                          <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {item.qty}
+                          {/* 8. Target Qty */}
+                          <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 600 }}>
+                            {item.qty} pcs
                           </td>
 
-                          {/* 14. Total Promosi */}
-                          <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: '#8b5cf6' }}>
-                            Rp {item.totalPromosi.toLocaleString('id-ID')}
+                          {/* 9. Estimated GMV */}
+                          <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
+                            Rp {estGMV.toLocaleString('id-ID')}
                           </td>
 
-                          {/* 15. Bottom Price */}
-                          <td style={{ padding: '10px 12px', textAlign: 'right', backgroundColor: '#f8fafc', color: 'var(--text-muted)' }}>
-                            Rp {item.bottomPrice.toLocaleString('id-ID')}
-                          </td>
-
-                          {/* 16. Status Margin */}
-                          <td style={{ padding: '10px 12px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
-                            {isSafe ? (
-                              <span style={{ 
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                gap: '4px', 
-                                padding: '2px 8px', 
-                                borderRadius: '12px', 
-                                fontSize: '0.72rem', 
-                                fontWeight: 700, 
-                                backgroundColor: 'var(--success-light)', 
-                                color: 'var(--success)' 
-                              }}>
-                                <ShieldCheck size={12} /> AMAN (+{diffToBottom.toLocaleString('id-ID')})
-                              </span>
-                            ) : (
-                              <span style={{ 
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                gap: '4px', 
-                                padding: '2px 8px', 
-                                borderRadius: '12px', 
-                                fontSize: '0.72rem', 
-                                fontWeight: 700, 
-                                backgroundColor: 'var(--danger-light)', 
-                                color: 'var(--danger)' 
-                              }}>
-                                <AlertTriangle size={12} /> BAHAYA ({diffToBottom.toLocaleString('id-ID')})
-                              </span>
-                            )}
-                          </td>
-
-                          {/* 17. Aksi */}
-                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                          {/* 10. Actions */}
+                          <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                             <button
-                              onClick={() => handleDeleteItem(item.id)}
-                              title="Hapus baris promo"
-                              style={{ 
-                                background: 'transparent', 
-                                border: 'none', 
-                                color: 'var(--text-muted)', 
-                                cursor: 'pointer',
-                                padding: '4px',
-                                borderRadius: '4px'
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedCampaign(item)
                               }}
-                              onMouseEnter={(e) => (e.currentTarget.style.color = '#dc2626')}
-                              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                              title="Lihat Detail Campaign"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--primary)',
+                                cursor: 'pointer',
+                                padding: '4px'
+                              }}
                             >
-                              <Trash2 size={14} />
+                              <Eye size={16} />
                             </button>
                           </td>
                         </tr>
@@ -1377,275 +1766,592 @@ export default function PromoPlannerPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* VIEW 2: VISUAL CALENDAR (PERSIS TAB KALENDER PROMO SEPTEMBER) */}
+      {/* SECTION O: BOARD VIEW (KANBAN) */}
+      {/* ========================================================================= */}
+      {activeView === 'board' && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '16px',
+          alignItems: 'start'
+        }}>
+          {(['Draft', 'Scheduled', 'Running', 'Completed'] as CampaignStatus[]).map((statusCol) => {
+            const itemsInCol = filteredList.filter(i => i.status === statusCol)
+            const colBadge = getStatusBadge(statusCol)
+            const colGMV = itemsInCol.reduce((acc, curr) => acc + (curr.hargaPromo * curr.qty), 0)
+
+            return (
+              <div 
+                key={statusCol}
+                style={{
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid var(--surface-border)',
+                  borderRadius: '10px',
+                  padding: '14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}
+              >
+                {/* Column Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: colBadge.dot }}></span>
+                    <h3 style={{ fontSize: '0.875rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                      {statusCol}
+                    </h3>
+                    <span style={{ 
+                      fontSize: '0.72rem', 
+                      fontWeight: 700, 
+                      padding: '1px 6px', 
+                      borderRadius: '9999px', 
+                      backgroundColor: '#ffffff', 
+                      color: 'var(--text-secondary)',
+                      border: '1px solid #e2e8f0'
+                    }}>
+                      {itemsInCol.length}
+                    </span>
+                  </div>
+
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Rp {(colGMV / 1000000).toFixed(1)}M
+                  </span>
+                </div>
+
+                {/* Cards Container */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minHeight: '120px' }}>
+                  {itemsInCol.length === 0 ? (
+                    <div style={{
+                      padding: '28px 14px',
+                      textAlign: 'center',
+                      fontSize: '0.75rem',
+                      color: 'var(--text-muted)',
+                      border: '1px dashed #cbd5e1',
+                      borderRadius: '8px'
+                    }}>
+                      Tidak ada campaign {statusCol}
+                    </div>
+                  ) : (
+                    itemsInCol.map((item) => {
+                      const mpBadge = getMarketplaceBadge(item.marketplace)
+                      const itemGMV = item.hargaPromo * item.qty
+
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => setSelectedCampaign(item)}
+                          style={{
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            padding: '12px 14px',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'
+                            e.currentTarget.style.transform = 'translateY(-1px)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'
+                            e.currentTarget.style.transform = 'none'
+                          }}
+                        >
+                          {/* Card Top: Marketplace & Period */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <span style={{
+                              padding: '2px 7px',
+                              borderRadius: '4px',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              backgroundColor: mpBadge.bg,
+                              color: mpBadge.color,
+                              border: `1px solid ${mpBadge.border}`
+                            }}>
+                              {item.marketplace}
+                            </span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                              {item.tanggal}
+                            </span>
+                          </div>
+
+                          {/* Card Body: Campaign Name & SKU */}
+                          <div style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)', lineHeight: 1.3 }}>
+                            {item.campaignName}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                            {item.productName}
+                          </div>
+
+                          {/* Card Metrics: Target & GMV */}
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginTop: '10px',
+                            paddingTop: '8px',
+                            borderTop: '1px solid #f1f5f9',
+                            fontSize: '0.72rem'
+                          }}>
+                            <div>
+                              <span style={{ color: 'var(--text-muted)' }}>Target: </span>
+                              <strong style={{ color: 'var(--text-primary)' }}>{item.qty} pcs</strong>
+                            </div>
+                            <div>
+                              <span style={{ color: 'var(--text-muted)' }}>Est. GMV: </span>
+                              <strong style={{ color: 'var(--primary)' }}>Rp {itemGMV.toLocaleString('id-ID')}</strong>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SECTION K & L & M: MODERN PROFESSIONAL CALENDAR VIEW */}
       {/* ========================================================================= */}
       {activeView === 'calendar' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="card" style={{ padding: '0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           
-          {/* MONTH SELECTOR BANNER */}
-          <div className="card-flat" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface)', border: '1px solid var(--surface-border)', borderRadius: '10px', flexWrap: 'wrap', gap: '12px' }}>
+          {/* CALENDAR HEADER BAR */}
+          <div style={{
+            padding: '16px 20px',
+            borderBottom: '1px solid var(--surface-border)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#ffffff',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            {/* Left Month Controls: [ ← ] Month YYYY [ → ] [ Today ] */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <CalendarDays size={20} color="var(--primary)" />
-              <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                  Matriks Kalender Promo {calendarMonth} 2026
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button
+                  onClick={() => setCalendarMonthIndex(prev => Math.max(8, prev - 1))}
+                  disabled={calendarMonthIndex <= 8}
+                  className="btn-outline"
+                  style={{ padding: '6px 8px', borderRadius: '6px', cursor: calendarMonthIndex <= 8 ? 'not-allowed' : 'pointer' }}
+                  title="Bulan sebelumnya"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: '0 10px', color: 'var(--text-primary)' }}>
+                  {currentMonthInfo.name} {currentMonthInfo.year}
                 </h3>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
-                  Format mingguan &amp; kanal promosi identik dengan tab <em>Kalender Promo September</em> di Google Sheet.
-                </p>
+
+                <button
+                  onClick={() => setCalendarMonthIndex(prev => Math.min(11, prev + 1))}
+                  disabled={calendarMonthIndex >= 11}
+                  className="btn-outline"
+                  style={{ padding: '6px 8px', borderRadius: '6px', cursor: calendarMonthIndex >= 11 ? 'not-allowed' : 'pointer' }}
+                  title="Bulan berikutnya"
+                >
+                  <ChevronRight size={16} />
+                </button>
               </div>
+
+              {/* TODAY BUTTON */}
+              <button
+                onClick={() => setCalendarMonthIndex(9)} // Jump to Oktober 2026
+                className="btn-outline"
+                style={{ fontSize: '0.75rem', fontWeight: 600, padding: '5px 12px', borderRadius: '6px', cursor: 'pointer' }}
+              >
+                Today
+              </button>
             </div>
 
-            {/* MONTH SWITCHER PILLS */}
-            <div style={{ display: 'flex', gap: '6px', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
-              {(['Oktober', 'November', 'Desember'] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setCalendarMonth(m)}
+            {/* Right: Quick Month Dropdown */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Pilih Bulan:</span>
+              <select
+                value={calendarMonthIndex}
+                onChange={(e) => setCalendarMonthIndex(Number(e.target.value))}
+                className="filter-select"
+                style={{ fontSize: '0.8125rem', height: '34px', minWidth: '130px' }}
+              >
+                <option value={8}>September 2026</option>
+                <option value={9}>Oktober 2026</option>
+                <option value={10}>November 2026</option>
+                <option value={11}>Desember 2026</option>
+              </select>
+            </div>
+          </div>
+
+          {/* CALENDAR WEEKDAYS HEADER */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, 1fr)',
+            backgroundColor: '#f8fafc',
+            borderBottom: '1px solid var(--surface-border)',
+            textAlign: 'center',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: 'var(--text-secondary)'
+          }}>
+            <div style={{ padding: '10px' }}>Senin</div>
+            <div style={{ padding: '10px' }}>Selasa</div>
+            <div style={{ padding: '10px' }}>Rabu</div>
+            <div style={{ padding: '10px' }}>Kamis</div>
+            <div style={{ padding: '10px' }}>Jumat</div>
+            <div style={{ padding: '10px', color: '#f97316' }}>Sabtu</div>
+            <div style={{ padding: '10px', color: '#dc2626' }}>Minggu</div>
+          </div>
+
+          {/* CALENDAR DAYS GRID */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, 1fr)',
+            backgroundColor: 'var(--surface-border)',
+            gap: '1px'
+          }}>
+            {calendarDays.map((cell, idx) => {
+              // Find active campaigns for this day
+              const dayCampaigns = cell.isCurrentMonth
+                ? promoList.filter(item => {
+                    if (item.bulan !== currentMonthInfo.name) return false
+                    const { startDay, endDay } = parseCampaignDays(item.tanggal)
+                    return cell.dateNum >= startDay && cell.dateNum <= endDay
+                  })
+                : []
+
+              const isToday = cell.isCurrentMonth && currentMonthInfo.name === 'Oktober' && cell.dateNum === 10
+
+              return (
+                <div
+                  key={idx}
                   style={{
-                    padding: '6px 14px',
-                    borderRadius: '6px',
-                    fontSize: '0.8125rem',
-                    fontWeight: 600,
-                    border: 'none',
-                    backgroundColor: calendarMonth === m ? 'var(--surface)' : 'transparent',
-                    color: calendarMonth === m ? 'var(--primary)' : 'var(--text-secondary)',
-                    boxShadow: calendarMonth === m ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s'
+                    backgroundColor: cell.isCurrentMonth ? '#ffffff' : '#f8fafc',
+                    minHeight: '130px',
+                    padding: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                    position: 'relative'
                   }}
                 >
-                  {m} 2026
-                </button>
-              ))}
-            </div>
+                  {/* Day Number Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                    <span style={{
+                      fontSize: '0.8125rem',
+                      fontWeight: isToday ? 800 : cell.isCurrentMonth ? 600 : 400,
+                      color: isToday ? '#ffffff' : cell.isCurrentMonth ? 'var(--text-primary)' : '#94a3b8',
+                      width: isToday ? '22px' : 'auto',
+                      height: isToday ? '22px' : 'auto',
+                      borderRadius: isToday ? '50%' : '0',
+                      backgroundColor: isToday ? 'var(--primary)' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {cell.day}
+                    </span>
+
+                    {isToday && (
+                      <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase' }}>
+                        Hari Ini
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Campaign Event Bars */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1 }}>
+                    {dayCampaigns.slice(0, 2).map((camp) => {
+                      const mpBadge = getMarketplaceBadge(camp.marketplace)
+                      const stBadge = getStatusBadge(camp.status)
+                      const { startDay, endDay } = parseCampaignDays(camp.tanggal)
+                      const isMultiDay = startDay !== endDay
+
+                      return (
+                        <div
+                          key={camp.id}
+                          onClick={() => setSelectedCampaign(camp)}
+                          title={`${camp.campaignName} (${camp.marketplace} - ${camp.status})`}
+                          style={{
+                            padding: '3px 6px',
+                            borderRadius: '4px',
+                            fontSize: '0.68rem',
+                            fontWeight: 600,
+                            backgroundColor: mpBadge.bg,
+                            color: mpBadge.color,
+                            border: `1px solid ${mpBadge.border}`,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'opacity 0.15s'
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
+                          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                        >
+                          <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: stBadge.dot, flexShrink: 0 }}></span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {camp.campaignName}
+                          </span>
+                        </div>
+                      )
+                    })}
+
+                    {/* "+X more" trigger */}
+                    {dayCampaigns.length > 2 && (
+                      <button
+                        onClick={() => setActiveDayModal({
+                          day: cell.dateNum,
+                          monthName: currentMonthInfo.name,
+                          campaigns: dayCampaigns
+                        })}
+                        style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          color: 'var(--primary)',
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          padding: '1px 4px',
+                          marginTop: 'auto'
+                        }}
+                      >
+                        +{dayCampaigns.length - 2} lainnya
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
-          {/* CALENDAR SWIMLANE MATRIX */}
-          <div className="card" style={{ padding: '0', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-            
-            {/* WEEKDAYS HEADER (SENIN - MINGGU) */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '180px repeat(7, 1fr)', 
-              backgroundColor: '#0f172a', 
-              color: '#ffffff', 
-              fontWeight: 700, 
-              fontSize: '0.8125rem',
-              borderBottom: '2px solid #334155'
-            }}>
-              <div style={{ padding: '12px 14px', borderRight: '1px solid #334155', display: 'flex', alignItems: 'center' }}>
-                Kanal Promosi
-              </div>
-              <div style={{ padding: '12px 8px', textAlign: 'center', borderRight: '1px solid #334155' }}>Senin</div>
-              <div style={{ padding: '12px 8px', textAlign: 'center', borderRight: '1px solid #334155' }}>Selasa</div>
-              <div style={{ padding: '12px 8px', textAlign: 'center', borderRight: '1px solid #334155' }}>Rabu</div>
-              <div style={{ padding: '12px 8px', textAlign: 'center', borderRight: '1px solid #334155' }}>Kamis</div>
-              <div style={{ padding: '12px 8px', textAlign: 'center', borderRight: '1px solid #334155' }}>Jumat</div>
-              <div style={{ padding: '12px 8px', textAlign: 'center', borderRight: '1px solid #334155' }}>Sabtu</div>
-              <div style={{ padding: '12px 8px', textAlign: 'center' }}>Minggu</div>
-            </div>
+        </div>
+      )}
 
-            {/* DATES ROW (SAMPLE WEEK OVERVIEW FOR SELECTED MONTH) */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '180px repeat(7, 1fr)', 
-              backgroundColor: '#f8fafc', 
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: 'var(--text-muted)',
-              borderBottom: '1px solid var(--surface-border)'
-            }}>
-              <div style={{ padding: '8px 14px', borderRight: '1px solid var(--surface-border)' }}>
-                Fase Periode
-              </div>
-              <div style={{ padding: '8px', textAlign: 'center', borderRight: '1px solid var(--surface-border)' }}>W1 (1-4)</div>
-              <div style={{ padding: '8px', textAlign: 'center', borderRight: '1px solid var(--surface-border)' }}>W1 (5-7)</div>
-              <div style={{ padding: '8px', textAlign: 'center', borderRight: '1px solid var(--surface-border)' }}>W2 (8-9)</div>
-              <div style={{ padding: '8px', textAlign: 'center', borderRight: '1px solid var(--surface-border)', backgroundColor: '#fef3c7', color: '#b45309' }}>
-                ⭐ Mega Twindate
-              </div>
-              <div style={{ padding: '8px', textAlign: 'center', borderRight: '1px solid var(--surface-border)' }}>W3 (15-20)</div>
-              <div style={{ padding: '8px', textAlign: 'center', borderRight: '1px solid var(--surface-border)' }}>W4 (21-24)</div>
-              <div style={{ padding: '8px', textAlign: 'center', backgroundColor: '#ecfdf5', color: '#047857' }}>
-                🎉 Payday Wave
-              </div>
-            </div>
-
-            {/* ROW 1: FULL MONTH VOUCHER */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '180px repeat(7, 1fr)', 
+      {/* ========================================================================= */}
+      {/* SECTION N: CAMPAIGN DETAIL DRAWER (SLIDE-OVER FROM RIGHT) */}
+      {/* ========================================================================= */}
+      {selectedCampaign && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.4)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          justifyContent: 'flex-end',
+          zIndex: 9999,
+          transition: 'all 0.2s ease'
+        }}>
+          <div 
+            style={{
+              width: '100%',
+              maxWidth: '480px',
+              backgroundColor: '#ffffff',
+              height: '100%',
+              boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.15)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflowY: 'auto'
+            }}
+          >
+            {/* DRAWER HEADER */}
+            <div style={{
+              padding: '20px 24px',
               borderBottom: '1px solid var(--surface-border)',
-              minHeight: '110px'
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start'
             }}>
-              <div style={{ 
-                padding: '16px 14px', 
-                backgroundColor: '#f8fafc', 
-                borderRight: '1px solid var(--surface-border)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center'
-              }}>
-                <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.875rem' }}>🏷️ Full Month</span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>Voucher Toko &amp; Video</span>
-              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <span style={{
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    backgroundColor: getMarketplaceBadge(selectedCampaign.marketplace).bg,
+                    color: getMarketplaceBadge(selectedCampaign.marketplace).color,
+                    border: `1px solid ${getMarketplaceBadge(selectedCampaign.marketplace).border}`
+                  }}>
+                    {selectedCampaign.marketplace}
+                  </span>
+                  
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '2px 8px',
+                    borderRadius: '9999px',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    backgroundColor: getStatusBadge(selectedCampaign.status).bg,
+                    color: getStatusBadge(selectedCampaign.status).color,
+                    border: `1px solid ${getStatusBadge(selectedCampaign.status).border}`
+                  }}>
+                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: getStatusBadge(selectedCampaign.status).dot }}></span>
+                    {selectedCampaign.status}
+                  </span>
+                </div>
 
-              {/* Col 1-3 Regular */}
-              <div style={{ gridColumn: 'span 3', padding: '12px', borderRight: '1px solid var(--surface-border)', fontSize: '0.75rem', backgroundColor: '#ffffff' }}>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Voucher Akuisisi Pelanggan</div>
-                <ul style={{ margin: 0, paddingLeft: '16px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  <li>Voucher New Follower (Shopee) / New Buyers (TTS) 50% up to 5K</li>
-                  <li>Voucher Video Disc max 5k min order 85k</li>
-                  <li>Voc BAU max 3k min belanja 150k</li>
-                </ul>
-              </div>
-
-              {/* Col 4 Twindate Mega Special */}
-              <div style={{ padding: '12px', borderRight: '1px solid var(--surface-border)', fontSize: '0.75rem', backgroundColor: '#fffbeb' }}>
-                <div style={{ fontWeight: 700, color: '#b45309', marginBottom: '4px' }}>⭐ Special Twindate</div>
-                <div style={{ color: '#92400e', lineHeight: 1.4 }}>
-                  Voucher Mega Day disc 10% max 15k min order 150k + Golden Ticket 50%
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, lineHeight: 1.3 }}>
+                  {selectedCampaign.campaignName}
+                </h2>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  {selectedCampaign.periode} &bull; {selectedCampaign.tanggal}
                 </div>
               </div>
 
-              {/* Col 5-6 Mid Month */}
-              <div style={{ gridColumn: 'span 2', padding: '12px', borderRight: '1px solid var(--surface-border)', fontSize: '0.75rem', backgroundColor: '#ffffff' }}>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Mid-Month Retention</div>
-                <ul style={{ margin: 0, paddingLeft: '16px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  <li>Voc Repurchase NPD max 5k min order 40k</li>
-                  <li>Voc Video Shopee max 5k min 85k</li>
-                </ul>
-              </div>
-
-              {/* Col 7 Payday */}
-              <div style={{ padding: '12px', fontSize: '0.75rem', backgroundColor: '#f0fdf4' }}>
-                <div style={{ fontWeight: 700, color: '#15803d', marginBottom: '4px' }}>🎉 Payday Voucher</div>
-                <div style={{ color: '#166534', lineHeight: 1.4 }}>
-                  Voc Gajian max 10k min belanja 120k (Khusus Paket Lengkap &amp; Bundling C-Booster)
-                </div>
-              </div>
+              <button
+                onClick={() => setSelectedCampaign(null)}
+                title="Tutup Detail"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '6px'
+                }}
+              >
+                <X size={20} />
+              </button>
             </div>
 
-            {/* ROW 2: PROMO TOKO (TIERED DISCOUNTS) */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '180px repeat(7, 1fr)', 
-              borderBottom: '1px solid var(--surface-border)',
-              minHeight: '120px'
-            }}>
-              <div style={{ 
-                padding: '16px 14px', 
-                backgroundColor: '#f8fafc', 
-                borderRight: '1px solid var(--surface-border)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center'
-              }}>
-                <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.875rem' }}>🏪 Promo Toko</span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>Tiered Bundle &amp; Paket</span>
+            {/* DRAWER BODY */}
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
+              
+              {/* Product Info Card */}
+              <div style={{ padding: '14px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Target Produk
+                </div>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', marginTop: '2px' }}>
+                  {selectedCampaign.productName}
+                </div>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '6px', fontSize: '0.75rem' }}>
+                  <span>SKU: <strong style={{ fontFamily: 'monospace' }}>{selectedCampaign.sku}</strong></span>
+                  <span>Channel: <strong>{selectedCampaign.kategori}</strong></span>
+                </div>
               </div>
 
-              <div style={{ gridColumn: 'span 7', padding: '14px 18px', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ padding: '3px 8px', borderRadius: '4px', backgroundColor: '#eff6ff', color: '#1d4ed8', fontWeight: 700, fontSize: '0.75rem' }}>
-                    Mekanisme Tiered Diskon Toko
-                  </span>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-                    Beli <strong>3 pcs</strong> diskon <strong>4%</strong> | Beli <strong>4 pcs</strong> diskon <strong>5%</strong> | Beli <strong>5 pcs</strong> diskon <strong>6%</strong> (All SKU Existing &amp; NPD)
-                  </span>
+              {/* Performance & Target Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Target Alokasi Stok</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px' }}>
+                    {selectedCampaign.qty} Pcs
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  <strong>Hero Pricing Full Month:</strong> C-Booster Serum Rp 58.000, C-Booster Cream Rp 39.000, Daily C-Booster Rp 94.000. Flash sale toko 3-5% untuk item pilihan (Acne, Glow, Retinol) bergantian setiap Senin &amp; Kamis.
+
+                <div style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Estimasi Hasil GMV</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)', marginTop: '2px' }}>
+                    Rp {(selectedCampaign.hargaPromo * selectedCampaign.qty).toLocaleString('id-ID')}
+                  </div>
                 </div>
               </div>
+
+              {/* Pricing & Discount Breakdown */}
+              <div>
+                <h4 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 10px' }}>
+                  Struktur Harga &amp; Diskon
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8125rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>HARGA Bulanan (Normal):</span>
+                    <strong>Rp {selectedCampaign.hargaBulanan.toLocaleString('id-ID')}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Diskon Promosi:</span>
+                    <strong style={{ color: '#f97316' }}>{selectedCampaign.diskonPercent}% (-Rp {selectedCampaign.totalDiskon.toLocaleString('id-ID')})</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px solid #f1f5f9' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Harga Promo Final:</span>
+                    <strong style={{ fontSize: '1rem', color: 'var(--primary)' }}>Rp {selectedCampaign.hargaPromo.toLocaleString('id-ID')}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial & Margin Protection Detail */}
+              <div style={{ padding: '14px', borderRadius: '8px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#047857', fontWeight: 700, fontSize: '0.8125rem' }}>
+                  <ShieldCheck size={16} /> Proteksi Margin Finance
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.75rem', marginTop: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#166534' }}>Harga Operational Base (OB):</span>
+                    <strong>Rp {selectedCampaign.hargaOB.toLocaleString('id-ID')}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#166534' }}>Bottom Price (-3% dr OB):</span>
+                    <strong>Rp {selectedCampaign.bottomPrice.toLocaleString('id-ID')}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '4px', borderTop: '1px dashed #86efac' }}>
+                    <span style={{ color: '#166534', fontWeight: 600 }}>Safety Buffer:</span>
+                    <strong style={{ color: '#047857' }}>
+                      +Rp {(selectedCampaign.hargaPromo - selectedCampaign.bottomPrice).toLocaleString('id-ID')} (100% AMAN)
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Strategic Insights & Notes */}
+              {selectedCampaign.notes && (
+                <div>
+                  <h4 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>
+                    💡 Catatan Operasional
+                  </h4>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5, backgroundColor: '#f8fafc', padding: '10px 12px', borderRadius: '6px' }}>
+                    {selectedCampaign.notes}
+                  </p>
+                </div>
+              )}
+
             </div>
 
-            {/* ROW 3: CAMPAIGN MARKETPLACE */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '180px repeat(7, 1fr)', 
-              borderBottom: '1px solid var(--surface-border)',
-              minHeight: '120px'
+            {/* DRAWER FOOTER ACTIONS */}
+            <div style={{
+              padding: '16px 24px',
+              borderTop: '1px solid var(--surface-border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: '#f8fafc'
             }}>
-              <div style={{ 
-                padding: '16px 14px', 
-                backgroundColor: '#f8fafc', 
-                borderRight: '1px solid var(--surface-border)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center'
-              }}>
-                <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.875rem' }}>⚡ Campaign</span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>Flash Sale &amp; Mega Days</span>
-              </div>
+              <button
+                onClick={() => handleDeleteItem(selectedCampaign.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: 'var(--danger)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <Trash2 size={14} /> Hapus Campaign
+              </button>
 
-              {/* Early Month BAU */}
-              <div style={{ gridColumn: 'span 3', padding: '12px', borderRight: '1px solid var(--surface-border)', fontSize: '0.75rem', backgroundColor: '#ffffff' }}>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Flash Sale Selected Items 3-5%</div>
-                <div style={{ color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.4 }}>
-                  AHA Glow, Skin Tint, Daily C-Booster, Acne Wash. Penetrasi traffic awal bulan.
-                </div>
-              </div>
-
-              {/* Twindate Mega Wave */}
-              <div style={{ padding: '12px', borderRight: '1px solid var(--surface-border)', fontSize: '0.75rem', backgroundColor: '#fffbeb' }}>
-                <div style={{ fontWeight: 700, color: '#b45309' }}>
-                  {calendarMonth === 'Oktober' ? '⚡ 10.10 Mega Day' : calendarMonth === 'November' ? '⚡ 11.11 Big Sale' : '⚡ 12.12 Harbolnas'}
-                </div>
-                <div style={{ color: '#92400e', marginTop: '4px', lineHeight: 1.4 }}>
-                  Flash Sale 5-6% Hero Wash &amp; Retinol Serum. Midnight Sale 00.00-02.00 WIB.
-                </div>
-              </div>
-
-              {/* Mid Month */}
-              <div style={{ gridColumn: 'span 2', padding: '12px', borderRight: '1px solid var(--surface-border)', fontSize: '0.75rem', backgroundColor: '#ffffff' }}>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Mid-Month Flash Deals 3-4%</div>
-                <div style={{ color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.4 }}>
-                  Twinpack &amp; Triplepack Age Revival, Cleanser Tube, Ceramoist Series.
-                </div>
-              </div>
-
-              {/* Payday Wave */}
-              <div style={{ padding: '12px', fontSize: '0.75rem', backgroundColor: '#f0fdf4' }}>
-                <div style={{ fontWeight: 700, color: '#15803d' }}>🎉 Gajian Sale 25-31</div>
-                <div style={{ color: '#166534', marginTop: '4px', lineHeight: 1.4 }}>
-                  Diskon 3-4% Paket Lengkap + Free Gift Pouch. Target AOV di atas Rp 250.000.
-                </div>
-              </div>
-            </div>
-
-            {/* ROW 4: LIVE STREAMING */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '180px repeat(7, 1fr)', 
-              minHeight: '120px'
-            }}>
-              <div style={{ 
-                padding: '16px 14px', 
-                backgroundColor: '#f8fafc', 
-                borderRight: '1px solid var(--surface-border)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center'
-              }}>
-                <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.875rem' }}>🎙️ Live Stream</span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>Shopee Live &amp; TikTok</span>
-              </div>
-
-              <div style={{ gridColumn: 'span 7', padding: '14px 18px', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ padding: '3px 8px', borderRadius: '4px', backgroundColor: '#fdf2f8', color: '#db2777', fontWeight: 700, fontSize: '0.75rem' }}>
-                    Live Streaming Strategy
-                  </span>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-                    Flash Sale 3-6% khusus produk yang dipin di keranjang kuning live host. Voucher live diskon 50% max 5K.
-                  </span>
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  <strong>Prioritas SKU Live:</strong> Twinpack Sun Protector, Triplepack Gentle Cleanser, Night Cream Pot Mould, dan Bundling C-Booster. Durasi live minimal 8 jam/hari pada hari kerja, dan 16-24 jam nonstop saat Twindate &amp; Payday.
-                </div>
-              </div>
+              <button
+                onClick={() => setSelectedCampaign(null)}
+                className="btn-primary"
+                style={{ fontSize: '0.8125rem', padding: '8px 18px', cursor: 'pointer' }}
+              >
+                Tutup
+              </button>
             </div>
 
           </div>
@@ -1653,154 +2359,84 @@ export default function PromoPlannerPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* VIEW 3: VOUCHERS, TIERED BUNDLING & GWP STRATEGY */}
+      {/* DAY POPUP MODAL (FROM "+X MORE" ON CALENDAR) */}
       {/* ========================================================================= */}
-      {activeView === 'vouchers' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-          
-          {/* VOUCHER STRUCTURE */}
-          <div className="card" style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: 'rgba(37, 99, 235, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <BadgePercent size={20} color="var(--primary)" />
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                  Struktur Voucher Marketplace
-                </h3>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Shopee &amp; TikTok Shop</p>
-              </div>
+      {activeDayModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div className="card" style={{ maxWidth: '480px', width: '100%', padding: '20px', position: 'relative' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                Campaign pada {activeDayModal.day} {activeDayModal.monthName} 2026
+              </h3>
+              <button
+                onClick={() => setActiveDayModal(null)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.8125rem' }}>
-              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid var(--surface-border)' }}>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Voucher New Follower / New Buyer</div>
-                <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  Diskon 50% up to Rp 5.000 tanpa minimal belanja (Semua Produk). Efektif mendongkrak konversi first-time buyer.
-                </div>
-              </div>
-
-              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid var(--surface-border)' }}>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Voucher Shopee Video &amp; Live</div>
-                <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  Diskon max Rp 5.000 dengan minimal order Rp 85.000. Diberikan untuk checkout via keranjang Shopee Video / Live streaming.
-                </div>
-              </div>
-
-              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid var(--surface-border)' }}>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Voucher Payday &amp; Mega Campaign</div>
-                <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  Diskon max Rp 10.000 dengan minimal belanja Rp 120.000. Khusus dialokasikan untuk produk Series Lengkap &amp; C-Booster.
-                </div>
-              </div>
-
-              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid var(--surface-border)' }}>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Voucher NPD (New Product Development)</div>
-                <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  Voucher repeat order Rp 5.000 min pembelian Rp 40.000 khusus katalog inovasi produk baru.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* TIERED BUNDLING MECHANICS */}
-          <div className="card" style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: 'rgba(249, 115, 22, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Layers size={20} color="#f97316" />
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                  Tiered Bundling &amp; Diskon Toko
-                </h3>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Menaikkan Basket Size (AOV)</p>
-              </div>
-            </div>
-
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', marginBottom: '16px' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--surface-border)', color: 'var(--text-secondary)' }}>
-                  <th style={{ padding: '8px 10px', textAlign: 'left' }}>Jumlah Pembelian</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Tier Diskon</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Est. Margin Safe</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style={{ borderBottom: '1px solid var(--surface-border)' }}>
-                  <td style={{ padding: '10px', fontWeight: 600 }}>Beli 3 Pcs</td>
-                  <td style={{ padding: '10px', textAlign: 'center', fontWeight: 700, color: '#f97316' }}>4% Diskon</td>
-                  <td style={{ padding: '10px', textAlign: 'right', color: 'var(--success)', fontWeight: 600 }}>AMAN &gt; OB</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid var(--surface-border)' }}>
-                  <td style={{ padding: '10px', fontWeight: 600 }}>Beli 4 Pcs</td>
-                  <td style={{ padding: '10px', textAlign: 'center', fontWeight: 700, color: '#f97316' }}>5% Diskon</td>
-                  <td style={{ padding: '10px', textAlign: 'right', color: 'var(--success)', fontWeight: 600 }}>AMAN &gt; OB</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid var(--surface-border)' }}>
-                  <td style={{ padding: '10px', fontWeight: 600 }}>Beli 5 Pcs</td>
-                  <td style={{ padding: '10px', textAlign: 'center', fontWeight: 700, color: '#f97316' }}>6% Diskon</td>
-                  <td style={{ padding: '10px', textAlign: 'right', color: 'var(--success)', fontWeight: 600 }}>AMAN &gt; Bottom Price</td>
-                </tr>
-              </tbody>
-            </table>
-
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-              💡 <em>Catatan:</em> Sesuai closing rule, jika terdapat diskon yang sama dalam periode closing yang sama, sistem otomatis menghitung validitas kuota agar tidak double budget.
-            </p>
-          </div>
-
-          {/* GWP & FREEBIES */}
-          <div className="card" style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Gift size={20} color="#059669" />
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                  Freebies (GWP) Matrix
-                </h3>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Gift With Purchase Q4</p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.8125rem' }}>
-              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid var(--surface-border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>Pouch Exclusive Theraskin</strong>
-                  <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#059669', fontWeight: 700 }}>Min Rp 200.000</span>
-                </div>
-                <div style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>
-                  Otomatis diberikan untuk pembelian Paket Lengkap (Acne, Glow, Anti-Aging, Ceramoist) selama Twindate &amp; Payday.
-                </div>
-              </div>
-
-              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid var(--surface-border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>Beauty Sponge / Mask Brush</strong>
-                  <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#059669', fontWeight: 700 }}>Min Rp 120.000</span>
-                </div>
-                <div style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>
-                  Diberikan untuk pembelian bundling minimal 2 produk Glow Series atau C-Booster.
-                </div>
-              </div>
-
-              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid var(--surface-border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>Travel Size Gentle Toner (20ml)</strong>
-                  <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#059669', fontWeight: 700 }}>Mega 12.12 Only</span>
-                </div>
-                <div style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>
-                  Khusus 500 order pertama pada Midnight Sale 12.12 Harbolnas.
-                </div>
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '360px', overflowY: 'auto' }}>
+              {activeDayModal.campaigns.map(c => {
+                const mpBadge = getMarketplaceBadge(c.marketplace)
+                return (
+                  <div
+                    key={c.id}
+                    onClick={() => {
+                      setActiveDayModal(null)
+                      setSelectedCampaign(c)
+                    }}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-primary)' }}>
+                        {c.campaignName}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                        {c.productName} &bull; {c.qty} pcs
+                      </div>
+                    </div>
+                    <span style={{
+                      padding: '2px 7px',
+                      borderRadius: '4px',
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      backgroundColor: mpBadge.bg,
+                      color: mpBadge.color
+                    }}>
+                      {c.marketplace}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           </div>
-
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: TAMBAH PROMO CUSTOM */}
+      {/* MODAL: + BUAT CAMPAIGN / TAMBAH PROMO CUSTOM */}
       {/* ========================================================================= */}
       {showModal && (
         <div 
@@ -1821,9 +2457,14 @@ export default function PromoPlannerPage() {
         >
           <div className="card" style={{ maxWidth: '620px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '24px', position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                Tambah Baris Promosi Baru
-              </h2>
+              <div>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                  Buat Campaign Baru
+                </h2>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+                  Rencanakan alokasi promo &amp; validasi batas aman Bottom Price Finance.
+                </p>
+              </div>
               <button 
                 type="button" 
                 onClick={() => setShowModal(false)}
@@ -1836,6 +2477,21 @@ export default function PromoPlannerPage() {
 
             <form onSubmit={handleAddCustomPromo} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                  Nama Campaign
+                </label>
+                <input 
+                  type="text" 
+                  value={newPromo.campaignName || ''} 
+                  onChange={(e) => setNewPromo(p => ({ ...p, campaignName: e.target.value }))}
+                  placeholder="Contoh: Shopee TwinDate 10.10 Flash Sale Live" 
+                  className="input-field" 
+                  required
+                  style={{ width: '100%' }}
+                />
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
@@ -1870,17 +2526,17 @@ export default function PromoPlannerPage() {
 
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                    Closing
+                    Status
                   </label>
                   <select 
-                    value={newPromo.closing || 'All'} 
-                    onChange={(e) => setNewPromo(p => ({ ...p, closing: e.target.value as any }))}
+                    value={newPromo.status || 'Scheduled'} 
+                    onChange={(e) => setNewPromo(p => ({ ...p, status: e.target.value as any }))}
                     className="filter-select"
                     style={{ width: '100%' }}
                   >
-                    <option value="All">All</option>
-                    <option value="Pusat">Pusat</option>
-                    <option value="Cabang">Cabang</option>
+                    <option value="Scheduled">Scheduled</option>
+                    <option value="Running">Running</option>
+                    <option value="Draft">Draft</option>
                   </select>
                 </div>
               </div>
@@ -1888,7 +2544,7 @@ export default function PromoPlannerPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                    Kategori
+                    Kategori / Channel
                   </label>
                   <select 
                     value={newPromo.kategori} 
@@ -1935,7 +2591,7 @@ export default function PromoPlannerPage() {
 
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                    Tanggal
+                    Tanggal / Durasi
                   </label>
                   <input 
                     type="text" 
@@ -2027,7 +2683,7 @@ export default function PromoPlannerPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                    Target Qty
+                    Target Qty (Pcs)
                   </label>
                   <input 
                     type="number" 
@@ -2118,7 +2774,7 @@ export default function PromoPlannerPage() {
                   type="submit" 
                   className="btn-primary"
                 >
-                  Simpan Promo
+                  Simpan Campaign
                 </button>
               </div>
 
