@@ -79,8 +79,35 @@ export default function ClosingPage() {
   const totalCancelledOrders = filteredGroups.reduce((sum, g) => sum + g.cancelledOrders, 0)
   const totalRawOrders = totalValidOrders + totalCancelledOrders
 
+  // Helper for safe clipboard copy with fallback
+  const safeCopyToClipboard = async (text: string) => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text)
+        return true
+      }
+      throw new Error('Clipboard API not available')
+    } catch {
+      try {
+        const textarea = document.createElement('textarea')
+        textarea.value = text
+        textarea.style.position = 'fixed'
+        textarea.style.left = '-9999px'
+        document.body.appendChild(textarea)
+        textarea.focus()
+        textarea.select()
+        const success = document.execCommand('copy')
+        document.body.removeChild(textarea)
+        return success
+      } catch (e) {
+        console.error('Copy fallback failed', e)
+        return false
+      }
+    }
+  }
+
   // 1-Click Copy standard format for Master Excel Closing FA 2 (Ctrl + V direct to Google Sheet)
-  const handleCopyStandardGoogleSheet = () => {
+  const handleCopyStandardGoogleSheet = async () => {
     const header = [
       'Bulan',
       'Platform',
@@ -110,13 +137,13 @@ export default function ClosingPage() {
     ].join('\t')).join('\n')
 
     const fullContent = `${header}\n${tsvData}`
-    navigator.clipboard.writeText(fullContent)
+    await safeCopyToClipboard(fullContent)
     setCopied(true)
     setTimeout(() => setCopied(false), 3000)
   }
 
   // 1-Click Copy Full Audit Breakdown (for Finance audit trail)
-  const handleCopyAuditGoogleSheet = () => {
+  const handleCopyAuditGoogleSheet = async () => {
     const header = [
       'Bulan',
       'Periode',
@@ -152,7 +179,7 @@ export default function ClosingPage() {
     ].join('\t')).join('\n')
 
     const fullContent = `${header}\n${tsvData}`
-    navigator.clipboard.writeText(fullContent)
+    await safeCopyToClipboard(fullContent)
     setCopiedAudit(true)
     setTimeout(() => setCopiedAudit(false), 3000)
   }

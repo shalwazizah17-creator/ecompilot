@@ -27,7 +27,9 @@ import {
   HelpCircle,
   BadgePercent,
   Percent,
-  Eye
+  Eye,
+  X,
+  RotateCcw
 } from 'lucide-react'
 import * as xlsx from 'xlsx'
 
@@ -616,9 +618,36 @@ export default function PromoPlannerPage() {
     return { totalPromos, totalTargetQty, totalPromoCost, safeCount, isAllSafe }
   }, [filteredList])
 
+  // Helper for safe clipboard copy with fallback
+  const safeCopyToClipboard = async (text: string) => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text)
+        return true
+      }
+      throw new Error('Clipboard API not available')
+    } catch {
+      try {
+        const textarea = document.createElement('textarea')
+        textarea.value = text
+        textarea.style.position = 'fixed'
+        textarea.style.left = '-9999px'
+        document.body.appendChild(textarea)
+        textarea.focus()
+        textarea.select()
+        const success = document.execCommand('copy')
+        document.body.removeChild(textarea)
+        return success
+      } catch (e) {
+        console.error('Copy fallback failed', e)
+        return false
+      }
+    }
+  }
+
   // 1-Click Copy Format for Google Sheets (Matches Tab September 1:1)
   // Headers match: Marketplace, Kategori, Sub Kategori, Periode, Tanggal, Closing, SKU, Product Name, HARGA Bulanan, Diskon, Total Diskon, Harga Promo, Qty, Total Promosi, Harga OB, Bottom Price, Status Margin
-  const handleCopyToGoogleSheet = () => {
+  const handleCopyToGoogleSheet = async () => {
     const headers = [
       'Marketplace',
       'Kategori',
@@ -665,13 +694,18 @@ export default function PromoPlannerPage() {
     }).join('\n')
 
     const fullText = `${headers}\n${rows}`
-    navigator.clipboard.writeText(fullText)
+    await safeCopyToClipboard(fullText)
     setCopied(true)
     setTimeout(() => setCopied(false), 3500)
   }
 
   // Export to Real Excel .xlsx file with exact sheet column headers
   const handleExportExcel = () => {
+    if (filteredList.length === 0) {
+      alert('Tidak ada item promo yang cocok dengan filter untuk diekspor. Silakan reset filter terlebih dahulu.')
+      return
+    }
+
     const dataForSheet = filteredList.map(item => ({
       'Marketplace': item.marketplace,
       'Kategori': item.kategori,
@@ -702,6 +736,13 @@ export default function PromoPlannerPage() {
   const handleDeleteItem = (id: string) => {
     if (!confirm('Hapus baris promo ini dari plan?')) return
     setPromoList(prev => prev.filter(p => p.id !== id))
+  }
+
+  const handleResetFilters = () => {
+    setFilterBulan('ALL')
+    setFilterPlatform('ALL')
+    setFilterKategori('ALL')
+    setSearchQuery('')
   }
 
   const handleAddCustomPromo = (e: React.FormEvent) => {
@@ -740,6 +781,26 @@ export default function PromoPlannerPage() {
     }
 
     setPromoList(prev => [itemToAdd, ...prev])
+    setNewPromo({
+      bulan: 'Oktober',
+      marketplace: 'Shopee',
+      kategori: 'Live Streaming',
+      subKategori: 'Flash Sale',
+      periode: 'Twindate 10.10',
+      tanggal: '10 - 12 Oktober',
+      closing: 'All',
+      sku: '',
+      productName: '',
+      hargaBulanan: 0,
+      diskonPercent: 0,
+      totalDiskon: 0,
+      hargaPromo: 0,
+      qty: 10,
+      totalPromosi: 0,
+      hargaOB: 0,
+      bottomPrice: 0,
+      notes: ''
+    })
     setShowModal(false)
   }
 
@@ -988,8 +1049,27 @@ export default function PromoPlannerPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="input-field"
-                style={{ paddingLeft: '34px', fontSize: '0.8125rem', width: '100%' }}
+                style={{ paddingLeft: '34px', paddingRight: searchQuery ? '30px' : '12px', fontSize: '0.8125rem', width: '100%' }}
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  title="Hapus pencarian"
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: '2px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
 
             <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--surface-border)' }}></div>
@@ -1041,6 +1121,27 @@ export default function PromoPlannerPage() {
                 <option value="Brand Membership">Brand Membership</option>
               </select>
             </div>
+
+            {/* RESET FILTER BUTTON */}
+            {(filterBulan !== 'ALL' || filterPlatform !== 'ALL' || filterKategori !== 'ALL' || searchQuery !== '') && (
+              <button
+                onClick={handleResetFilters}
+                className="btn-outline"
+                style={{ 
+                  fontSize: '0.75rem', 
+                  padding: '5px 10px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '4px',
+                  color: 'var(--danger)',
+                  borderColor: 'var(--danger-border)',
+                  cursor: 'pointer'
+                }}
+                title="Reset semua filter ke kondisi awal"
+              >
+                <RotateCcw size={13} /> Reset Filter
+              </button>
+            )}
 
             <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               Menampilkan <strong>{filteredList.length}</strong> promo
@@ -1094,7 +1195,16 @@ export default function PromoPlannerPage() {
                   {filteredList.length === 0 ? (
                     <tr>
                       <td colSpan={17} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        Tidak ada promo yang cocok dengan filter atau pencarian Anda.
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                          <span>Tidak ada promo yang cocok dengan filter atau pencarian Anda.</span>
+                          <button
+                            onClick={handleResetFilters}
+                            className="btn-outline"
+                            style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+                          >
+                            <RotateCcw size={13} /> Reset Semua Filter
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ) : (
@@ -1693,27 +1803,40 @@ export default function PromoPlannerPage() {
       {/* MODAL: TAMBAH PROMO CUSTOM */}
       {/* ========================================================================= */}
       {showModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 9999,
-          padding: '20px'
-        }}>
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999,
+            padding: '20px'
+          }}
+        >
           <div className="card" style={{ maxWidth: '620px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '24px', position: 'relative' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 16px', color: 'var(--text-primary)' }}>
-              Tambah Baris Promosi Baru
-            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                Tambah Baris Promosi Baru
+              </h2>
+              <button 
+                type="button" 
+                onClick={() => setShowModal(false)}
+                title="Tutup Modal"
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '4px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
 
             <form onSubmit={handleAddCustomPromo} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
                     Bulan
@@ -1742,6 +1865,22 @@ export default function PromoPlannerPage() {
                   >
                     <option value="Shopee">Shopee</option>
                     <option value="TikTok Shop">TikTok Shop</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                    Closing
+                  </label>
+                  <select 
+                    value={newPromo.closing || 'All'} 
+                    onChange={(e) => setNewPromo(p => ({ ...p, closing: e.target.value as any }))}
+                    className="filter-select"
+                    style={{ width: '100%' }}
+                  >
+                    <option value="All">All</option>
+                    <option value="Pusat">Pusat</option>
+                    <option value="Cabang">Cabang</option>
                   </select>
                 </div>
               </div>
