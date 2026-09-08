@@ -44,6 +44,9 @@ import {
   Eye,
   ShoppingBag,
   ListTodo,
+  Rocket,
+  CheckCircle2,
+  Smile,
 } from 'lucide-react'
 import {
   StaffTaskItem,
@@ -72,7 +75,7 @@ import {
   isTaskOverdue,
 } from '@/lib/staff-tasks-utils'
 
-// Staff avatars & roles specifically for Shalwa & Nandila
+// Profil staff Shalwa & Nandila dengan bahasa santai
 const STAFF_PROFILES: Record<string, { role: string; avatarBg: string; initial: string; badge: string }> = {
   Shalwa: {
     role: 'Marketplace Specialist (Promo, Bundling & Campaign)',
@@ -81,7 +84,7 @@ const STAFF_PROFILES: Record<string, { role: string; avatarBg: string; initial: 
     badge: 'Specialist',
   },
   Nandila: {
-    role: 'Senior Marketplace Specialist (Shopee, Lazada & Maklon)',
+    role: 'Senior Specialist (Shopee, Lazada & Maklon)',
     avatarBg: '#ea580c',
     initial: 'NA',
     badge: 'Senior Specialist',
@@ -90,10 +93,10 @@ const STAFF_PROFILES: Record<string, { role: string; avatarBg: string; initial: 
 
 export default function StaffTasksPage() {
   const [selectedStaff, setSelectedStaff] = useState<StaffName>('Shalwa')
-  // Active View Level: 'TODAY' | 'WEEKLY' | 'BACKLOG' | 'DONE'
+  // Tab Level: 'TODAY' | 'WEEKLY' | 'BACKLOG' | 'DONE'
   const [activeTab, setActiveTab] = useState<'TODAY' | 'WEEKLY' | 'BACKLOG' | 'DONE'>('TODAY')
 
-  // Selected Day for Today view (Default: 'Senin')
+  // Hari yang lagi dibuka (Default: 'Senin')
   const [selectedDay, setSelectedDay] = useState<DayOfWeek>('Senin')
   const [currentMonday, setCurrentMonday] = useState<Date>(() => getMondayOfWeek(new Date('2026-09-07T00:00:00Z')))
 
@@ -104,16 +107,16 @@ export default function StaffTasksPage() {
   const [loading, setLoading] = useState<boolean>(true)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-  // Filters & Search
+  // Filter & Pencarian
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [filterPriority, setFilterPriority] = useState<string>('ALL')
   const [filterCategory, setFilterCategory] = useState<string>('ALL')
   const [filterMarketplace, setFilterMarketplace] = useState<string>('ALL')
 
-  // Quick inline add
+  // Quick input tugas harian
   const [quickInputText, setQuickInputText] = useState<string>('')
 
-  // Add / Edit Modal State
+  // Modal Tambah / Edit
   const [showTaskModal, setShowTaskModal] = useState<boolean>(false)
   const [modalMode, setModalMode] = useState<'ADD' | 'EDIT'>('ADD')
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
@@ -127,16 +130,16 @@ export default function StaffTasksPage() {
   const [formDayOfWeek, setFormDayOfWeek] = useState<DayOfWeek | 'Backlog'>('Senin')
   const [formDeadline, setFormDeadline] = useState<string>('')
 
-  // Block Modal State
+  // Modal Terhambat (Block)
   const [blockingTask, setBlockingTask] = useState<StaffTaskItem | null>(null)
   const [blockedReasonInput, setBlockedReasonInput] = useState<string>('')
 
-  // Focus Mode State
+  // Focus Mode
   const [focusModeTask, setFocusModeTask] = useState<StaffTaskItem | null>(null)
   const [focusTimer, setFocusTimer] = useState<number>(0)
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(true)
 
-  // SOP Guidance Modal State
+  // Contekan SOP Modal
   const [activeSOPTask, setActiveSOPTask] = useState<{ text: string; sop: TaskSOP } | null>(null)
 
   const weekDays = useMemo(() => getWeekDays(currentMonday), [currentMonday])
@@ -150,7 +153,7 @@ export default function StaffTasksPage() {
     setTimeout(() => setToastMessage(null), 3500)
   }
 
-  // Fetch staff tasks
+  // Tarik data tugas dari API
   const fetchTasks = async () => {
     setLoading(true)
     try {
@@ -158,13 +161,13 @@ export default function StaffTasksPage() {
       const res = await fetch(
         `/api/staff-tasks?staffName=${encodeURIComponent(selectedStaff)}&weekStart=${encodeURIComponent(weekStartStr)}`
       )
-      if (!res.ok) throw new Error('Gagal memuat tugas staff')
+      if (!res.ok) throw new Error('Gagal narik data tugas')
       const data = await res.json()
       setTasks(data.tasks || [])
       setWeeklyNote(data.weekly_note || '')
     } catch (err: any) {
       console.error(err)
-      showToast('⚠️ Terjadi kendala saat memuat data to-do list.')
+      showToast('⚠️ Ada kendala pas narik data kerjaan lo.')
     } finally {
       setLoading(false)
     }
@@ -174,7 +177,7 @@ export default function StaffTasksPage() {
     fetchTasks()
   }, [selectedStaff, currentMonday])
 
-  // Timer effect for Focus Mode
+  // Stopwatch di Focus Mode
   useEffect(() => {
     let interval: any = null
     if (focusModeTask && isTimerRunning) {
@@ -187,7 +190,7 @@ export default function StaffTasksPage() {
     return () => clearInterval(interval)
   }, [focusModeTask, isTimerRunning])
 
-  // Save Weekly Note
+  // Simpan Catatan Mingguan
   const handleSaveWeeklyNote = async () => {
     setIsSavingNote(true)
     setNoteSaveStatus('saving')
@@ -202,20 +205,20 @@ export default function StaffTasksPage() {
           notes: weeklyNote,
         }),
       })
-      if (!res.ok) throw new Error('Gagal menyimpan catatan')
+      if (!res.ok) throw new Error('Gagal nyimpen catatan')
       setNoteSaveStatus('saved')
-      showToast('✅ Catatan mingguan berhasil disimpan!')
+      showToast('✅ Catatan penting mingguan lo udah tersimpan!')
       setTimeout(() => setNoteSaveStatus('idle'), 2500)
     } catch (err: any) {
       console.error(err)
-      showToast('❌ Gagal menyimpan catatan mingguan.')
+      showToast('❌ Gagal nyimpen catatan.')
       setNoteSaveStatus('idle')
     } finally {
       setIsSavingNote(false)
     }
   }
 
-  // Toggle Task Completion
+  // Checklist Selesai / Belum
   const handleToggleTask = async (task: StaffTaskItem) => {
     const isNowDone = task.status !== 'DONE'
     const newStatus: TaskStatus = isNowDone ? 'DONE' : 'TODO'
@@ -237,8 +240,8 @@ export default function StaffTasksPage() {
           status: newStatus,
         }),
       })
-      if (!res.ok) throw new Error('Gagal update task')
-      showToast(isNowDone ? '🎉 Task selesai!' : '↩️ Task dikembalikan ke To-Do')
+      if (!res.ok) throw new Error('Gagal update status')
+      showToast(isNowDone ? '🎉 Mantap! Kerjaan kelar!' : '↩️ Kerjaan dibalikin ke daftar to-do')
     } catch (err) {
       console.error(err)
       setTasks((prev) =>
@@ -246,11 +249,11 @@ export default function StaffTasksPage() {
           t.id === task.id ? { ...t, status: task.status, is_completed: task.is_completed } : t
         )
       )
-      showToast('❌ Gagal mengubah status tugas')
+      showToast('❌ Gagal ngubah status kerjaan')
     }
   }
 
-  // Quick inline add task for Today
+  // Tambah tugas cepat hari ini (inline)
   const handleQuickAddToday = async () => {
     if (!quickInputText.trim()) return
     const text = quickInputText.trim()
@@ -270,18 +273,18 @@ export default function StaffTasksPage() {
           estimatedMinutes: detectEstimatedMinutes(text),
         }),
       })
-      if (!res.ok) throw new Error('Gagal menambah tugas')
+      if (!res.ok) throw new Error('Gagal nambah tugas')
       const data = await res.json()
       setTasks((prev) => [...prev, data.task])
       setQuickInputText('')
-      showToast(`✅ Task ditambahkan ke hari ${selectedDay}!`)
+      showToast(`✅ Kerjaan berhasil ditambah ke hari ${selectedDay}!`)
     } catch (err) {
       console.error(err)
-      showToast('❌ Gagal menambah tugas')
+      showToast('❌ Gagal nambah tugas')
     }
   }
 
-  // Submit Add / Edit Task Modal
+  // Submit modal tambah / edit
   const handleSaveTaskForm = async () => {
     if (!formTaskText.trim()) return
 
@@ -305,14 +308,14 @@ export default function StaffTasksPage() {
             deadline: formDeadline ? new Date(formDeadline).toISOString() : undefined,
           }),
         })
-        if (!res.ok) throw new Error('Gagal membuat task')
+        if (!res.ok) throw new Error('Gagal bikin tugas')
         const data = await res.json()
         setTasks((prev) => [...prev, data.task])
         setShowTaskModal(false)
-        showToast('✅ Task baru berhasil dibuat!')
+        showToast('✅ Kerjaan baru berhasil ditambah!')
       } catch (err) {
         console.error(err)
-        showToast('❌ Gagal membuat task')
+        showToast('❌ Gagal bikin kerjaan')
       }
     } else {
       if (!editingTaskId) return
@@ -333,19 +336,19 @@ export default function StaffTasksPage() {
             deadline: formDeadline ? new Date(formDeadline).toISOString() : null,
           }),
         })
-        if (!res.ok) throw new Error('Gagal mengupdate task')
+        if (!res.ok) throw new Error('Gagal update')
         const data = await res.json()
         setTasks((prev) => prev.map((t) => (t.id === editingTaskId ? data.task : t)))
         setShowTaskModal(false)
-        showToast('✅ Task berhasil diperbarui!')
+        showToast('✅ Kerjaan berhasil diupdate!')
       } catch (err) {
         console.error(err)
-        showToast('❌ Gagal memperbarui task')
+        showToast('❌ Gagal update')
       }
     }
   }
 
-  // Open Edit Modal
+  // Buka modal edit
   const handleOpenEdit = (task: StaffTaskItem) => {
     setModalMode('EDIT')
     setEditingTaskId(task.id)
@@ -361,23 +364,23 @@ export default function StaffTasksPage() {
     setShowTaskModal(true)
   }
 
-  // Delete Task
+  // Hapus tugas
   const handleDeleteTask = async (id: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus task ini?')) return
+    if (!confirm('Yakin mau hapus kerjaan ini?')) return
     try {
       const res = await fetch(`/api/staff-tasks?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
       })
-      if (!res.ok) throw new Error('Gagal menghapus task')
+      if (!res.ok) throw new Error('Gagal hapus')
       setTasks((prev) => prev.filter((t) => t.id !== id))
-      showToast('🗑️ Task berhasil dihapus.')
+      showToast('🗑️ Kerjaan berhasil dihapus.')
     } catch (err) {
       console.error(err)
-      showToast('❌ Gagal menghapus task')
+      showToast('❌ Gagal menghapus kerjaan')
     }
   }
 
-  // Block Task Action
+  // Tandai terblokir / ketahan
   const handleConfirmBlock = async () => {
     if (!blockingTask) return
     try {
@@ -387,22 +390,22 @@ export default function StaffTasksPage() {
         body: JSON.stringify({
           id: blockingTask.id,
           action: 'block_task',
-          blocked_reason: blockedReasonInput.trim() || 'Menunggu approval / materi eksternal',
+          blocked_reason: blockedReasonInput.trim() || 'Lagi nunggu respon / persetujuan dari pihak luar',
         }),
       })
-      if (!res.ok) throw new Error('Gagal menandai task terblokir')
+      if (!res.ok) throw new Error('Gagal memblokir')
       const data = await res.json()
       setTasks((prev) => prev.map((t) => (t.id === blockingTask.id ? data.task : t)))
       setBlockingTask(null)
       setBlockedReasonInput('')
-      showToast('⏳ Task dipindahkan ke section Blocked / Menunggu.')
+      showToast('⏳ Kerjaan dipindahin ke daftar "Lagi Ketahan".')
     } catch (err) {
       console.error(err)
-      showToast('❌ Gagal memblokir task')
+      showToast('❌ Gagal nentuin status ketahan')
     }
   }
 
-  // Unblock Task Action
+  // Buka blokir (Unblock)
   const handleUnblockTask = async (task: StaffTaskItem) => {
     try {
       const res = await fetch('/api/staff-tasks', {
@@ -413,17 +416,17 @@ export default function StaffTasksPage() {
           action: 'unblock_task',
         }),
       })
-      if (!res.ok) throw new Error('Gagal mengaktifkan kembali task')
+      if (!res.ok) throw new Error('Gagal buka blokir')
       const data = await res.json()
       setTasks((prev) => prev.map((t) => (t.id === task.id ? data.task : t)))
-      showToast('✅ Hambatan teratasi! Task kembali aktif.')
+      showToast('✅ Mantap! Hambatan udah beres, kerjaan aktif lagi!')
     } catch (err) {
       console.error(err)
-      showToast('❌ Gagal membuka blokir task')
+      showToast('❌ Gagal ngebuka blokir')
     }
   }
 
-  // Reschedule Backlog task to specific day
+  // Jadwalkan tugas dari Backlog ke hari tertentu
   const handleScheduleTask = async (task: StaffTaskItem, targetDay: DayOfWeek) => {
     const targetObj = weekDays.find((d) => d.day === targetDay) || weekDays[0]
     try {
@@ -437,42 +440,41 @@ export default function StaffTasksPage() {
           date_str: targetObj.dateStr,
         }),
       })
-      if (!res.ok) throw new Error('Gagal menjadwalkan task')
+      if (!res.ok) throw new Error('Gagal menjadwalkan')
       const data = await res.json()
       setTasks((prev) => prev.map((t) => (t.id === task.id ? data.task : t)))
-      showToast(`📅 Task dijadwalkan ke hari ${targetDay}!`)
+      showToast(`📅 Kerjaan berhasil dijadwalin ke hari ${targetDay}!`)
     } catch (err) {
       console.error(err)
-      showToast('❌ Gagal menjadwalkan task')
+      showToast('❌ Gagal menjadwalkan kerjaan')
     }
   }
 
-  // Launch Focus Mode
+  // Gas Focus Mode
   const handleStartFocusMode = (task: StaffTaskItem) => {
     setFocusModeTask(task)
     setFocusTimer(0)
     setIsTimerRunning(true)
   }
 
-  // Complete current task in Focus Mode & proceed to next
+  // Selesaikan di Focus Mode & lanjut kerjaan berikutnya
   const handleCompleteInFocusMode = async () => {
     if (!focusModeTask) return
     await handleToggleTask(focusModeTask)
-    // Find next urgent/high task for today
     const nextCandidates = sortedTodayTasks.filter(
       (t) => t.id !== focusModeTask.id && t.status !== 'DONE' && t.status !== 'BLOCKED'
     )
     if (nextCandidates.length > 0) {
       setFocusModeTask(nextCandidates[0])
       setFocusTimer(0)
-      showToast('🎯 Lanjut ke task prioritas berikutnya!')
+      showToast('🎯 Gas lanjut ke kerjaan prioritas selanjutnya!')
     } else {
       setFocusModeTask(null)
-      showToast('🎉 Hebat! Seluruh task prioritas hari ini sudah tuntas!')
+      showToast('🎉 Keren banget! Semua kerjaan prioritas hari ini kelar tuntas!')
     }
   }
 
-  // Skip task in Focus Mode
+  // Lewati di Focus Mode
   const handleSkipInFocusMode = () => {
     if (!focusModeTask) return
     const nextCandidates = sortedTodayTasks.filter(
@@ -481,13 +483,13 @@ export default function StaffTasksPage() {
     if (nextCandidates.length > 0) {
       setFocusModeTask(nextCandidates[0])
       setFocusTimer(0)
-      showToast('↪️ Beralih ke task lain.')
+      showToast('↪️ Pindah ke kerjaan lain dulu.')
     } else {
       setFocusModeTask(null)
     }
   }
 
-  // Copy TSV to Clipboard for direct Google Sheets paste!
+  // Salin format 5 kolom ke Google Sheets
   const handleCopyToSpreadsheet = () => {
     try {
       const dayTasksMap: Record<string, string[]> = {
@@ -505,11 +507,11 @@ export default function StaffTasksPage() {
       })
 
       const maxRows = Math.max(...Object.values(dayTasksMap).map((arr) => arr.length), 1)
-
       const lines: string[] = []
+
       if (weeklyNote.trim()) {
         lines.push(`TO DO LIST MARKETPLACE - STAFF: ${selectedStaff.toUpperCase()}`)
-        lines.push(`CATATAN PRIORITAS MINGGUAN (ROW 249-250):`)
+        lines.push(`CATATAN PENTING MINGGUAN (ROW 249-250):`)
         lines.push(weeklyNote.replace(/\r?\n/g, ' | '))
         lines.push('')
       }
@@ -524,14 +526,14 @@ export default function StaffTasksPage() {
 
       const tsvContent = lines.join('\n')
       navigator.clipboard.writeText(tsvContent)
-      showToast('📋 Format Google Sheets berhasil disalin! Buka Google Sheets & tekan Ctrl + V.')
+      showToast('📋 Udah disalin! Buka Google Sheets terus tekan Ctrl + V ya.')
     } catch (err) {
       console.error(err)
-      showToast('❌ Gagal menyalin ke clipboard.')
+      showToast('❌ Gagal nyalin ke clipboard.')
     }
   }
 
-  // Export to Real Excel .xlsx
+  // Export Excel .xlsx
   const handleExportExcel = () => {
     try {
       const dayTasksMap: Record<string, string[]> = {
@@ -554,7 +556,7 @@ export default function StaffTasksPage() {
       sheetData.push([`TO DO LIST MARKETPLACE - STAFF: ${selectedStaff.toUpperCase()}`])
       sheetData.push([`PERIODE: ${weekDays[0].displayLabel} s/d ${weekDays[4].displayLabel}`])
       if (weeklyNote.trim()) {
-        sheetData.push([`CATATAN / PRIORITAS MINGGUAN:`])
+        sheetData.push([`CATATAN PENTING MINGGUAN:`])
         const noteLines = weeklyNote.split('\n')
         noteLines.forEach((nl) => sheetData.push([nl]))
       }
@@ -576,14 +578,14 @@ export default function StaffTasksPage() {
 
       const fileName = `To_Do_List_${selectedStaff}_${weekDays[0].dateStr.replace(/\//g, '-')}_sd_${weekDays[4].dateStr.replace(/\//g, '-')}.xlsx`
       xlsx.writeFile(workbook, fileName)
-      showToast('📥 File Excel (.xlsx) berhasil diunduh!')
+      showToast('📥 File Excel (.xlsx) udah berhasil diunduh!')
     } catch (err) {
       console.error(err)
-      showToast('❌ Gagal mengekspor file Excel.')
+      showToast('❌ Gagal download Excel.')
     }
   }
 
-  // Filtered tasks based on search & dropdowns
+  // Filter tasks
   const filteredTasks = useMemo(() => {
     return tasks.filter((t) => {
       if (searchQuery.trim()) {
@@ -604,7 +606,7 @@ export default function StaffTasksPage() {
     })
   }, [tasks, searchQuery, filterPriority, filterCategory, filterMarketplace])
 
-  // TODAY VIEW SLICES (HARI INI)
+  // Slice untuk Hari Ini
   const todayAllTasks = useMemo(() => {
     return filteredTasks.filter((t) => t.day_of_week === selectedDay)
   }, [filteredTasks, selectedDay])
@@ -613,7 +615,7 @@ export default function StaffTasksPage() {
     return sortTasksByPriority(todayAllTasks)
   }, [todayAllTasks])
 
-  // Section 1: 🔥 Top 3 Priority (Urgent or High, not blocked, not done)
+  // 3 Tugas Teratas (Urgent/High)
   const topPriorityTasks = useMemo(() => {
     return sortedTodayTasks
       .filter((t) => t.status !== 'DONE' && t.status !== 'BLOCKED')
@@ -622,39 +624,39 @@ export default function StaffTasksPage() {
 
   const topPriorityIds = useMemo(() => new Set(topPriorityTasks.map((t) => t.id)), [topPriorityTasks])
 
-  // Section 2: 📋 Task Hari Ini (Normal / additional active tasks)
+  // Tugas Reguler Hari Ini
   const regularTodayTasks = useMemo(() => {
     return sortedTodayTasks.filter(
       (t) => !topPriorityIds.has(t.id) && t.status !== 'BLOCKED' && t.status !== 'DONE'
     )
   }, [sortedTodayTasks, topPriorityIds])
 
-  // Section 3: ⏳ Blocked Tasks for Today
+  // Tugas Lagi Ketahan
   const blockedTodayTasks = useMemo(() => {
     return todayAllTasks.filter((t) => t.status === 'BLOCKED')
   }, [todayAllTasks])
 
-  // Section 4: 🚨 Overdue Tasks
+  // Tugas Lewat Deadline
   const overdueTasks = useMemo(() => {
     return tasks.filter((t) => isTaskOverdue(t))
   }, [tasks])
 
-  // Section 5: Completed Tasks for Today
+  // Tugas Udah Beres Hari Ini
   const completedTodayTasks = useMemo(() => {
     return todayAllTasks.filter((t) => t.status === 'DONE')
   }, [todayAllTasks])
 
-  // Backlog Tasks
+  // Backlog
   const backlogTasks = useMemo(() => {
     return filteredTasks.filter((t) => t.day_of_week === 'Backlog' && t.status !== 'DONE')
   }, [filteredTasks])
 
-  // All Completed Tasks
+  // Seluruh Tugas Beres
   const allCompletedTasks = useMemo(() => {
     return filteredTasks.filter((t) => t.status === 'DONE')
   }, [filteredTasks])
 
-  // Summary statistics for active day
+  // Hitungan progres
   const todayActiveCount = todayAllTasks.filter((t) => t.status !== 'BLOCKED').length
   const todayDoneCount = completedTodayTasks.length
   const todayPct = todayActiveCount > 0 ? Math.round((todayDoneCount / todayActiveCount) * 100) : 0
@@ -666,7 +668,6 @@ export default function StaffTasksPage() {
     badge: 'Specialist',
   }
 
-  // Format focus timer seconds to mm:ss
   const formatTimer = (sec: number) => {
     const m = Math.floor(sec / 60)
     const s = sec % 60
@@ -675,7 +676,7 @@ export default function StaffTasksPage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', padding: '24px 28px', color: '#0f172a' }}>
-      {/* TOAST NOTIFICATION */}
+      {/* POPUP NOTIFIKASI TOAST */}
       {toastMessage && (
         <div
           style={{
@@ -700,12 +701,12 @@ export default function StaffTasksPage() {
         </div>
       )}
 
-      {/* TOP HEADER SECTION */}
+      {/* HEADER UTAMA */}
       <div style={{ marginBottom: '18px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>
           <span>Growth</span>
           <span>/</span>
-          <span style={{ color: '#0f172a', fontWeight: 600 }}>Personal Work Management</span>
+          <span style={{ color: '#0f172a', fontWeight: 600 }}>Daily Planner Tim Marketplace</span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
@@ -729,7 +730,7 @@ export default function StaffTasksPage() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
-                    Personal Work Management System
+                    Daily Planner & To-Do List Tim Marketplace
                   </h1>
                   <span
                     style={{
@@ -741,17 +742,17 @@ export default function StaffTasksPage() {
                       borderRadius: '12px',
                     }}
                   >
-                    Fokus Eksekusi
+                    Biar Ga Pusing
                   </span>
                 </div>
                 <p style={{ margin: '3px 0 0 0', fontSize: '13.5px', color: '#64748b' }}>
-                  Sistem manajemen kerja harian marketplace specialist Theraskin yang memandu prioritas dan eksekusi bebas distraksi.
+                  Biar kerjaan lo ga numpuk & lo tau mana yang kudu digas duluan hari ini!
                 </p>
               </div>
             </div>
           </div>
 
-          {/* GLOBAL ACTION BUTTONS */}
+          {/* TOMBOL AKSI CEPAT */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <button
               onClick={() => {
@@ -783,7 +784,7 @@ export default function StaffTasksPage() {
               }}
             >
               <Plus size={16} />
-              <span>+ Tambah Task</span>
+              <span>+ Tambah Kerjaan</span>
             </button>
 
             <button
@@ -801,10 +802,10 @@ export default function StaffTasksPage() {
                 fontWeight: 600,
                 cursor: 'pointer',
               }}
-              title="Salin 5 kolom lengkap untuk Google Sheets (Ctrl+V)"
+              title="Salin 5 kolom langsung tempel di Google Sheets (Ctrl+V)"
             >
               <Copy size={15} />
-              <span>Salin Spreadsheet</span>
+              <span>Salin ke Spreadsheet (1-Click)</span>
             </button>
 
             <button
@@ -824,13 +825,13 @@ export default function StaffTasksPage() {
               }}
             >
               <Download size={15} />
-              <span>Export .xlsx</span>
+              <span>Download .xlsx</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* STAFF PROFILE SWITCHER & 3-LEVEL NAV TABS */}
+      {/* SWITCHER AKUN STAFF & TAB NAVIGASI */}
       <div
         style={{
           display: 'flex',
@@ -846,10 +847,10 @@ export default function StaffTasksPage() {
           boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
         }}
       >
-        {/* STAFF SWITCHER (SHALWA & NANDILA) */}
+        {/* PILIH AKUN (SHALWA & NANDILA) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '12.5px', color: '#64748b', fontWeight: 600, marginRight: '4px' }}>
-            Staff Aktif:
+            Akun Lo:
           </span>
           {STAFF_LIST.map((staff) => {
             const isSel = selectedStaff === staff
@@ -907,7 +908,7 @@ export default function StaffTasksPage() {
           })}
         </div>
 
-        {/* 3 LEVEL WORK MANAGEMENT TABS */}
+        {/* 4 TAB UTAMA */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <button
             onClick={() => setActiveTab('TODAY')}
@@ -957,7 +958,7 @@ export default function StaffTasksPage() {
             }}
           >
             <Calendar size={14} />
-            <span>📅 Minggu Ini</span>
+            <span>📅 Plan Minggu Ini</span>
           </button>
 
           <button
@@ -977,7 +978,7 @@ export default function StaffTasksPage() {
             }}
           >
             <Layers size={14} />
-            <span>📋 Semua Task / Backlog</span>
+            <span>📋 Antrean / Backlog</span>
             {backlogTasks.length > 0 && (
               <span
                 style={{
@@ -1011,17 +1012,17 @@ export default function StaffTasksPage() {
             }}
           >
             <Check size={14} />
-            <span>Selesai ({allCompletedTasks.length})</span>
+            <span>Udah Kelar ({allCompletedTasks.length})</span>
           </button>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* LEVEL 1: HARI INI (DEFAULT VIEW)                                          */}
+      {/* ☀️ LEVEL 1: HARI INI (KERJAAN LO HARI INI)                                */}
       {/* ========================================================================= */}
       {activeTab === 'TODAY' && (
         <div>
-          {/* GREETING & PROGRESS CARD */}
+          {/* BANNER PROGRES HARI INI */}
           <div
             style={{
               backgroundColor: '#ffffff',
@@ -1039,17 +1040,17 @@ export default function StaffTasksPage() {
           >
             <div>
               <div style={{ fontSize: '19px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
-                Selamat Pagi, {selectedStaff} 👋
+                Semangat ya, {selectedStaff}! 👋
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#475569' }}>
                 <Calendar size={15} color="#2563eb" />
                 <span style={{ fontWeight: 600 }}>{formatDateIndonesian(activeDayObj.date)}</span>
                 <span>•</span>
-                <span>{currentProfile.role}</span>
+                <span>Fokus beresin yang urgent dulu biar cepet santai!</span>
               </div>
             </div>
 
-            {/* DAY SWITCHER CHIPS */}
+            {/* PILIH HARI (SENIN S/D JUMAT) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '10px' }}>
               {DAYS_OF_WEEK.map((d) => {
                 const isSel = selectedDay === d
@@ -1093,12 +1094,12 @@ export default function StaffTasksPage() {
               })}
             </div>
 
-            {/* PROGRESS METER */}
+            {/* METERAN PROGRES */}
             <div style={{ minWidth: '220px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '12.5px', color: '#64748b', fontWeight: 600 }}>Progress Hari Ini</span>
+                <span style={{ fontSize: '12.5px', color: '#64748b', fontWeight: 600 }}>Progres Hari Ini</span>
                 <span style={{ fontSize: '13.5px', fontWeight: 800, color: todayPct === 100 ? '#059669' : '#0f172a' }}>
-                  {todayDoneCount} dari {todayActiveCount} Selesai ({todayPct}%)
+                  {todayDoneCount} dari {todayActiveCount} kelar ({todayPct}%) 🚀
                 </span>
               </div>
               <div style={{ width: '100%', height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
@@ -1114,7 +1115,7 @@ export default function StaffTasksPage() {
             </div>
           </div>
 
-          {/* SECTION 4 (ALERT): OVERDUE TASKS (IF ANY) */}
+          {/* PERINGATAN: KERJAAN YANG TELAT / LEWAT DEADLINE */}
           {overdueTasks.length > 0 && (
             <div
               style={{
@@ -1128,7 +1129,7 @@ export default function StaffTasksPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                 <AlertCircle size={18} color="#dc2626" />
                 <span style={{ fontSize: '14px', fontWeight: 800, color: '#991b1b' }}>
-                  🚨 OVERDUE — Melewati Batas Deadline ({overdueTasks.length} Task)
+                  🚨 WADUH, INI LEWAT DEADLINE NIH ({overdueTasks.length} Kerjaan)
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1157,7 +1158,7 @@ export default function StaffTasksPage() {
                       <div>
                         <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#0f172a' }}>{task.task_text}</div>
                         <div style={{ fontSize: '11.5px', color: '#b91c1c', fontWeight: 600 }}>
-                          ⚠️ Overdue • Batas waktu:{' '}
+                          ⚠️ Lewat batas waktu • Seharusnya kelar:{' '}
                           {task.deadline ? new Date(task.deadline).toLocaleDateString('id-ID') : 'Kemarin'}
                         </div>
                       </div>
@@ -1176,7 +1177,7 @@ export default function StaffTasksPage() {
                           cursor: 'pointer',
                         }}
                       >
-                        Jadwalkan ke Hari Ini
+                        Pindahin ke Hari Ini
                       </button>
                       <button
                         onClick={() => handleStartFocusMode(task)}
@@ -1191,7 +1192,7 @@ export default function StaffTasksPage() {
                           cursor: 'pointer',
                         }}
                       >
-                        Selesaikan Sekarang
+                        Gas Beresin Sekarang
                       </button>
                     </div>
                   </div>
@@ -1200,12 +1201,12 @@ export default function StaffTasksPage() {
             </div>
           )}
 
-          {/* SECTION 1: 🔥 TOP PRIORITY (MAKSIMAL 3 TASK) */}
+          {/* SECTION 1: 🔥 3 KERJAAN PALING URGENT HARI INI */}
           <div style={{ marginBottom: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em' }}>
-                  🔥 TOP PRIORITY HARI INI
+                  🔥 3 KERJAAN PALING URGENT HARI INI
                 </span>
                 <span
                   style={{
@@ -1217,11 +1218,11 @@ export default function StaffTasksPage() {
                     borderRadius: '10px',
                   }}
                 >
-                  Maksimal 3 Fokus Utama
+                  Kudu Kelar Duluan
                 </span>
               </div>
               <span style={{ fontSize: '12px', color: '#64748b' }}>
-                Fokus selesaikan 3 tugas ini terlebih dahulu sebelum mengerjakan lainnya.
+                Kelar-in 3 ini dulu ya, jangan loncat-loncat biar lo ga keteteran!
               </span>
             </div>
 
@@ -1238,7 +1239,7 @@ export default function StaffTasksPage() {
                   fontWeight: 600,
                 }}
               >
-                🎉 Belum ada task prioritas mendesak untuk {selectedDay}. Anda bisa memilih task reguler di bawah atau menambahkan task baru!
+                🎉 Asik! Ga ada kerjaan darurat hari ini. Lo bisa santai garap kerjaan rutin di bawah!
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
@@ -1262,7 +1263,7 @@ export default function StaffTasksPage() {
                       }}
                     >
                       <div>
-                        {/* Badges Header */}
+                        {/* Header Badge */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span
@@ -1312,7 +1313,7 @@ export default function StaffTasksPage() {
                           )}
                         </div>
 
-                        {/* Title & Description */}
+                        {/* Judul & Keterangan */}
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
                           <button
                             onClick={() => handleToggleTask(task)}
@@ -1325,7 +1326,7 @@ export default function StaffTasksPage() {
                               color: '#94a3b8',
                               flexShrink: 0,
                             }}
-                            title="Tandai Selesai"
+                            title="Tandai udah kelar"
                           >
                             <Square size={18} />
                           </button>
@@ -1342,7 +1343,7 @@ export default function StaffTasksPage() {
                           </div>
                         </div>
 
-                        {/* Metadata Tag Row */}
+                        {/* Estimasi & Promo */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11.5px', color: '#64748b', marginTop: '10px' }}>
                           {task.estimated_minutes && (
                             <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
@@ -1359,7 +1360,7 @@ export default function StaffTasksPage() {
                         </div>
                       </div>
 
-                      {/* Action Footer */}
+                      {/* Tombol Aksi */}
                       <div
                         style={{
                           display: 'flex',
@@ -1388,7 +1389,7 @@ export default function StaffTasksPage() {
                           }}
                         >
                           <Target size={13} />
-                          <span>Mulai di Focus Mode</span>
+                          <span>Gas Kerjain (Focus Mode)</span>
                         </button>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1409,10 +1410,10 @@ export default function StaffTasksPage() {
                               alignItems: 'center',
                               gap: '3px',
                             }}
-                            title="Panduan SOP"
+                            title="Buka contekan cara ngerjain"
                           >
                             <Lightbulb size={12} color="#ea580c" />
-                            <span>SOP</span>
+                            <span>Contekan SOP</span>
                           </button>
 
                           <button
@@ -1426,7 +1427,7 @@ export default function StaffTasksPage() {
                               fontSize: '11.5px',
                               cursor: 'pointer',
                             }}
-                            title="Tandai Terblokir / Menunggu"
+                            title="Tandai lagi ketahan"
                           >
                             <Pause size={12} />
                           </button>
@@ -1455,12 +1456,12 @@ export default function StaffTasksPage() {
             )}
           </div>
 
-          {/* SECTION 2: 📋 TASK HARI INI (COMPACT ROWS) */}
+          {/* SECTION 2: 📋 KERJAAN LAINNYA HARI INI */}
           <div style={{ marginBottom: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
-                  📋 TASK HARI INI ({selectedDay})
+                  📋 KERJAAN LAINNYA HARI INI ({selectedDay})
                 </span>
                 <span
                   style={{
@@ -1472,9 +1473,12 @@ export default function StaffTasksPage() {
                     borderRadius: '10px',
                   }}
                 >
-                  {regularTodayTasks.length} Task Tersedia
+                  {regularTodayTasks.length} Kerjaan
                 </span>
               </div>
+              <span style={{ fontSize: '12px', color: '#64748b' }}>
+                Kalo yang urgent udah beres, lanjut hajar yang di bawah ini ya!
+              </span>
             </div>
 
             <div
@@ -1491,7 +1495,7 @@ export default function StaffTasksPage() {
             >
               {regularTodayTasks.length === 0 ? (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
-                  Tidak ada task reguler tersisa untuk hari ini.
+                  Ga ada kerjaan reguler tersisa buat hari ini. Santai dulu!
                 </div>
               ) : (
                 regularTodayTasks.map((task) => {
@@ -1529,7 +1533,7 @@ export default function StaffTasksPage() {
                           <span style={{ fontSize: '13.5px', fontWeight: 500, color: '#0f172a' }}>{task.task_text}</span>
                         </div>
 
-                        {/* Category & Marketplace Pills */}
+                        {/* Label Kategori & Marketplace */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                           <span
                             style={{
@@ -1561,7 +1565,7 @@ export default function StaffTasksPage() {
                         </div>
                       </div>
 
-                      {/* Right Actions */}
+                      {/* Tombol Kanan */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                         {task.estimated_minutes && (
                           <span style={{ fontSize: '11px', color: '#64748b', marginRight: '6px' }}>
@@ -1581,7 +1585,7 @@ export default function StaffTasksPage() {
                             cursor: 'pointer',
                             padding: '3px',
                           }}
-                          title="Lihat SOP"
+                          title="Lihat Contekan SOP"
                         >
                           <Lightbulb size={14} />
                         </button>
@@ -1595,7 +1599,7 @@ export default function StaffTasksPage() {
                             cursor: 'pointer',
                             padding: '3px',
                           }}
-                          title="Tandai Terhambat (Block)"
+                          title="Tandai Lagi Ketahan"
                         >
                           <Pause size={14} />
                         </button>
@@ -1633,11 +1637,11 @@ export default function StaffTasksPage() {
                 })
               )}
 
-              {/* FAST INLINE ADD ROW */}
+              {/* INPUT CEPAT TAMBAH TUGAS */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '8px', borderTop: '1px solid #f1f5f9' }}>
                 <input
                   type="text"
-                  placeholder={`+ Ketik task cepat untuk hari ${selectedDay} lalu tekan Enter...`}
+                  placeholder={`+ Ketik kerjaan baru buat hari ${selectedDay}, langsung Enter aja...`}
                   value={quickInputText}
                   onChange={(e) => setQuickInputText(e.target.value)}
                   onKeyDown={(e) => {
@@ -1665,13 +1669,13 @@ export default function StaffTasksPage() {
                     cursor: 'pointer',
                   }}
                 >
-                  Tambah
+                  Gas Tambah
                 </button>
               </div>
             </div>
           </div>
 
-          {/* SECTION 3: ⏳ BLOCKED / MENUNGGU */}
+          {/* SECTION 3: ⏳ LAGI KETAHAN / PENDING (NUNGGU PIHAK LAIN) */}
           {blockedTodayTasks.length > 0 && (
             <div
               style={{
@@ -1686,11 +1690,11 @@ export default function StaffTasksPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <AlertTriangle size={18} color="#d97706" />
                   <span style={{ fontSize: '14px', fontWeight: 800, color: '#92400e' }}>
-                    ⏳ BLOCKED / MENUNGGU ({blockedTodayTasks.length} Task)
+                    ⏳ LAGI KETAHAN / PENDING ({blockedTodayTasks.length} Kerjaan)
                   </span>
                 </div>
                 <span style={{ fontSize: '11.5px', color: '#b45309' }}>
-                  Task di bawah ini tidak dihitung sebagai beban aktif hari ini sampai kendala terselesaikan.
+                  Tenang, ini ga dihitung beban hari ini karena lo lagi nungguin respon pihak lain (RM/Finance/Ka Vanny).
                 </span>
               </div>
 
@@ -1713,7 +1717,7 @@ export default function StaffTasksPage() {
                     <div>
                       <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#0f172a' }}>{task.task_text}</div>
                       <div style={{ fontSize: '12px', color: '#b45309', marginTop: '2px', fontWeight: 500 }}>
-                        ⚠️ Alasan Terblokir: {task.blocked_reason || 'Menunggu konfirmasi / persetujuan eksternal'}
+                        ⚠️ Lagi ketahan karena: {task.blocked_reason || 'Lagi nunggu kabar atau approval pihak lain'}
                       </div>
                     </div>
 
@@ -1730,7 +1734,7 @@ export default function StaffTasksPage() {
                         cursor: 'pointer',
                       }}
                     >
-                      Buka Blokir (Unblock)
+                      Udah Beres, Lanjut Kerjain!
                     </button>
                   </div>
                 ))}
@@ -1741,11 +1745,11 @@ export default function StaffTasksPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* LEVEL 2: MINGGU INI (WEEKLY PLAN COMPACT)                                  */}
+      {/* 📅 LEVEL 2: PLAN MINGGU INI                                               */}
       {/* ========================================================================= */}
       {activeTab === 'WEEKLY' && (
         <div>
-          {/* Top Weekly Note Box */}
+          {/* Box Catatan Penting Minggu Ini */}
           <div
             style={{
               backgroundColor: '#fffbeb',
@@ -1761,13 +1765,13 @@ export default function StaffTasksPage() {
           >
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '13px', fontWeight: 800, color: '#92400e', marginBottom: '4px' }}>
-                📌 Catatan Strategis Mingguan ({selectedStaff}) — Replikasi Row 249-250 Spreadsheet
+                📌 Catatan Wajib Diingat Minggu Ini ({selectedStaff}) — Replikasi Row 249-250 Spreadsheet
               </div>
               <textarea
                 rows={2}
                 value={weeklyNote}
                 onChange={(e) => setWeeklyNote(e.target.value)}
-                placeholder="Tulis instruksi mingguan (misal: gabungkan pdp etalase varian, matikan diskon full month)..."
+                placeholder="Tulis instruksi mingguan penting (misal: gabungin pdp varian, matiin diskon full month ganti ke diskon event)..."
                 style={{
                   width: '100%',
                   padding: '8px 12px',
@@ -1794,11 +1798,11 @@ export default function StaffTasksPage() {
                 flexShrink: 0,
               }}
             >
-              {noteSaveStatus === 'saved' ? 'Tersimpan' : 'Simpan Catatan'}
+              {noteSaveStatus === 'saved' ? 'Tersimpan!' : 'Simpen Catatan'}
             </button>
           </div>
 
-          {/* 5-COLUMN COMPACT WEEKLY GRID */}
+          {/* Kolom 5 Hari Kompak */}
           <div
             style={{
               display: 'grid',
@@ -1830,7 +1834,7 @@ export default function StaffTasksPage() {
                     minHeight: '520px',
                   }}
                 >
-                  {/* Column Header */}
+                  {/* Header Kolom */}
                   <div
                     style={{
                       background: 'linear-gradient(135deg, #1e293b, #334155)',
@@ -1845,18 +1849,18 @@ export default function StaffTasksPage() {
                       <span style={{ fontSize: '11px', opacity: 0.9 }}>{dayObj.dateStr}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11.5px', opacity: 0.85 }}>
-                      <span>{totalDone}/{totalActive} Selesai</span>
+                      <span>{totalDone}/{totalActive} Kelar</span>
                       <span>{totalActive > 0 ? Math.round((totalDone / totalActive) * 100) : 0}%</span>
                     </div>
                   </div>
 
-                  {/* Task Buckets */}
+                  {/* Kelompok Tugas */}
                   <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto' }}>
-                    {/* BUCKET 1: 🔥 PRIORITY */}
+                    {/* 1. KUDU BANGET */}
                     {prioTasks.length > 0 && (
                       <div>
                         <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#dc2626', marginBottom: '6px', textTransform: 'uppercase' }}>
-                          🔥 Priority ({prioTasks.length})
+                          🔥 Kudu Banget ({prioTasks.length})
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                           {prioTasks.map((t) => (
@@ -1895,11 +1899,11 @@ export default function StaffTasksPage() {
                       </div>
                     )}
 
-                    {/* BUCKET 2: 📋 NORMAL */}
+                    {/* 2. SANTAI / REGULER */}
                     {normalTasks.length > 0 && (
                       <div>
                         <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', marginBottom: '6px', textTransform: 'uppercase' }}>
-                          📋 Normal ({normalTasks.length})
+                          📋 Santai / Reguler ({normalTasks.length})
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                           {normalTasks.map((t) => (
@@ -1937,11 +1941,11 @@ export default function StaffTasksPage() {
                       </div>
                     )}
 
-                    {/* BUCKET 3: ⏳ BLOCKED */}
+                    {/* 3. LAGI KETAHAN */}
                     {blockedTasks.length > 0 && (
                       <div>
                         <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#b45309', marginBottom: '6px', textTransform: 'uppercase' }}>
-                          ⏳ Blocked ({blockedTasks.length})
+                          ⏳ Lagi Ketahan ({blockedTasks.length})
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                           {blockedTasks.map((t) => (
@@ -1971,7 +1975,7 @@ export default function StaffTasksPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* LEVEL 3: BACKLOG / SEMUA TASK                                             */}
+      {/* 📋 LEVEL 3: ANTREAN / BACKLOG                                             */}
       {/* ========================================================================= */}
       {activeTab === 'BACKLOG' && (
         <div
@@ -1986,10 +1990,10 @@ export default function StaffTasksPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
-                Daftar Backlog / Belum Terjadwal ({backlogTasks.length} Pekerjaan)
+                Antrean Kerjaan & Ide yang Belum Masuk Jadwal ({backlogTasks.length} Kerjaan)
               </h3>
               <p style={{ margin: '3px 0 0 0', fontSize: '12.5px', color: '#64748b' }}>
-                Simpan ide project, persiapan promo, dan kebutuhan operasional. Tarik ke hari kerja yang Anda inginkan kapan saja.
+                Tampung semua kerjaan & ide di sini. Kalo mau digarap, tinggal klik tombol "Pindahin ke Hari Ini"!
               </p>
             </div>
 
@@ -2010,14 +2014,14 @@ export default function StaffTasksPage() {
                 cursor: 'pointer',
               }}
             >
-              + Tambah ke Backlog
+              + Bikin Kerjaan Baru
             </button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {backlogTasks.length === 0 ? (
               <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
-                Backlog saat ini kosong.
+                Antrean backlog kosong nih. Mantap!
               </div>
             ) : (
               backlogTasks.map((task) => (
@@ -2058,7 +2062,7 @@ export default function StaffTasksPage() {
                       }}
                     >
                       <option value="" disabled>
-                        Jadwalkan ke...
+                        Jadwalin ke...
                       </option>
                       {DAYS_OF_WEEK.map((d) => (
                         <option key={d} value={d}>
@@ -2080,7 +2084,7 @@ export default function StaffTasksPage() {
                         cursor: 'pointer',
                       }}
                     >
-                      Hari Ini
+                      Pindahin ke Hari Ini
                     </button>
 
                     <button
@@ -2105,7 +2109,7 @@ export default function StaffTasksPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 4: SELESAI (COMPLETED ARCHIVE)                                        */}
+      {/* ✔ TAB 4: UDAH KELAR (REKAP SELESAI)                                        */}
       {/* ========================================================================= */}
       {activeTab === 'DONE' && (
         <div
@@ -2119,17 +2123,17 @@ export default function StaffTasksPage() {
         >
           <div style={{ marginBottom: '16px' }}>
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#059669' }}>
-              Pekerjaan yang Telah Selesai ({allCompletedTasks.length})
+              Kerjaan yang Udah Lo Beresin 🎉 ({allCompletedTasks.length})
             </h3>
             <p style={{ margin: '3px 0 0 0', fontSize: '12.5px', color: '#64748b' }}>
-              Riwayat task yang telah Anda selesaikan untuk evaluasi performa mingguan.
+              Mantap banget! Ini rekap semua kerjaan yang udah beres lo kerjain.
             </p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {allCompletedTasks.length === 0 ? (
               <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
-                Belum ada task yang ditandai selesai.
+                Belum ada kerjaan yang kelar hari ini. Yuk gas selesaikan satu per satu!
               </div>
             ) : (
               allCompletedTasks.map((task) => (
@@ -2149,7 +2153,7 @@ export default function StaffTasksPage() {
                     <button
                       onClick={() => handleToggleTask(task)}
                       style={{ border: 'none', background: 'none', color: '#059669', cursor: 'pointer' }}
-                      title="Kembalikan ke belum selesai"
+                      title="Balikin ke belum selesai"
                     >
                       <CheckSquare size={16} />
                     </button>
@@ -2166,7 +2170,7 @@ export default function StaffTasksPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 🎯 FOCUS MODE OVERLAY (DISTRACTION-FREE)                                  */}
+      {/* 🎯 FOCUS MODE (ANTI-DISTRAKSI)                                            */}
       {/* ========================================================================= */}
       {focusModeTask && (
         <div
@@ -2183,7 +2187,7 @@ export default function StaffTasksPage() {
             animation: 'fadeIn 0.2s ease-out',
           }}
         >
-          {/* Header */}
+          {/* Header Focus */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div
@@ -2200,8 +2204,8 @@ export default function StaffTasksPage() {
                 <Target size={20} />
               </div>
               <div>
-                <div style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '0.02em' }}>FOCUS MODE</div>
-                <div style={{ fontSize: '12px', color: '#94a3b8' }}>Satu tugas dalam satu waktu tanpa distraksi</div>
+                <div style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '0.02em' }}>MODE FOKUS (ANTI-DISTRAKSI)</div>
+                <div style={{ fontSize: '12px', color: '#94a3b8' }}>Fokus satu kerjaan ini dulu ya, jangan buka tab lain dulu!</div>
               </div>
             </div>
 
@@ -2218,11 +2222,11 @@ export default function StaffTasksPage() {
                 fontWeight: 600,
               }}
             >
-              ✕ Keluar Focus Mode
+              ✕ Balik ke List
             </button>
           </div>
 
-          {/* Core Focus Card */}
+          {/* Kartu Inti Focus */}
           <div style={{ maxWidth: '720px', margin: '0 auto', width: '100%', textAlign: 'center' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
               <span
@@ -2255,7 +2259,7 @@ export default function StaffTasksPage() {
               </p>
             )}
 
-            {/* Timer Meter */}
+            {/* Stopwatch */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', backgroundColor: 'rgba(255,255,255,0.08)', padding: '12px 24px', borderRadius: '40px', marginBottom: '28px' }}>
               <Clock size={20} color="#38bdf8" />
               <span style={{ fontSize: '24px', fontWeight: 800, fontFamily: 'monospace', letterSpacing: '0.05em' }}>
@@ -2269,11 +2273,11 @@ export default function StaffTasksPage() {
               </button>
             </div>
 
-            {/* SOP Quick Box */}
+            {/* Contekan SOP */}
             <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '18px', textAlign: 'left', marginBottom: '32px', border: '1px solid rgba(255,255,255,0.1)' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#38bdf8', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Lightbulb size={14} />
-                <span>Panduan SOP Eksekusi:</span>
+                <span>Contekan Cara Ngerjain (SOP Singkat):</span>
               </div>
               <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#e2e8f0', lineHeight: 1.6 }}>
                 {getTaskSOP(focusModeTask.task_text).steps.slice(0, 3).map((st, i) => (
@@ -2282,7 +2286,7 @@ export default function StaffTasksPage() {
               </ul>
             </div>
 
-            {/* Big Actions */}
+            {/* Tombol Aksi Besar */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
               <button
                 onClick={handleCompleteInFocusMode}
@@ -2302,7 +2306,7 @@ export default function StaffTasksPage() {
                 }}
               >
                 <Check size={18} />
-                <span>Selesaikan & Lanjut</span>
+                <span>Udah Beres, Lanjut Next!</span>
               </button>
 
               <button
@@ -2325,7 +2329,7 @@ export default function StaffTasksPage() {
                 }}
               >
                 <Pause size={16} />
-                <span>Tandai Terhambat (Block)</span>
+                <span>Ketahan Pihak Lain</span>
               </button>
 
               <button
@@ -2345,19 +2349,19 @@ export default function StaffTasksPage() {
                 }}
               >
                 <SkipForward size={16} />
-                <span>Lewati (Skip)</span>
+                <span>Skip Dulu</span>
               </button>
             </div>
           </div>
 
           <div style={{ textAlign: 'center', fontSize: '12px', color: '#64748b' }}>
-            Tekan tombol Selesaikan jika tugas di Seller Centre / ERP sudah terverifikasi.
+            Klik 'Udah Beres' kalo settingan di Seller Centre / ERP udah lo submit ya!
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: ADD / EDIT TASK                                                    */}
+      {/* MODAL: TAMBAH / EDIT KERJAAN                                              */}
       {/* ========================================================================= */}
       {showTaskModal && (
         <div
@@ -2387,7 +2391,7 @@ export default function StaffTasksPage() {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0f172a' }}>
-                {modalMode === 'ADD' ? '+ Tambah Task Baru' : 'Edit Task'}
+                {modalMode === 'ADD' ? '+ Bikin Kerjaan Baru' : 'Edit Kerjaan'}
               </h3>
               <button
                 onClick={() => setShowTaskModal(false)}
@@ -2397,14 +2401,14 @@ export default function StaffTasksPage() {
               </button>
             </div>
 
-            {/* Task Text */}
+            {/* Nama Kerjaan */}
             <div style={{ marginBottom: '14px' }}>
               <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
-                Nama Task *
+                Nama Kerjaan *
               </label>
               <input
                 type="text"
-                placeholder="Contoh: Setup Flash Sale Shopee 8-10 September"
+                placeholder="Contoh: Setup Flash Sale Toko Shopee 8-10 September"
                 value={formTaskText}
                 onChange={(e) => setFormTaskText(e.target.value)}
                 style={{
@@ -2418,14 +2422,14 @@ export default function StaffTasksPage() {
               />
             </div>
 
-            {/* Description */}
+            {/* Keterangan */}
             <div style={{ marginBottom: '14px' }}>
               <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
-                Deskripsi / Catatan Tambahan (Opsional)
+                Catatan / Detail Tambahan (Boleh Kosong)
               </label>
               <textarea
                 rows={2}
-                placeholder="Keterangan SKU, batas diskon, atau instruksi pimpinan..."
+                placeholder="Tulis SKU apa aja, batas diskon berapa persen, atau pesan pimpinan..."
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
                 style={{
@@ -2439,11 +2443,11 @@ export default function StaffTasksPage() {
               />
             </div>
 
-            {/* Priority & Category Grid */}
+            {/* Prioritas & Kategori */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
-                  Tingkat Prioritas
+                  Seberapa Mendesak?
                 </label>
                 <select
                   value={formPriority}
@@ -2457,16 +2461,16 @@ export default function StaffTasksPage() {
                     backgroundColor: '#ffffff',
                   }}
                 >
-                  <option value="URGENT">🔴 Urgent</option>
-                  <option value="HIGH">🟠 High</option>
-                  <option value="NORMAL">🔵 Normal</option>
-                  <option value="LOW">⚪ Low</option>
+                  <option value="URGENT">🔴 Kudu Banget (Urgent)</option>
+                  <option value="HIGH">🟠 Penting (High)</option>
+                  <option value="NORMAL">🔵 Biasa Aja (Normal)</option>
+                  <option value="LOW">⚪ Kalo Sempet (Low)</option>
                 </select>
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
-                  Kategori Task
+                  Kategori Kerjaan
                 </label>
                 <select
                   value={formCategory}
@@ -2480,16 +2484,16 @@ export default function StaffTasksPage() {
                     backgroundColor: '#ffffff',
                   }}
                 >
-                  <option value="ROUTINE">🔄 Routine</option>
-                  <option value="PROMO">🔥 Promo / Campaign</option>
-                  <option value="PROJECT">🚀 Project</option>
-                  <option value="MONITORING">📊 Monitoring</option>
-                  <option value="URGENT">🚨 Urgent Issue</option>
+                  <option value="ROUTINE">🔄 Rutinitas Harian</option>
+                  <option value="PROMO">🔥 Promo & Campaign</option>
+                  <option value="PROJECT">🚀 Project Toko</option>
+                  <option value="MONITORING">📊 Monitoring & Cek</option>
+                  <option value="URGENT">🚨 Darurat / Kudu Cepat</option>
                 </select>
               </div>
             </div>
 
-            {/* Marketplace & Day of Week Grid */}
+            {/* Marketplace & Hari */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
@@ -2507,7 +2511,7 @@ export default function StaffTasksPage() {
                     backgroundColor: '#ffffff',
                   }}
                 >
-                  <option value="Shopee">Shopee</option>
+                  <option value="Shopee">Shopee Pusat</option>
                   <option value="Shopee Cabang">Shopee Cabang Semarang</option>
                   <option value="Lazada">Lazada</option>
                   <option value="TikTok Shop">TikTok Shop</option>
@@ -2519,7 +2523,7 @@ export default function StaffTasksPage() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
-                  Jadwalkan ke Hari
+                  Mau Dikerjain Kapan?
                 </label>
                 <select
                   value={formDayOfWeek}
@@ -2538,16 +2542,16 @@ export default function StaffTasksPage() {
                       Hari {d}
                     </option>
                   ))}
-                  <option value="Backlog">📋 Masukkan ke Backlog</option>
+                  <option value="Backlog">📋 Masukin ke Antrean / Backlog</option>
                 </select>
               </div>
             </div>
 
-            {/* Promo Name & Duration Grid */}
+            {/* Promo & Estimasi Menit */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
-                  Promo / Campaign Terkait
+                  Promo Terkait (Kalo Ada)
                 </label>
                 <input
                   type="text"
@@ -2567,7 +2571,7 @@ export default function StaffTasksPage() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
-                  Estimasi Waktu (Menit)
+                  Kira-kira Berapa Menit?
                 </label>
                 <input
                   type="number"
@@ -2585,7 +2589,7 @@ export default function StaffTasksPage() {
               </div>
             </div>
 
-            {/* Buttons */}
+            {/* Tombol Modal */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button
                 onClick={() => setShowTaskModal(false)}
@@ -2615,7 +2619,7 @@ export default function StaffTasksPage() {
                   cursor: 'pointer',
                 }}
               >
-                {modalMode === 'ADD' ? 'Simpan Task' : 'Perbarui Task'}
+                {modalMode === 'ADD' ? 'Simpen Kerjaan' : 'Update Kerjaan'}
               </button>
             </div>
           </div>
@@ -2623,7 +2627,7 @@ export default function StaffTasksPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: BLOCK TASK REASON                                                  */}
+      {/* MODAL: LAGI KETAHAN KARENA APA?                                           */}
       {/* ========================================================================= */}
       {blockingTask && (
         <div
@@ -2651,17 +2655,17 @@ export default function StaffTasksPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
               <AlertTriangle size={20} color="#d97706" />
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
-                Tandai Task Terhambat (Blocked)
+                Lagi Ketahan Karena Apa Nih?
               </h3>
             </div>
 
             <p style={{ fontSize: '12.5px', color: '#64748b', margin: '0 0 14px 0', lineHeight: 1.4 }}>
-              Apa yang menyebabkan task <strong>"{blockingTask.task_text}"</strong> belum bisa diselesaikan?
+              Apa yang bikin kerjaan <strong>"{blockingTask.task_text}"</strong> belum bisa diselesaikan saat ini?
             </p>
 
             <textarea
               rows={3}
-              placeholder="Contoh: Menunggu approval campaign Shopee dari RM, atau menunggu materi banner dari Ka Vanny..."
+              placeholder="Contoh: Lagi nungguin ACC harga diskon dari Finance, atau nungguin kiriman materi banner dari Ka Vanny..."
               value={blockedReasonInput}
               onChange={(e) => setBlockedReasonInput(e.target.value)}
               style={{
@@ -2705,7 +2709,7 @@ export default function StaffTasksPage() {
                   cursor: 'pointer',
                 }}
               >
-                Tandai Blocked
+                Tandai Ketahan
               </button>
             </div>
           </div>
@@ -2713,7 +2717,7 @@ export default function StaffTasksPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: SOP GUIDANCE                                                       */}
+      {/* MODAL: CONTEKAN & PANDUAN CARA NGERJAIN (SOP)                             */}
       {/* ========================================================================= */}
       {activeSOPTask && (
         <div
@@ -2796,20 +2800,20 @@ export default function StaffTasksPage() {
               </button>
             </div>
 
-            {/* Objective */}
+            {/* Kenapa Ini Kudu Beres */}
             <div style={{ backgroundColor: '#f8fafc', padding: '12px 14px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #e2e8f0' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '3px' }}>
-                🎯 Tujuan Tugas / Objective:
+                🎯 Kenapa ini kudu beres:
               </div>
               <div style={{ fontSize: '13px', color: '#1e293b', lineHeight: 1.45 }}>
                 {activeSOPTask.sop.objective}
               </div>
             </div>
 
-            {/* Steps */}
+            {/* Caranya Gampang (Steps) */}
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
-                📋 Langkah Demi Langkah (Step-by-Step SOP):
+                📋 Caranya gampang (Langkah demi langkah):
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {activeSOPTask.sop.steps.map((st, i) => (
@@ -2838,10 +2842,10 @@ export default function StaffTasksPage() {
               </div>
             </div>
 
-            {/* Parameters */}
+            {/* Acuan Parameter */}
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
-                ⚙️ Acuan Parameter:
+                ⚙️ Acuan Parameter yang Harus Diingat:
               </div>
               <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#475569' }}>
                 {activeSOPTask.sop.parameters.map((p, idx) => (
@@ -2850,10 +2854,10 @@ export default function StaffTasksPage() {
               </ul>
             </div>
 
-            {/* Tips */}
+            {/* Tips Biar Ga Boncos */}
             <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', padding: '10px 12px', borderRadius: '8px', marginBottom: '18px' }}>
               <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#b45309', marginBottom: '2px' }}>
-                💡 Tips Anti-Bingung EcomPilot:
+                💡 Tips biar lo ga boncos & ga pusing:
               </div>
               <div style={{ fontSize: '12px', color: '#78350f' }}>{activeSOPTask.sop.tips}</div>
             </div>
@@ -2872,7 +2876,7 @@ export default function StaffTasksPage() {
                   cursor: 'pointer',
                 }}
               >
-                Tutup Panduan
+                Sip, Gue Paham!
               </button>
             </div>
           </div>

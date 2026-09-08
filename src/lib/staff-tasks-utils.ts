@@ -47,38 +47,38 @@ export type StaffName = (typeof STAFF_LIST)[number]
 export const DAYS_OF_WEEK = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'] as const
 export type DayOfWeek = (typeof DAYS_OF_WEEK)[number]
 
-// Categories config
+// Categories config - Bahasa santai & jelas
 export const TASK_CATEGORIES_CONFIG: Record<
   TaskCategory,
   { label: string; color: string; bg: string; icon: string; border: string }
 > = {
-  ROUTINE: { label: 'Routine', color: '#0284c7', bg: '#f0f9ff', icon: '🔄', border: '#bae6fd' },
-  PROMO: { label: 'Promo / Campaign', color: '#ea580c', bg: '#fff7ed', icon: '🔥', border: '#fed7aa' },
-  PROJECT: { label: 'Project', color: '#7c3aed', bg: '#f5f3ff', icon: '🚀', border: '#ddd6fe' },
-  MONITORING: { label: 'Monitoring', color: '#059669', bg: '#ecfdf5', icon: '📊', border: '#a7f3d0' },
-  URGENT: { label: 'Urgent Issue', color: '#dc2626', bg: '#fef2f2', icon: '🚨', border: '#fecaca' },
+  ROUTINE: { label: 'Rutinitas Harian', color: '#0284c7', bg: '#f0f9ff', icon: '🔄', border: '#bae6fd' },
+  PROMO: { label: 'Promo & Campaign', color: '#ea580c', bg: '#fff7ed', icon: '🔥', border: '#fed7aa' },
+  PROJECT: { label: 'Project Toko', color: '#7c3aed', bg: '#f5f3ff', icon: '🚀', border: '#ddd6fe' },
+  MONITORING: { label: 'Monitoring & Cek', color: '#059669', bg: '#ecfdf5', icon: '📊', border: '#a7f3d0' },
+  URGENT: { label: 'Darurat / Kudu Cepat', color: '#dc2626', bg: '#fef2f2', icon: '🚨', border: '#fecaca' },
 }
 
-// Priority config
+// Priority config - Bahasa Gen-Z / Santai
 export const TASK_PRIORITY_CONFIG: Record<
   TaskPriority,
   { label: string; color: string; bg: string; dot: string; score: number }
 > = {
-  URGENT: { label: 'Urgent', color: '#dc2626', bg: '#fee2e2', dot: '🔴', score: 4 },
-  HIGH: { label: 'High', color: '#ea580c', bg: '#ffedd5', dot: '🟠', score: 3 },
-  NORMAL: { label: 'Normal', color: '#2563eb', bg: '#dbeafe', dot: '🔵', score: 2 },
-  LOW: { label: 'Low', color: '#64748b', bg: '#f1f5f9', dot: '⚪', score: 1 },
+  URGENT: { label: 'Kudu Banget', color: '#dc2626', bg: '#fee2e2', dot: '🔴', score: 4 },
+  HIGH: { label: 'Penting', color: '#ea580c', bg: '#ffedd5', dot: '🟠', score: 3 },
+  NORMAL: { label: 'Biasa Aja', color: '#2563eb', bg: '#dbeafe', dot: '🔵', score: 2 },
+  LOW: { label: 'Kalo Sempet', color: '#64748b', bg: '#f1f5f9', dot: '⚪', score: 1 },
 }
 
-// Status config
+// Status config - Bahasa Santai
 export const TASK_STATUS_CONFIG: Record<
   TaskStatus,
   { label: string; color: string; bg: string }
 > = {
-  TODO: { label: 'To-Do', color: '#475569', bg: '#f1f5f9' },
-  IN_PROGRESS: { label: 'In Progress', color: '#2563eb', bg: '#dbeafe' },
-  BLOCKED: { label: 'Blocked / Menunggu', color: '#d97706', bg: '#fef3c7' },
-  DONE: { label: 'Selesai', color: '#059669', bg: '#ecfdf5' },
+  TODO: { label: 'Belum Dikerjain', color: '#475569', bg: '#f1f5f9' },
+  IN_PROGRESS: { label: 'Lagi Digas 🔥', color: '#2563eb', bg: '#dbeafe' },
+  BLOCKED: { label: 'Lagi Ketahan ⏳', color: '#d97706', bg: '#fef3c7' },
+  DONE: { label: 'Udah Kelar 🎉', color: '#059669', bg: '#ecfdf5' },
 }
 
 /**
