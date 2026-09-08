@@ -89,6 +89,8 @@ model Brand {
   recommendations    Recommendation[]
   decisions          DecisionHistory[]
   campaign_opportunities CampaignOpportunity[]
+  staff_tasks            StaffTask[]
+  staff_weekly_notes     StaffWeeklyNote[]
 
   workspace                Workspace            @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 
@@ -838,5 +840,38 @@ model CampaignOpportunity {
   @@index([brand_id, status])
   @@index([brand_id, marketplace])
   @@index([brand_id, campaign_type])
+}
+
+model StaffTask {
+  id           String   @id @default(cuid())
+  brand_id     String
+  staff_name   String   // e.g. "Nandila", "Shalwa", "Dian Hs", "dela cinta", "Imron"
+  week_start   DateTime // Monday of the week
+  day_of_week  String   // "Senin", "Selasa", "Rabu", "Kamis", "Jumat"
+  date_str     String   // e.g. "09/07/26"
+  task_text    String   @db.Text
+  category     String?  // "CS", "Promo", "Campaign", "Ads", "Maklon", "PDP", "Operasional"
+  is_completed Boolean  @default(false)
+  order_index  Int      @default(0)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  brand        Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+
+  @@index([brand_id, staff_name, week_start])
+}
+
+model StaffWeeklyNote {
+  id         String   @id @default(cuid())
+  brand_id   String
+  staff_name String
+  week_start DateTime
+  notes      String   @db.Text
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  brand      Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+
+  @@unique([brand_id, staff_name, week_start])
 }
 
