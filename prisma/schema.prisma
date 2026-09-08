@@ -843,22 +843,38 @@ model CampaignOpportunity {
 }
 
 model StaffTask {
-  id           String   @id @default(cuid())
-  brand_id     String
-  staff_name   String   // e.g. "Nandila", "Shalwa", "Dian Hs", "dela cinta", "Imron"
-  week_start   DateTime // Monday of the week
-  day_of_week  String   // "Senin", "Selasa", "Rabu", "Kamis", "Jumat"
-  date_str     String   // e.g. "09/07/26"
-  task_text    String   @db.Text
-  category     String?  // "CS", "Promo", "Campaign", "Ads", "Maklon", "PDP", "Operasional"
-  is_completed Boolean  @default(false)
-  order_index  Int      @default(0)
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  brand_id           String
+  staff_name         String    // e.g. "Shalwa", "Nandila"
+  week_start         DateTime  // Monday of the week
+  day_of_week        String    // "Senin", "Selasa", "Rabu", "Kamis", "Jumat", or "Backlog"
+  date_str           String    // e.g. "09/07/26"
+  task_text          String    @db.Text
+  description        String?   @db.Text
+  category           String?   // "ROUTINE", "PROMO", "PROJECT", "MONITORING", "URGENT"
+  priority           String    @default("NORMAL") // "URGENT", "HIGH", "NORMAL", "LOW"
+  status             String    @default("TODO")   // "TODO", "IN_PROGRESS", "BLOCKED", "DONE"
+  marketplace        String?   // "Shopee", "Lazada", "TikTok Shop", "WhatsApp", "MyEssent", "All"
+  promo_name         String?   // e.g. "Flash Sale September", "9.9 Super Shopping Day"
+  promo_stage        String?   // "PREPARATION", "MONITORING", "EVALUATION"
+  deadline           DateTime?
+  scheduled_date     DateTime?
+  estimated_minutes  Int?      // 15, 30, 45, 60, 90, 120
+  actual_minutes     Int?
+  blocked_reason     String?   @db.Text
+  is_recurring       Boolean   @default(false)
+  recurring_rule     String?   // "DAILY", "WEEKLY_MON", "WEEKLY_FRI"
+  is_completed       Boolean   @default(false)
+  completed_at       DateTime?
+  order_index        Int       @default(0)
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
 
-  brand        Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  brand              Brand     @relation(fields: [brand_id], references: [id], onDelete: Cascade)
 
   @@index([brand_id, staff_name, week_start])
+  @@index([brand_id, staff_name, status])
+  @@index([brand_id, staff_name, priority])
 }
 
 model StaffWeeklyNote {
