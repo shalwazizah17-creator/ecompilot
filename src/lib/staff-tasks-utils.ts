@@ -119,6 +119,302 @@ export const DAILY_ROUTINES = [
 ]
 
 /**
+ * Smart SOP Guidance Interface
+ */
+export interface TaskSOP {
+  objective: string
+  platform: string
+  steps: string[]
+  parameters: string[]
+  tips: string
+}
+
+/**
+ * Smart SOP Resolver: memberikan panduan langkah demi langkah praktis
+ * agar staff (Shalwa & Nandila) tidak bingung saat menjalankan tugas!
+ */
+export function getTaskSOP(taskText: string): TaskSOP {
+  const lower = taskText.toLowerCase()
+
+  if (lower.includes('chat') && (lower.includes('shopee') || lower.includes('wa'))) {
+    return {
+      objective: 'Mempertahankan SLA respon chat di bawah 5 menit dan mengonversi konsultasi pembeli menjadi transaksi checkout.',
+      platform: 'Shopee Seller Centre & WhatsApp Web',
+      steps: [
+        'Buka portal Web Chat Shopee untuk Toko Pusat dan Toko Cabang Semarang.',
+        'Saring tab "Belum Dibalas" terlebih dahulu; prioritaskan pesan yang menanyakan stok produk promo.',
+        'Gunakan template salam ramah: perkenalkan diri, tanyakan keluhan kulit pembeli (tipe kering/jerawat/flek), dan berikan rekomendasi bundling hemat.',
+        'Buka WhatsApp Web reseller/maklon, respon pertanyaan harga grosir atau status pengiriman resi.',
+      ],
+      parameters: ['Target response rate > 95%', 'Waktu respon maksimal 3 menit di jam operasional (08.00 - 21.00)'],
+      tips: 'Selalu sisipkan voucher diskon toko di akhir chat jika pembeli belum menyelesaikan pembayaran (checkout tapi pending).',
+    }
+  }
+
+  if (lower.includes('komunitas') || lower.includes('blast')) {
+    return {
+      objective: 'Membangun interaksi rutin di grup komunitas pelanggan dan mengarahkan traffic gratis langsung ke etalase promo.',
+      platform: 'WhatsApp Komunitas (2 Grup Resmi)',
+      steps: [
+        'Login ke WhatsApp Web khusus nomor broadcast komunitas.',
+        'Siapkan 1 video materi edukasi atau testimoni before-after dari tim konten.',
+        'Tulis caption pemikat: sebutkan promo terbatas hari ini (misal Flash Sale Toko atau Diskon Double Date).',
+        'Sertakan link etalase resmi toko Shopee/TikTok dengan parameter voucher toko.',
+        'Kirim broadcast ke Grup 1 dan Grup 2 di jam aktif audiens (11.30 - 13.00 WIB).',
+      ],
+      parameters: ['Maksimal 1 broadcast per hari agar member tidak merasa terganggu', 'Gunakan link pendek resmi'],
+      tips: 'Pantau 10 menit setelah blast untuk merespon langsung pertanyaan member di dalam grup.',
+    }
+  }
+
+  if (lower.includes('fs toko') || lower.includes('flash sale toko')) {
+    return {
+      objective: 'Membuat lonjakan pesanan kilat (flash sale) dengan kuota terkontrol tanpa merusak bottom price margin.',
+      platform: 'Shopee / Lazada / TikTok Seller Centre',
+      steps: [
+        'Buka Seller Centre > Pusat Pemasaran > Flash Sale Toko Saya.',
+        'Pilih tanggal dan sesi jam tayang (rekomendasi: jam 12:00 - 15:00 atau 19:00 - 22:00 WIB).',
+        'Pilih SKU target: prioritaskan produk hero bundling atau produk stok banyak / slow-moving.',
+        'Atur harga promo: pastikan diskon berada di kisaran 10% - 15% (wajib di atas bottom price Finance).',
+        'Kunci kuota stok promo (misal 50 - 100 pcs per sesi agar tidak over-commit di gudang).',
+        'Simpan dan aktifkan jadwal promo.',
+      ],
+      parameters: ['Diskon: 10% - 15%', 'Batas stok promo: 50 - 100 pcs', 'Durasi: 3 jam per sesi'],
+      tips: 'Pastikan gambar produk flash sale sudah menggunakan frame promo resmi berwarna mencolok.',
+    }
+  }
+
+  if (lower.includes('campaign') || lower.includes('nominasikan')) {
+    return {
+      objective: 'Mengamankan slot partisipasi campaign marketplace resmi (9.9, 10.10, Gajian/Payday, Mall Monday) untuk lonjakan traffic organik.',
+      platform: 'Shopee / Lazada / TikTok Campaign Hub',
+      steps: [
+        'Buka Seller Centre > Menu Campaign / Promosi Marketplace.',
+        'Cari nama campaign yang dituju (misal: "Shopee 10.10 Brands Festival" atau "Pesta Gajian Lazada").',
+        'Klik "Nominasikan Produk" / "Join Campaign".',
+        'Saring produk yang berstatus Eligible (layak).',
+        'Masukkan diskon rekomendasi sistem (rekomendasi 4% - 6% sesuai panduan EcomPilot).',
+        'Cek estimasi margin: jangan setujui jika margin bersih jatuh di bawah 25%.',
+        'Submit pendaftaran dan pantau status persetujuan oleh tim Regional Manager (RM).',
+      ],
+      parameters: ['Batas pendaftaran: perhatikan tanggal closing registrasi', 'Diskon maks: 5-8%'],
+      tips: 'Jika ada SKU rejected karena harga kurang murah, sesuaikan hanya untuk varian ukuran kecil/single.',
+    }
+  }
+
+  if (lower.includes('pdp') || lower.includes('etalase varian') || lower.includes('bundling')) {
+    return {
+      objective: 'Menggabungkan beberapa produk ke dalam 1 etalase variasi terpadu untuk mendongkrak akumulasi ulasan dan nilai keranjang (AOV).',
+      platform: 'Seller Centre (Shopee, Lazada, TikTok) & MyEssent ERP',
+      steps: [
+        'Buka menu Produk > Pengaturan Produk di Seller Centre.',
+        'Pilih etalase produk utama (misal Facial Wash atau C-Booster Series).',
+        'Aktifkan toggle Variasi: buat kelompok variasi (misal: Single 100ml, Paket Bundling Extra Glow, Twinpack).',
+        'Unggah foto per varian dengan visual jelas dan banner hemat.',
+        'Tautkan kode SKU varian baru ke MyEssent agar stok tersinkron dengan gudang pusat.',
+        'Arsipkan etalase produk lama yang masih berstatus single terpisah agar traffic terpusat ke link baru.',
+      ],
+      parameters: ['Satu etalase maksimal 10 variasi', 'Foto varian wajib ukuran 1:1 resolusi tinggi'],
+      tips: 'JANGAN menghapus produk lama secara permanen; cukup nonaktifkan/arsipkan agar riwayat penjualan toko tetap aman.',
+    }
+  }
+
+  if (lower.includes('maklon') || lower.includes('mitra')) {
+    return {
+      objective: 'Mendokumentasikan calon mitra maklon / reseller baru ke database ERP MyEssent agar segera diproses follow up oleh tim Business Development.',
+      platform: 'MyEssent ERP (Modul Kemitraan)',
+      steps: [
+        'Buka aplikasi web MyEssent ERP > Menu Maklon & Kemitraan.',
+        'Klik tombol "+ Tambah Mitra Baru".',
+        'Isi profil: Nama Perusahaan (PT/CV) atau Nama Perorangan, Nomor Kontak WhatsApp, Kota, dan Estimasi Kebutuhan Produk.',
+        'Pilih PIC Assignee:',
+        '   - Jika mitra berbadan hukum (PT/CV) → Assign ke Bu Ernita.',
+        '   - Jika reseller perorangan / agen → Assign ke Pak Ali.',
+        'Simpan data dan kirim notifikasi singkat ke grup koordinasi maklon.',
+      ],
+      parameters: ['Nomor WA wajib aktif', 'SLA follow up maksimal 1x24 jam setelah data diinput'],
+      tips: 'Pastikan mencantumkan asal data (misal: "Lead Dinda - Event Jabar" atau "Inbound WA").',
+    }
+  }
+
+  if (lower.includes('closing') || lower.includes('monitor') || lower.includes('weekly report')) {
+    return {
+      objective: 'Merekap realisasi penjualan, retur, biaya admin, dan margin bersih mingguan cabang tanpa ada selisih angka.',
+      platform: 'Seller Centre Cabang & Modul Rekap Closing EcomPilot',
+      steps: [
+        'Download file Excel riwayat seluruh pesanan dari Seller Centre Cabang Semarang.',
+        'Buka menu Rekap Closing Promo di EcomPilot.',
+        'Upload file pesanan (.xlsx / .csv); sistem akan otomatis menyaring pesanan selesai dan mengeluarkan pesanan dibatalkan.',
+        'Periksa ringkasan Gross GMV, Net Revenue, Potongan Diskon, dan Biaya Ongkir.',
+        'Cocokkan angka mutasi saldo penghasilan di dompet marketplace.',
+        'Ekspor ringkasan rekap dan laporkan ke grup koordinasi mingguan.',
+      ],
+      parameters: ['Status pesanan: Selesai / Terkirim saja', 'Pisahkan toko pusat dan cabang'],
+      tips: 'Gunakan fitur upload otomatis di EcomPilot untuk menghemat waktu rekap manual hingga 80%.',
+    }
+  }
+
+  // Default Fallback SOP
+  return {
+    objective: 'Menjalankan eksekusi operasional harian secara disiplin sesuai standar kerja marketplace EcomPilot.',
+    platform: 'Marketplace Seller Centre & WhatsApp',
+    steps: [
+      'Pahami deskripsi tugas dan periksa kelengkapan materi/data yang dibutuhkan.',
+      'Lakukan eksekusi pada portal marketplace atau sistem ERP yang bersangkutan.',
+      'Lakukan pengecekan ulang (double-check) sebelum mempublikasikan promo atau menyimpan perubahan.',
+      'Tandai checklist to-do list sebagai selesai setelah diverifikasi berhasil.',
+    ],
+    parameters: ['Perhatikan batas waktu pengerjaan', 'Koordinasikan dengan supervisor jika ada kendala sistem'],
+    tips: 'Jika ragu mengenai margin harga promo, selalu konsultasikan dengan proteksi margin di EcomPilot.',
+  }
+}
+
+/**
+ * Smart AI & Operational Recommendations specifically for Shalwa & Nandila
+ */
+export interface StaffRecommendationItem {
+  id: string
+  staff_name: 'Shalwa' | 'Nandila'
+  title: string
+  short_action: string
+  reason: string
+  priority: 'Urgent' | 'High' | 'Medium'
+  priority_color: string
+  category: string
+  target_day: DayOfWeek
+  suggested_discount?: string
+  suggested_skus?: string[]
+  deadline?: string
+  badge_label: string
+}
+
+export const STAFF_RECOMMENDATIONS: StaffRecommendationItem[] = [
+  // Rekomendasi untuk SHALWA
+  {
+    id: 'rec-sh-1',
+    staff_name: 'Shalwa',
+    title: 'Buat Bundling Varian Extra Glow & C-Booster di Etalase Varian',
+    short_action: 'bikin bundling paket extra glow + fw & c-booster di etalase varian',
+    reason: 'Data penjualan menunjukkan 34% pembeli C-Booster Serum membeli Facial Wash secara terpisah. Menggabungkannya ke 1 etalase varian meningkatkan basket size pembeli dan menghemat biaya promosi.',
+    priority: 'Urgent',
+    priority_color: '#ef4444',
+    category: 'PDP',
+    target_day: 'Senin',
+    suggested_discount: 'Diskon 12% - 15% (Margin aman: 31%)',
+    suggested_skus: ['C-Booster Serum 20ml', 'Gentle Facial Wash 100ml', 'Extra Glow Day Cream'],
+    deadline: 'Senin, 14:00 WIB',
+    badge_label: 'Prioritas Hari Ini',
+  },
+  {
+    id: 'rec-sh-2',
+    staff_name: 'Shalwa',
+    title: 'Nominasikan Campaign 9.9 Super Shopping Day Shopee & Gajian Lazada',
+    short_action: 'setting campaign 9.9 shopee & nominasikan pesta gajian lazada',
+    reason: 'Pendaftaran event Mega Campaign 9.9 akan ditutup dalam waktu dekat. Slot traffic Shopee Mall & Lazada Pesta Gajian berpotensi menaikkan GMV hingga 3.2x lipat baseline.',
+    priority: 'Urgent',
+    priority_color: '#ef4444',
+    category: 'Campaign',
+    target_day: 'Selasa',
+    suggested_discount: 'Diskon 4% - 6% (Proteksi bottom price aman)',
+    suggested_skus: ['C-Booster Series Bundling', 'Age Revival Twinpack', 'Theraskin Men Multi Action'],
+    deadline: 'Selasa, 18:00 WIB',
+    badge_label: 'Deadline Registrasi',
+  },
+  {
+    id: 'rec-sh-3',
+    staff_name: 'Shalwa',
+    title: 'Review Kuota Voucher Toko NPD C-Booster & Voucher Member Baru',
+    short_action: 'cek kuota voucher toko npd c-booster & perpanjang voucher klaim',
+    reason: 'Sisa kuota klaim voucher toko 10% untuk produk baru NPD C-Booster tinggal sedikit. Perpanjang kuota agar konversi calon pembeli baru tidak drop.',
+    priority: 'High',
+    priority_color: '#f97316',
+    category: 'Promo',
+    target_day: 'Rabu',
+    suggested_discount: 'Voucher 10% Min Belanja Rp 120.000',
+    suggested_skus: ['Seluruh SKU C-Booster Series & Men'],
+    deadline: 'Rabu, 16:00 WIB',
+    badge_label: 'Optimasi Konversi',
+  },
+  {
+    id: 'rec-sh-4',
+    staff_name: 'Shalwa',
+    title: 'Rekap Closingan Weekly Cabang Semarang Pakai Menu Closing EcomPilot',
+    short_action: 'rekap closingan weekly cabang semarang via ecompilot',
+    reason: 'Gunakan fitur upload otomatis file pesanan Shopee Cabang Semarang di EcomPilot agar perhitungan pesanan selesai vs retur 100% akurat tanpa perlu hitung rumus manual di spreadsheet.',
+    priority: 'High',
+    priority_color: '#f97316',
+    category: 'Closing',
+    target_day: 'Jumat',
+    suggested_discount: 'Cek netto margin setelah potongan fee admin marketplace',
+    suggested_skus: ['Toko Shopee Cabang Semarang'],
+    deadline: 'Jumat, 17:00 WIB',
+    badge_label: 'SOP Pelaporan',
+  },
+
+  // Rekomendasi untuk NANDILA
+  {
+    id: 'rec-na-1',
+    staff_name: 'Nandila',
+    title: 'Non-aktifkan Harga Diskon Full Month & Beralih ke Diskon Per-Event (Row 250)',
+    short_action: 'non aktifkan harga diskon full month ganti ke diskon per event',
+    reason: 'Instruksi baris 250 spreadsheet: harga coret full month 30 hari menekan margin toko secara permanen dan membuat promo event terasa tidak spesial. Matikan diskon full month, ganti dengan flash sale toko bertahap.',
+    priority: 'Urgent',
+    priority_color: '#ef4444',
+    category: 'Promo',
+    target_day: 'Senin',
+    suggested_discount: 'Ganti ke Flash Sale Toko periodik 11-13 Sept',
+    suggested_skus: ['Semua etalase lama kecuali C-Booster tgl 4'],
+    deadline: 'Senin, 12:00 WIB',
+    badge_label: 'Guardrail Margin',
+  },
+  {
+    id: 'rec-na-2',
+    staff_name: 'Nandila',
+    title: 'Gabungkan PDP Etalase Varian & Arsipkan Etalase Single Lama (Row 249)',
+    short_action: 'ganti pdp etalase varian dan arsipkan etalase single lama',
+    reason: 'Instruksi baris 249 spreadsheet: produk yang masih single dan tidak ada varian dijadikan 1 etalase (single, twinpack, triplepack). Varian single lama diarsipkan agar pembeli tidak bingung dan algoritma rating terpusat.',
+    priority: 'Urgent',
+    priority_color: '#ef4444',
+    category: 'PDP',
+    target_day: 'Selasa',
+    suggested_discount: 'Diskon bundling varian 12%',
+    suggested_skus: ['AR Gentle Facial Wash', 'PDC Treatment Cream', 'AHA Series'],
+    deadline: 'Selasa, 16:00 WIB',
+    badge_label: 'Restrukturisasi Etalase',
+  },
+  {
+    id: 'rec-na-3',
+    staff_name: 'Nandila',
+    title: 'Pasang Flash Sale Toko Shopee Cabang untuk Stok Near-ED & Slow-Moving',
+    short_action: 'setting flash sale toko shopee cabang tgl 7-10 sep (near-ed & slowmo)',
+    reason: 'Cabang Semarang memiliki cadangan stok slow-moving yang mendekati umur simpan. Alokasikan slot flash sale toko jam 12-15 & 19-22 untuk memacu perputaran barang tanpa mengganggu harga toko pusat.',
+    priority: 'High',
+    priority_color: '#f97316',
+    category: 'Promo',
+    target_day: 'Rabu',
+    suggested_discount: 'Diskon kilat 12% - 15%, kuota 50 pcs/sesi',
+    suggested_skus: ['SKU slow-moving Cabang Semarang'],
+    deadline: 'Rabu, 11:30 WIB',
+    badge_label: 'Pembersihan Inventori',
+  },
+  {
+    id: 'rec-na-4',
+    staff_name: 'Nandila',
+    title: 'Follow Up & Assign Mitra Maklon Baru ke Pak Ali & Bu Ernita di MyEssent',
+    short_action: 'add 1 mitra maklon baru ke my essent, assign pak ali / bu ernita',
+    reason: 'Ada data calon mitra maklon potensial dari lead Dinda (event PAAS Jabar) dan inbound WA yang belum tercatat di ERP MyEssent. Segera input agar tim BD bisa kirim penawaran kontrak.',
+    priority: 'High',
+    priority_color: '#f97316',
+    category: 'Maklon',
+    target_day: 'Kamis',
+    suggested_discount: 'Assign PT/CV ke Bu Ernita, Reseller ke Pak Ali',
+    suggested_skus: ['Data Lead Event PAAS Jabar & Muslim Vest'],
+    deadline: 'Kamis, 15:00 WIB',
+    badge_label: 'Maklon SLA',
+  },
+]
+
+/**
  * Seed data extracted directly from user's Google Sheet:
  * https://docs.google.com/spreadsheets/d/1yYcWODA20a6piMhl0yCHCo1mNlt-BieYO7OKceI5DNw/edit
  * Khusus untuk Shalwa dan Nandila!

@@ -27,6 +27,13 @@ import {
   ChevronDown,
   Layers,
   UserCheck,
+  Lightbulb,
+  AlertCircle,
+  HelpCircle,
+  BookOpen,
+  ArrowRight,
+  ShieldCheck,
+  X,
 } from 'lucide-react'
 import {
   StaffTaskItem,
@@ -40,6 +47,10 @@ import {
   getWeekDays,
   detectCategory,
   DAILY_ROUTINES,
+  STAFF_RECOMMENDATIONS,
+  StaffRecommendationItem,
+  getTaskSOP,
+  TaskSOP,
 } from '@/lib/staff-tasks-utils'
 
 // Staff avatars & roles specifically for Shalwa & Nandila
@@ -86,6 +97,9 @@ export default function StaffTasksPage() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [editingTaskText, setEditingTaskText] = useState<string>('')
   const [editingTaskCategory, setEditingTaskCategory] = useState<string>('')
+
+  // SOP Guidance Modal State
+  const [activeSOPTask, setActiveSOPTask] = useState<{ text: string; sop: TaskSOP } | null>(null)
 
   // Routine shortcut modal
   const [showRoutineModal, setShowRoutineModal] = useState<boolean>(false)
@@ -177,8 +191,8 @@ export default function StaffTasksPage() {
   }
 
   // Add Task inline
-  const handleAddTask = async (day: DayOfWeek, dateStr: string) => {
-    const text = newInputs[day]?.trim()
+  const handleAddTask = async (day: DayOfWeek, dateStr: string, customText?: string) => {
+    const text = (customText || newInputs[day])?.trim()
     if (!text) return
 
     try {
@@ -196,12 +210,21 @@ export default function StaffTasksPage() {
       if (!res.ok) throw new Error('Gagal menambah tugas')
       const data = await res.json()
       setTasks((prev) => [...prev, data.task])
-      setNewInputs((prev) => ({ ...prev, [day]: '' }))
+      if (!customText) {
+        setNewInputs((prev) => ({ ...prev, [day]: '' }))
+      }
       showToast(`✅ Tugas ditambahkan ke ${day}!`)
     } catch (err) {
       console.error(err)
       showToast('❌ Gagal menambah tugas')
     }
+  }
+
+  // Add Recommendation to To-Do List
+  const handleApplyRecommendation = async (rec: StaffRecommendationItem) => {
+    const targetDayObj = weekDays.find((d) => d.day === rec.target_day) || weekDays[0]
+    await handleAddTask(rec.target_day, targetDayObj.dateStr, rec.short_action)
+    showToast(`⭐ Rekomendasi "${rec.title}" berhasil dimasukkan ke kolom ${rec.target_day}!`)
   }
 
   // Delete Task
@@ -423,6 +446,11 @@ export default function StaffTasksPage() {
     }
   }
 
+  // Recommendations for the active staff
+  const staffRecommendations = useMemo(() => {
+    return STAFF_RECOMMENDATIONS.filter((r) => r.staff_name === selectedStaff)
+  }, [selectedStaff])
+
   // Filtered tasks per day
   const filteredTasksByDay = useMemo(() => {
     const result: Record<string, StaffTaskItem[]> = {
@@ -459,13 +487,6 @@ export default function StaffTasksPage() {
     return { total, completed, pending, pct }
   }, [tasks])
 
-  const currentProfile = STAFF_PROFILES[selectedStaff] || {
-    role: 'Marketplace Specialist',
-    avatarBg: '#2563eb',
-    initial: selectedStaff.slice(0, 2).toUpperCase(),
-    badge: 'Specialist',
-  }
-
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', padding: '24px 28px', color: '#0f172a' }}>
       {/* TOAST NOTIFICATION */}
@@ -494,7 +515,7 @@ export default function StaffTasksPage() {
       )}
 
       {/* HEADER SECTION */}
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>
           <span>Growth</span>
           <span>/</span>
@@ -539,7 +560,7 @@ export default function StaffTasksPage() {
                   </span>
                 </div>
                 <p style={{ margin: '3px 0 0 0', fontSize: '13.5px', color: '#64748b' }}>
-                  Format mingguan Senin–Jumat yang terhubung langsung dengan Google Sheets operasional marketplace specialist.
+                  Format mingguan Senin–Jumat yang terhubung dengan Google Sheets dan dilengkapi Rekomendasi Cerdas & Panduan SOP.
                 </p>
               </div>
             </div>
@@ -654,7 +675,7 @@ export default function StaffTasksPage() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0 8px', color: '#64748b', fontSize: '13px', fontWeight: 600, flexShrink: 0 }}>
           <UserCheck size={18} color="#ea580c" />
-          <span>Tab Staff (2 Staff Aktif):</span>
+          <span>Pilih Staff:</span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -736,6 +757,186 @@ export default function StaffTasksPage() {
               </button>
             )
           })}
+        </div>
+      </div>
+
+      {/* SMART RECOMMENDATION SECTION (BIAR STAFF TIDAK BINGUNG) */}
+      <div
+        style={{
+          backgroundColor: '#eff6ff',
+          border: '1.5px solid #bfdbfe',
+          borderRadius: '14px',
+          padding: '18px 20px',
+          marginBottom: '22px',
+          boxShadow: '0 2px 8px rgba(37, 99, 235, 0.06)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                backgroundColor: '#dbeafe',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#2563eb',
+              }}
+            >
+              <Lightbulb size={18} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '15px', fontWeight: 800, color: '#1e40af' }}>
+                  Rekomendasi Tindakan & Prioritas EcomPilot untuk {selectedStaff}
+                </span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    padding: '1px 8px',
+                    borderRadius: '10px',
+                  }}
+                >
+                  Anti-Bingung
+                </span>
+              </div>
+              <p style={{ margin: '2px 0 0 0', fontSize: '12.5px', color: '#3b82f6' }}>
+                Rekomendasi operasional berbasis data riil kalender promo, proteksi margin bottom price, dan instruksi khusus pimpinan.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 600 }}>
+            {staffRecommendations.length} Rekomendasi Tersedia
+          </div>
+        </div>
+
+        {/* RECOMMENDATION CARDS GRID */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '12px',
+          }}
+        >
+          {staffRecommendations.map((rec) => (
+            <div
+              key={rec.id}
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #dbeafe',
+                borderRadius: '10px',
+                padding: '14px 16px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                position: 'relative',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span
+                      style={{
+                        fontSize: '10.5px',
+                        fontWeight: 800,
+                        backgroundColor: rec.priority === 'Urgent' ? '#fee2e2' : '#ffedd5',
+                        color: rec.priority === 'Urgent' ? '#b91c1c' : '#c2410c',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {rec.priority}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: '#64748b',
+                      }}
+                    >
+                      Target: Hari {rec.target_day}
+                    </span>
+                  </div>
+
+                  {rec.deadline && (
+                    <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                      <Clock size={12} />
+                      {rec.deadline}
+                    </span>
+                  )}
+                </div>
+
+                <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px 0', lineHeight: 1.4 }}>
+                  {rec.title}
+                </h4>
+
+                <p style={{ fontSize: '12.5px', color: '#475569', margin: '0 0 10px 0', lineHeight: 1.45 }}>
+                  {rec.reason}
+                </p>
+
+                {/* Parameters pill */}
+                {rec.suggested_discount && (
+                  <div style={{ backgroundColor: '#f1f5f9', padding: '6px 10px', borderRadius: '6px', fontSize: '11.5px', color: '#334155', marginBottom: '10px' }}>
+                    <strong>Acuan Parameter:</strong> {rec.suggested_discount}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+                <button
+                  onClick={() => {
+                    const sop = getTaskSOP(rec.short_action)
+                    setActiveSOPTask({ text: rec.title, sop })
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    color: '#334155',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <BookOpen size={13} color="#2563eb" />
+                  <span>Lihat SOP Eksekusi</span>
+                </button>
+
+                <button
+                  onClick={() => handleApplyRecommendation(rec)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    backgroundColor: '#2563eb',
+                    border: 'none',
+                    color: '#ffffff',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 3px rgba(37, 99, 235, 0.25)',
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>+ Masukkan ke {rec.target_day}</span>
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -917,7 +1118,7 @@ export default function StaffTasksPage() {
                 Catatan / Prioritas Khusus Mingguan ({selectedStaff})
               </span>
               <span style={{ fontSize: '12px', color: '#b45309', marginLeft: '8px' }}>
-                (Replikasi baris 249-250 Spreadsheet: instruksi strategis mingguan yang wajib diperhatikan tim)
+                (Replikasi baris 249-250 Spreadsheet: instruksi strategis mingguan yang wajib diperhatikan)
               </span>
             </div>
           </div>
@@ -1168,8 +1369,8 @@ export default function StaffTasksPage() {
                           </div>
                         </div>
 
-                        {/* Category Pill */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                        {/* Category Pill & SOP Guidance Trigger */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginTop: '2px' }}>
                           <span
                             style={{
                               fontSize: '10.5px',
@@ -1182,6 +1383,30 @@ export default function StaffTasksPage() {
                           >
                             {catObj.label}
                           </span>
+
+                          <button
+                            onClick={() => {
+                              const sop = getTaskSOP(task.task_text)
+                              setActiveSOPTask({ text: task.task_text, sop })
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              backgroundColor: '#eff6ff',
+                              border: '1px solid #bfdbfe',
+                              color: '#2563eb',
+                              fontSize: '10.5px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                            title="Buka panduan eksekusi & SOP langkah demi langkah agar tidak bingung"
+                          >
+                            <Lightbulb size={11} />
+                            <span>Panduan SOP</span>
+                          </button>
                         </div>
                       </div>
                     )
@@ -1246,6 +1471,175 @@ export default function StaffTasksPage() {
           )
         })}
       </div>
+
+      {/* DETAILED SOP GUIDANCE MODAL / DRAWER */}
+      {activeSOPTask && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: 'rgba(15, 23, 42, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            backdropFilter: 'blur(2px)',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '600px',
+              padding: '26px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    backgroundColor: '#eff6ff',
+                    color: '#2563eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <BookOpen size={20} />
+                </div>
+                <div>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      backgroundColor: '#dbeafe',
+                      color: '#1e40af',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Platform: {activeSOPTask.sop.platform}
+                  </span>
+                  <h3 style={{ margin: '4px 0 0 0', fontSize: '17px', fontWeight: 700, color: '#0f172a', lineHeight: 1.3 }}>
+                    {activeSOPTask.text}
+                  </h3>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setActiveSOPTask(null)}
+                style={{
+                  border: 'none',
+                  backgroundColor: '#f1f5f9',
+                  color: '#64748b',
+                  borderRadius: '50%',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Objective */}
+            <div style={{ backgroundColor: '#f8fafc', padding: '12px 14px', borderRadius: '10px', marginBottom: '18px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                🎯 Tujuan Tugas / Objective:
+              </div>
+              <div style={{ fontSize: '13px', color: '#1e293b', lineHeight: 1.5 }}>
+                {activeSOPTask.sop.objective}
+              </div>
+            </div>
+
+            {/* Steps */}
+            <div style={{ marginBottom: '18px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '10px' }}>
+                📋 Panduan Langkah Demi Langkah (Step-by-Step SOP):
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {activeSOPTask.sop.steps.map((step, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '13px', color: '#334155', lineHeight: 1.5 }}>
+                    <div
+                      style={{
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        backgroundColor: '#ea580c',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        flexShrink: 0,
+                        marginTop: '1px',
+                      }}
+                    >
+                      {idx + 1}
+                    </div>
+                    <div>{step}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Parameters */}
+            <div style={{ marginBottom: '18px' }}>
+              <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
+                ⚙️ Acuan Parameter & Batasan:
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12.5px', color: '#475569', lineHeight: 1.5 }}>
+                {activeSOPTask.sop.parameters.map((p, idx) => (
+                  <li key={idx}>{p}</li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Tips & Guardrails */}
+            <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', padding: '12px 14px', borderRadius: '10px', marginBottom: '20px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#b45309', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                <ShieldCheck size={16} />
+                <span>Tips Anti-Bingung & Guardrail EcomPilot:</span>
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#78350f', lineHeight: 1.5 }}>
+                {activeSOPTask.sop.tips}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setActiveSOPTask(null)}
+                style={{
+                  padding: '9px 20px',
+                  borderRadius: '8px',
+                  backgroundColor: '#0f172a',
+                  border: 'none',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Saya Mengerti, Tutup Panduan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* EDIT MODAL */}
       {editingTaskId && (
