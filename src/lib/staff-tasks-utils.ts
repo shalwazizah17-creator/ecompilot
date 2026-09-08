@@ -1,6 +1,6 @@
 export type TaskPriority = 'URGENT' | 'HIGH' | 'NORMAL' | 'LOW'
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'BLOCKED' | 'DONE'
-export type TaskCategory = 'ROUTINE' | 'PROMO' | 'PROJECT' | 'MONITORING' | 'URGENT'
+export type TaskCategory = 'ROUTINE' | 'PROMO' | 'PROJECT' | 'MONITORING' | 'URGENT' | 'LEARNING'
 export type PromoStage = 'PREPARATION' | 'MONITORING' | 'EVALUATION'
 
 export interface StaffTaskItem {
@@ -47,7 +47,7 @@ export type StaffName = (typeof STAFF_LIST)[number]
 export const DAYS_OF_WEEK = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'] as const
 export type DayOfWeek = (typeof DAYS_OF_WEEK)[number]
 
-// Categories config - Bahasa santai & jelas
+// Categories config
 export const TASK_CATEGORIES_CONFIG: Record<
   TaskCategory,
   { label: string; color: string; bg: string; icon: string; border: string }
@@ -56,29 +56,30 @@ export const TASK_CATEGORIES_CONFIG: Record<
   PROMO: { label: 'Promo & Campaign', color: '#ea580c', bg: '#fff7ed', icon: '🔥', border: '#fed7aa' },
   PROJECT: { label: 'Project Toko', color: '#7c3aed', bg: '#f5f3ff', icon: '🚀', border: '#ddd6fe' },
   MONITORING: { label: 'Monitoring & Cek', color: '#059669', bg: '#ecfdf5', icon: '📊', border: '#a7f3d0' },
-  URGENT: { label: 'Darurat / Kudu Cepat', color: '#dc2626', bg: '#fef2f2', icon: '🚨', border: '#fecaca' },
+  URGENT: { label: 'Darurat / Cepat', color: '#dc2626', bg: '#fef2f2', icon: '🚨', border: '#fecaca' },
+  LEARNING: { label: 'Materi & Belajar', color: '#7c3aed', bg: '#f5f3ff', icon: '📚', border: '#ddd6fe' },
 }
 
-// Priority config - Bahasa Gen-Z / Santai
+// Priority config - 4 Level, Default Normal
 export const TASK_PRIORITY_CONFIG: Record<
   TaskPriority,
   { label: string; color: string; bg: string; dot: string; score: number }
 > = {
-  URGENT: { label: 'Kudu Banget', color: '#dc2626', bg: '#fee2e2', dot: '🔴', score: 4 },
-  HIGH: { label: 'Penting', color: '#ea580c', bg: '#ffedd5', dot: '🟠', score: 3 },
-  NORMAL: { label: 'Biasa Aja', color: '#2563eb', bg: '#dbeafe', dot: '🔵', score: 2 },
-  LOW: { label: 'Kalo Sempet', color: '#64748b', bg: '#f1f5f9', dot: '⚪', score: 1 },
+  URGENT: { label: 'Urgent', color: '#dc2626', bg: '#fee2e2', dot: '🔴', score: 4 },
+  HIGH: { label: 'High', color: '#ea580c', bg: '#ffedd5', dot: '🟠', score: 3 },
+  NORMAL: { label: 'Normal', color: '#2563eb', bg: '#dbeafe', dot: '🔵', score: 2 },
+  LOW: { label: 'Low', color: '#64748b', bg: '#f1f5f9', dot: '⚪', score: 1 },
 }
 
-// Status config - Bahasa Santai
+// 4 Status Baku: BELUM MULAI, SEDANG DIKERJAKAN, TERTUNDA, SELESAI
 export const TASK_STATUS_CONFIG: Record<
   TaskStatus,
-  { label: string; color: string; bg: string }
+  { label: string; color: string; bg: string; icon: string }
 > = {
-  TODO: { label: 'Belum Dikerjain', color: '#475569', bg: '#f1f5f9' },
-  IN_PROGRESS: { label: 'Lagi Digas 🔥', color: '#2563eb', bg: '#dbeafe' },
-  BLOCKED: { label: 'Lagi Ketahan ⏳', color: '#d97706', bg: '#fef3c7' },
-  DONE: { label: 'Udah Kelar 🎉', color: '#059669', bg: '#ecfdf5' },
+  TODO: { label: 'Belum Mulai', color: '#475569', bg: '#f1f5f9', icon: '📌' },
+  IN_PROGRESS: { label: 'Sedang Dikerjakan', color: '#2563eb', bg: '#dbeafe', icon: '▶' },
+  BLOCKED: { label: 'Tertunda', color: '#d97706', bg: '#fef3c7', icon: '⏸' },
+  DONE: { label: 'Selesai', color: '#059669', bg: '#ecfdf5', icon: '✅' },
 }
 
 /**
@@ -136,10 +137,48 @@ export function getWeekDays(monday: Date) {
 }
 
 /**
+ * Dapatkan hari berikutnya (Senin -> Selasa, Selasa -> Rabu, dst.)
+ */
+export function getTomorrowDay(currentDay: DayOfWeek): DayOfWeek {
+  const idx = DAYS_OF_WEEK.indexOf(currentDay)
+  if (idx === -1 || idx === DAYS_OF_WEEK.length - 1) return 'Senin'
+  return DAYS_OF_WEEK[idx + 1]
+}
+
+/**
+ * Cek apakah sebuah task merupakan materi pembelajaran / onboarding / product knowledge
+ */
+export function isLearningTask(task: { task_text?: string; category?: string; description?: string | null }): boolean {
+  if (task.category === 'LEARNING') return true
+  const combined = `${task.task_text || ''} ${task.description || ''}`.toLowerCase()
+  return (
+    combined.includes('belajar') ||
+    combined.includes('on-boarding') ||
+    combined.includes('onboarding') ||
+    combined.includes('product knowledge') ||
+    combined.includes('pelajari') ||
+    combined.includes('sop') ||
+    combined.includes('materi') ||
+    combined.includes('training')
+  )
+}
+
+/**
  * Auto-detect category from text
  */
 export function detectCategory(text: string): TaskCategory {
   const lower = text.toLowerCase()
+  if (
+    lower.includes('belajar') ||
+    lower.includes('on-boarding') ||
+    lower.includes('onboarding') ||
+    lower.includes('product knowledge') ||
+    lower.includes('pelajari') ||
+    lower.includes('sop') ||
+    lower.includes('materi')
+  ) {
+    return 'LEARNING'
+  }
   if (lower.includes('urgent') || lower.includes('darurat') || lower.includes('rusak') || lower.includes('bocor')) {
     return 'URGENT'
   }

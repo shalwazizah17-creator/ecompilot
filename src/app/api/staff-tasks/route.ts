@@ -486,6 +486,33 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: true, task: updated })
     }
 
+    if (action === 'batch_close_day') {
+      const { items } = body // items: Array<{ id: string, target: 'TOMORROW' | 'DATE' | 'BACKLOG' | 'DISMISS', day_of_week?: string, date_str?: string }>
+      if (!Array.isArray(items)) {
+        return NextResponse.json({ error: 'items harus berupa array' }, { status: 400 })
+      }
+      const results = []
+      for (const item of items) {
+        if (item.target === 'DISMISS') {
+          await prisma.staffTask.delete({ where: { id: item.id } }).catch(() => null)
+          results.push({ id: item.id, action: 'dismissed' })
+        } else if (item.target === 'BACKLOG') {
+          const updated = await prisma.staffTask.update({
+            where: { id: item.id },
+            data: { day_of_week: 'Backlog', date_str: 'Backlog' },
+          }).catch(() => null)
+          if (updated) results.push(updated)
+        } else if (item.day_of_week && item.date_str) {
+          const updated = await prisma.staffTask.update({
+            where: { id: item.id },
+            data: { day_of_week: item.day_of_week, date_str: item.date_str },
+          }).catch(() => null)
+          if (updated) results.push(updated)
+        }
+      }
+      return NextResponse.json({ success: true, count: results.length })
+    }
+
     // Generic Update
     const {
       task_text,

@@ -47,6 +47,15 @@ import {
   Rocket,
   CheckCircle2,
   Smile,
+  Moon,
+  Sun,
+  Sunrise,
+  Inbox,
+  ArrowDown,
+  BookmarkCheck,
+  Star,
+  CornerDownRight,
+  ArrowUpRight,
 } from 'lucide-react'
 import {
   StaffTaskItem,
@@ -64,6 +73,8 @@ import {
   formatDateMMDDYY,
   formatDateIndonesian,
   getWeekDays,
+  getTomorrowDay,
+  isLearningTask,
   detectCategory,
   detectMarketplace,
   detectPriority,
@@ -75,26 +86,29 @@ import {
   isTaskOverdue,
 } from '@/lib/staff-tasks-utils'
 
-// Profil staff Shalwa & Nandila dengan bahasa santai
-const STAFF_PROFILES: Record<string, { role: string; avatarBg: string; initial: string; badge: string }> = {
+// Profil staff Shalwa & Nandila
+const STAFF_PROFILES: Record<string, { role: string; avatarBg: string; initial: string; badge: string; sub: string }> = {
   Shalwa: {
-    role: 'Marketplace Specialist (Promo, Bundling & Campaign)',
+    role: 'Marketplace Specialist (Tugas Saya)',
     avatarBg: '#2563eb',
     initial: 'SH',
-    badge: 'Specialist',
+    badge: 'Tugas Saya',
+    sub: 'Fokus pada tugas harian & belajar workflow',
   },
   Nandila: {
-    role: 'Senior Specialist (Shopee, Lazada & Maklon)',
+    role: 'Asisten SPV (Referensi Belajar)',
     avatarBg: '#ea580c',
     initial: 'NA',
-    badge: 'Senior Specialist',
+    badge: 'Referensi Belajar',
+    sub: 'Gunakan sebagai acuan memahami pola kerja',
   },
 }
 
 export default function StaffTasksPage() {
+  // Default: Shalwa selalu menjadi workspace utama
   const [selectedStaff, setSelectedStaff] = useState<StaffName>('Shalwa')
-  // Tab Level: 'TODAY' | 'WEEKLY' | 'BACKLOG' | 'DONE'
-  const [activeTab, setActiveTab] = useState<'TODAY' | 'WEEKLY' | 'BACKLOG' | 'DONE'>('TODAY')
+  // 4 Tab Navigasi Utama: 'TODAY' | 'TOMORROW' | 'WEEKLY' | 'BACKLOG' | 'DONE'
+  const [activeTab, setActiveTab] = useState<'TODAY' | 'TOMORROW' | 'WEEKLY' | 'BACKLOG' | 'DONE'>('TODAY')
 
   // Hari yang lagi dibuka (Default: 'Senin')
   const [selectedDay, setSelectedDay] = useState<DayOfWeek>('Senin')
@@ -113,24 +127,26 @@ export default function StaffTasksPage() {
   const [filterCategory, setFilterCategory] = useState<string>('ALL')
   const [filterMarketplace, setFilterMarketplace] = useState<string>('ALL')
 
-  // Quick input tugas harian
+  // Quick Add Task: Teks & Destinasi Cepat
   const [quickInputText, setQuickInputText] = useState<string>('')
+  const [quickAddTarget, setQuickAddTarget] = useState<'BACKLOG' | 'TODAY' | 'TOMORROW' | 'CUSTOM'>('BACKLOG')
+  const [quickAddCustomDay, setQuickAddCustomDay] = useState<DayOfWeek>('Senin')
 
-  // Modal Tambah / Edit
+  // Modal Tambah / Edit Detail
   const [showTaskModal, setShowTaskModal] = useState<boolean>(false)
   const [modalMode, setModalMode] = useState<'ADD' | 'EDIT'>('ADD')
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [formTaskText, setFormTaskText] = useState<string>('')
   const [formDescription, setFormDescription] = useState<string>('')
   const [formCategory, setFormCategory] = useState<TaskCategory>('PROMO')
-  const [formPriority, setFormPriority] = useState<TaskPriority>('HIGH')
+  const [formPriority, setFormPriority] = useState<TaskPriority>('NORMAL')
   const [formMarketplace, setFormMarketplace] = useState<string>('Shopee')
   const [formPromoName, setFormPromoName] = useState<string>('')
   const [formEstimatedMinutes, setFormEstimatedMinutes] = useState<number>(45)
   const [formDayOfWeek, setFormDayOfWeek] = useState<DayOfWeek | 'Backlog'>('Senin')
   const [formDeadline, setFormDeadline] = useState<string>('')
 
-  // Modal Terhambat (Block)
+  // Modal Terhambat (Block / Tertunda)
   const [blockingTask, setBlockingTask] = useState<StaffTaskItem | null>(null)
   const [blockedReasonInput, setBlockedReasonInput] = useState<string>('')
 
@@ -142,10 +158,30 @@ export default function StaffTasksPage() {
   // Contekan SOP Modal
   const [activeSOPTask, setActiveSOPTask] = useState<{ text: string; sop: TaskSOP } | null>(null)
 
+  // Fitur 🌙 Tutup Hari
+  const [showCloseDayModal, setShowCloseDayModal] = useState<boolean>(false)
+  const [closeDayDecisions, setCloseDayDecisions] = useState<
+    Record<string, { target: 'TOMORROW' | 'DATE' | 'BACKLOG' | 'DISMISS'; day?: DayOfWeek }>
+  >({})
+  const [isSubmittingCloseDay, setIsSubmittingCloseDay] = useState<boolean>(false)
+
+  // Fitur 🌤 Plan Besok: Modal Ambil dari Antrean & Hari Ini
+  const [showBacklogPickerModal, setShowBacklogPickerModal] = useState<boolean>(false)
+  const [showTodayPickerModal, setShowTodayPickerModal] = useState<boolean>(false)
+  const [selectedTaskIdsToMove, setSelectedTaskIdsToMove] = useState<string[]>([])
+  const [isMovingTasks, setIsMovingTasks] = useState<boolean>(false)
+
   const weekDays = useMemo(() => getWeekDays(currentMonday), [currentMonday])
   const activeDayObj = useMemo(
     () => weekDays.find((d) => d.day === selectedDay) || weekDays[0],
     [weekDays, selectedDay]
+  )
+
+  // Besok dinamis berdasarkan hari yang sedang dibuka
+  const tomorrowDay = useMemo(() => getTomorrowDay(selectedDay), [selectedDay])
+  const tomorrowDayObj = useMemo(
+    () => weekDays.find((d) => d.day === tomorrowDay) || weekDays[1] || weekDays[0],
+    [weekDays, tomorrowDay]
   )
 
   const showToast = (msg: string) => {
@@ -167,7 +203,7 @@ export default function StaffTasksPage() {
       setWeeklyNote(data.weekly_note || '')
     } catch (err: any) {
       console.error(err)
-      showToast('⚠️ Ada kendala pas narik data kerjaan lo.')
+      showToast('⚠️ Ada kendala saat menarik data to-do list.')
     } finally {
       setLoading(false)
     }
@@ -207,7 +243,7 @@ export default function StaffTasksPage() {
       })
       if (!res.ok) throw new Error('Gagal nyimpen catatan')
       setNoteSaveStatus('saved')
-      showToast('✅ Catatan penting mingguan lo udah tersimpan!')
+      showToast('✅ Catatan penting mingguan berhasil tersimpan!')
       setTimeout(() => setNoteSaveStatus('idle'), 2500)
     } catch (err: any) {
       console.error(err)
@@ -218,7 +254,7 @@ export default function StaffTasksPage() {
     }
   }
 
-  // Checklist Selesai / Belum
+  // Checklist Selesai / Belum (Toggle)
   const handleToggleTask = async (task: StaffTaskItem) => {
     const isNowDone = task.status !== 'DONE'
     const newStatus: TaskStatus = isNowDone ? 'DONE' : 'TODO'
@@ -241,7 +277,7 @@ export default function StaffTasksPage() {
         }),
       })
       if (!res.ok) throw new Error('Gagal update status')
-      showToast(isNowDone ? '🎉 Mantap! Kerjaan kelar!' : '↩️ Kerjaan dibalikin ke daftar to-do')
+      showToast(isNowDone ? '✅ Mantap! Task selesai dikerjakan.' : '↩️ Task dikembalikan ke daftar belum selesai.')
     } catch (err) {
       console.error(err)
       setTasks((prev) =>
@@ -249,14 +285,35 @@ export default function StaffTasksPage() {
           t.id === task.id ? { ...t, status: task.status, is_completed: task.is_completed } : t
         )
       )
-      showToast('❌ Gagal ngubah status kerjaan')
+      showToast('❌ Gagal mengubah status task')
     }
   }
 
-  // Tambah tugas cepat hari ini (inline)
-  const handleQuickAddToday = async () => {
+  // Quick Add Task dengan Pilihan Destinasi
+  const handleQuickAdd = async (overrideTarget?: 'BACKLOG' | 'TODAY' | 'TOMORROW' | 'CUSTOM') => {
     if (!quickInputText.trim()) return
     const text = quickInputText.trim()
+    const target = overrideTarget || quickAddTarget
+
+    let targetDayOfWeek: DayOfWeek | 'Backlog' = 'Backlog'
+    let targetDateStr = 'Backlog'
+
+    if (target === 'TODAY') {
+      targetDayOfWeek = selectedDay
+      targetDateStr = activeDayObj.dateStr
+    } else if (target === 'TOMORROW') {
+      targetDayOfWeek = tomorrowDay
+      targetDateStr = tomorrowDayObj.dateStr
+    } else if (target === 'CUSTOM') {
+      targetDayOfWeek = quickAddCustomDay
+      const customDayObj = weekDays.find((d) => d.day === quickAddCustomDay) || weekDays[0]
+      targetDateStr = customDayObj.dateStr
+    } else {
+      // Default: Masukkan ke Antrean (Inbox) agar Hari Ini tidak penuh
+      targetDayOfWeek = 'Backlog'
+      targetDateStr = 'Backlog'
+    }
+
     try {
       const res = await fetch('/api/staff-tasks', {
         method: 'POST',
@@ -264,8 +321,8 @@ export default function StaffTasksPage() {
         body: JSON.stringify({
           staffName: selectedStaff,
           weekStart: currentMonday.toISOString(),
-          dayOfWeek: selectedDay,
-          dateStr: activeDayObj.dateStr,
+          dayOfWeek: targetDayOfWeek,
+          dateStr: targetDateStr,
           taskText: text,
           priority: detectPriority(text),
           category: detectCategory(text),
@@ -273,18 +330,22 @@ export default function StaffTasksPage() {
           estimatedMinutes: detectEstimatedMinutes(text),
         }),
       })
-      if (!res.ok) throw new Error('Gagal nambah tugas')
+      if (!res.ok) throw new Error('Gagal menambah task')
       const data = await res.json()
       setTasks((prev) => [...prev, data.task])
       setQuickInputText('')
-      showToast(`✅ Kerjaan berhasil ditambah ke hari ${selectedDay}!`)
+      if (targetDayOfWeek === 'Backlog') {
+        showToast('📥 Kerjaan baru disimpan di Antrean (Inbox)!')
+      } else {
+        showToast(`✅ Kerjaan berhasil ditambahkan ke hari ${targetDayOfWeek}!`)
+      }
     } catch (err) {
       console.error(err)
-      showToast('❌ Gagal nambah tugas')
+      showToast('❌ Gagal menambah task')
     }
   }
 
-  // Submit modal tambah / edit
+  // Submit modal tambah / edit detail
   const handleSaveTaskForm = async () => {
     if (!formTaskText.trim()) return
 
@@ -308,14 +369,14 @@ export default function StaffTasksPage() {
             deadline: formDeadline ? new Date(formDeadline).toISOString() : undefined,
           }),
         })
-        if (!res.ok) throw new Error('Gagal bikin tugas')
+        if (!res.ok) throw new Error('Gagal bikin task')
         const data = await res.json()
         setTasks((prev) => [...prev, data.task])
         setShowTaskModal(false)
-        showToast('✅ Kerjaan baru berhasil ditambah!')
+        showToast('✅ Kerjaan baru berhasil ditambahkan!')
       } catch (err) {
         console.error(err)
-        showToast('❌ Gagal bikin kerjaan')
+        showToast('❌ Gagal membuat kerjaan')
       }
     } else {
       if (!editingTaskId) return
@@ -366,21 +427,43 @@ export default function StaffTasksPage() {
 
   // Hapus tugas
   const handleDeleteTask = async (id: string) => {
-    if (!confirm('Yakin mau hapus kerjaan ini?')) return
+    if (!confirm('Hapus task ini dari daftar?')) return
     try {
       const res = await fetch(`/api/staff-tasks?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
       })
       if (!res.ok) throw new Error('Gagal hapus')
       setTasks((prev) => prev.filter((t) => t.id !== id))
-      showToast('🗑️ Kerjaan berhasil dihapus.')
+      showToast('🗑️ Task berhasil dihapus.')
     } catch (err) {
       console.error(err)
-      showToast('❌ Gagal menghapus kerjaan')
+      showToast('❌ Gagal menghapus task')
     }
   }
 
-  // Tandai terblokir / ketahan
+  // Jadikan Fokus Utama Hari Ini (Promote)
+  const handlePromoteToFocus = async (task: StaffTaskItem) => {
+    try {
+      const res = await fetch('/api/staff-tasks', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: task.id,
+          priority: 'HIGH',
+          status: 'TODO',
+        }),
+      })
+      if (!res.ok) throw new Error('Gagal update fokus')
+      const data = await res.json()
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? data.task : t)))
+      showToast('⭐ Task dijadikan salah satu Fokus Utama!')
+    } catch (err) {
+      console.error(err)
+      showToast('❌ Gagal menjadikan fokus')
+    }
+  }
+
+  // Tandai terblokir / tertunda
   const handleConfirmBlock = async () => {
     if (!blockingTask) return
     try {
@@ -390,18 +473,18 @@ export default function StaffTasksPage() {
         body: JSON.stringify({
           id: blockingTask.id,
           action: 'block_task',
-          blocked_reason: blockedReasonInput.trim() || 'Lagi nunggu respon / persetujuan dari pihak luar',
+          blocked_reason: blockedReasonInput.trim() || 'Menunggu respon / konfirmasi dari pihak lain',
         }),
       })
-      if (!res.ok) throw new Error('Gagal memblokir')
+      if (!res.ok) throw new Error('Gagal menunda')
       const data = await res.json()
       setTasks((prev) => prev.map((t) => (t.id === blockingTask.id ? data.task : t)))
       setBlockingTask(null)
       setBlockedReasonInput('')
-      showToast('⏳ Kerjaan dipindahin ke daftar "Lagi Ketahan".')
+      showToast('⏸ Status task diubah menjadi Tertunda.')
     } catch (err) {
       console.error(err)
-      showToast('❌ Gagal nentuin status ketahan')
+      showToast('❌ Gagal menentukan status tertunda')
     }
   }
 
@@ -419,16 +502,16 @@ export default function StaffTasksPage() {
       if (!res.ok) throw new Error('Gagal buka blokir')
       const data = await res.json()
       setTasks((prev) => prev.map((t) => (t.id === task.id ? data.task : t)))
-      showToast('✅ Mantap! Hambatan udah beres, kerjaan aktif lagi!')
+      showToast('✅ Kendala selesai! Task aktif kembali.')
     } catch (err) {
       console.error(err)
-      showToast('❌ Gagal ngebuka blokir')
+      showToast('❌ Gagal mengaktifkan task')
     }
   }
 
-  // Jadwalkan tugas dari Backlog ke hari tertentu
-  const handleScheduleTask = async (task: StaffTaskItem, targetDay: DayOfWeek) => {
-    const targetObj = weekDays.find((d) => d.day === targetDay) || weekDays[0]
+  // Jadwalkan tugas ke hari tertentu
+  const handleScheduleTask = async (task: StaffTaskItem, targetDay: DayOfWeek | 'Backlog') => {
+    const targetDateStr = targetDay === 'Backlog' ? 'Backlog' : (weekDays.find((d) => d.day === targetDay)?.dateStr || activeDayObj.dateStr)
     try {
       const res = await fetch('/api/staff-tasks', {
         method: 'PATCH',
@@ -437,59 +520,141 @@ export default function StaffTasksPage() {
           id: task.id,
           action: 'reschedule',
           day_of_week: targetDay,
-          date_str: targetObj.dateStr,
+          date_str: targetDateStr,
         }),
       })
       if (!res.ok) throw new Error('Gagal menjadwalkan')
       const data = await res.json()
       setTasks((prev) => prev.map((t) => (t.id === task.id ? data.task : t)))
-      showToast(`📅 Kerjaan berhasil dijadwalin ke hari ${targetDay}!`)
+      if (targetDay === 'Backlog') {
+        showToast('📥 Task dipindahkan ke Antrean.')
+      } else {
+        showToast(`📅 Task dijadwalkan ke hari ${targetDay}!`)
+      }
     } catch (err) {
       console.error(err)
-      showToast('❌ Gagal menjadwalkan kerjaan')
+      showToast('❌ Gagal menjadwalkan task')
     }
   }
 
-  // Gas Focus Mode
+  // Submit Fitur 🌙 Tutup Hari
+  const handleTutupHariSubmit = async () => {
+    setIsSubmittingCloseDay(true)
+    try {
+      const itemsToUpdate = unfinishedTodayTasks.map((t) => {
+        const dec = closeDayDecisions[t.id] || { target: 'TOMORROW' }
+        if (dec.target === 'DISMISS') {
+          return { id: t.id, target: 'DISMISS' }
+        }
+        if (dec.target === 'BACKLOG') {
+          return { id: t.id, target: 'BACKLOG' }
+        }
+        if (dec.target === 'DATE') {
+          const targetDay = dec.day || tomorrowDay
+          const targetObj = weekDays.find((d) => d.day === targetDay) || tomorrowDayObj
+          return { id: t.id, target: 'DATE', day_of_week: targetDay, date_str: targetObj.dateStr }
+        }
+        // Default: Besok
+        return { id: t.id, target: 'TOMORROW', day_of_week: tomorrowDay, date_str: tomorrowDayObj.dateStr }
+      })
+
+      const res = await fetch('/api/staff-tasks', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'batch_close_day',
+          items: itemsToUpdate,
+        }),
+      })
+
+      if (!res.ok) throw new Error('Gagal memproses tutup hari')
+      await fetchTasks()
+      setShowCloseDayModal(false)
+      showToast('🌙 Selesai Tutup Hari! Mau cek Rencana Besok?')
+      setActiveTab('TOMORROW')
+    } catch (err) {
+      console.error(err)
+      showToast('❌ Gagal memproses tutup hari')
+    } finally {
+      setIsSubmittingCloseDay(false)
+    }
+  }
+
+  // Pindahkan Batch Tasks ke Besok (Plan Besok)
+  const handleMoveTasksToTomorrow = async (taskIds: string[]) => {
+    if (taskIds.length === 0) return
+    setIsMovingTasks(true)
+    try {
+      const itemsToUpdate = taskIds.map((id) => ({
+        id,
+        target: 'TOMORROW',
+        day_of_week: tomorrowDay,
+        date_str: tomorrowDayObj.dateStr,
+      }))
+
+      const res = await fetch('/api/staff-tasks', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'batch_close_day',
+          items: itemsToUpdate,
+        }),
+      })
+
+      if (!res.ok) throw new Error('Gagal memindahkan task')
+      await fetchTasks()
+      setShowBacklogPickerModal(false)
+      setShowTodayPickerModal(false)
+      setSelectedTaskIdsToMove([])
+      showToast(`🌤 ${taskIds.length} task berhasil dijadwalkan ke hari ${tomorrowDay}!`)
+    } catch (err) {
+      console.error(err)
+      showToast('❌ Gagal memindahkan task')
+    } finally {
+      setIsMovingTasks(false)
+    }
+  }
+
+  // Mulai Focus Mode
   const handleStartFocusMode = (task: StaffTaskItem) => {
     setFocusModeTask(task)
     setFocusTimer(0)
     setIsTimerRunning(true)
   }
 
-  // Selesaikan di Focus Mode & lanjut kerjaan berikutnya
+  // Selesaikan di Focus Mode & Lanjut ke task berikutnya
   const handleCompleteInFocusMode = async () => {
     if (!focusModeTask) return
     await handleToggleTask(focusModeTask)
-    const nextCandidates = sortedTodayTasks.filter(
+    const nextCandidates = sortedNonLearningTasks.filter(
       (t) => t.id !== focusModeTask.id && t.status !== 'DONE' && t.status !== 'BLOCKED'
     )
     if (nextCandidates.length > 0) {
       setFocusModeTask(nextCandidates[0])
       setFocusTimer(0)
-      showToast('🎯 Gas lanjut ke kerjaan prioritas selanjutnya!')
+      showToast('🎯 Lanjut ke fokus prioritas berikutnya!')
     } else {
       setFocusModeTask(null)
-      showToast('🎉 Keren banget! Semua kerjaan prioritas hari ini kelar tuntas!')
+      showToast('🎉 Keren banget! Semua tugas fokus hari ini sudah selesai!')
     }
   }
 
   // Lewati di Focus Mode
   const handleSkipInFocusMode = () => {
     if (!focusModeTask) return
-    const nextCandidates = sortedTodayTasks.filter(
+    const nextCandidates = sortedNonLearningTasks.filter(
       (t) => t.id !== focusModeTask.id && t.status !== 'DONE' && t.status !== 'BLOCKED'
     )
     if (nextCandidates.length > 0) {
       setFocusModeTask(nextCandidates[0])
       setFocusTimer(0)
-      showToast('↪️ Pindah ke kerjaan lain dulu.')
+      showToast('↪️ Pindah ke task lain terlebih dahulu.')
     } else {
       setFocusModeTask(null)
     }
   }
 
-  // Salin format 5 kolom ke Google Sheets
+  // Salin 5 kolom ke Google Sheets
   const handleCopyToSpreadsheet = () => {
     try {
       const dayTasksMap: Record<string, string[]> = {
@@ -526,10 +691,10 @@ export default function StaffTasksPage() {
 
       const tsvContent = lines.join('\n')
       navigator.clipboard.writeText(tsvContent)
-      showToast('📋 Udah disalin! Buka Google Sheets terus tekan Ctrl + V ya.')
+      showToast('📋 Format spreadsheet disalin! Buka Google Sheets lalu tekan Ctrl + V.')
     } catch (err) {
       console.error(err)
-      showToast('❌ Gagal nyalin ke clipboard.')
+      showToast('❌ Gagal menyalin ke clipboard.')
     }
   }
 
@@ -578,10 +743,10 @@ export default function StaffTasksPage() {
 
       const fileName = `To_Do_List_${selectedStaff}_${weekDays[0].dateStr.replace(/\//g, '-')}_sd_${weekDays[4].dateStr.replace(/\//g, '-')}.xlsx`
       xlsx.writeFile(workbook, fileName)
-      showToast('📥 File Excel (.xlsx) udah berhasil diunduh!')
+      showToast('📥 File Excel (.xlsx) berhasil diunduh!')
     } catch (err) {
       console.error(err)
-      showToast('❌ Gagal download Excel.')
+      showToast('❌ Gagal mengunduh Excel.')
     }
   }
 
@@ -606,73 +771,122 @@ export default function StaffTasksPage() {
     })
   }, [tasks, searchQuery, filterPriority, filterCategory, filterMarketplace])
 
-  // Slice untuk Hari Ini
+  // =========================================================================
+  // DATA SLICES UNTUK HARI INI (TODAY)
+  // =========================================================================
   const todayAllTasks = useMemo(() => {
     return filteredTasks.filter((t) => t.day_of_week === selectedDay)
   }, [filteredTasks, selectedDay])
 
-  const sortedTodayTasks = useMemo(() => {
-    return sortTasksByPriority(todayAllTasks)
+  // Pisahkan task belajar dan non-belajar
+  const todayLearningTasks = useMemo(() => {
+    return todayAllTasks.filter((t) => isLearningTask(t))
   }, [todayAllTasks])
 
-  // 3 Tugas Teratas (Urgent/High)
-  const topPriorityTasks = useMemo(() => {
-    return sortedTodayTasks
+  const todayNonLearningTasks = useMemo(() => {
+    return todayAllTasks.filter((t) => !isLearningTask(t))
+  }, [todayAllTasks])
+
+  const sortedNonLearningTasks = useMemo(() => {
+    return sortTasksByPriority(todayNonLearningTasks)
+  }, [todayNonLearningTasks])
+
+  // 🎯 3 Fokus Utama: Maksimal 3 task, non-belajar, status aktif, prioritas fleksibel
+  const top3FocusTasks = useMemo(() => {
+    return sortedNonLearningTasks
       .filter((t) => t.status !== 'DONE' && t.status !== 'BLOCKED')
       .slice(0, 3)
-  }, [sortedTodayTasks])
+  }, [sortedNonLearningTasks])
 
-  const topPriorityIds = useMemo(() => new Set(topPriorityTasks.map((t) => t.id)), [topPriorityTasks])
+  const top3FocusIds = useMemo(() => new Set(top3FocusTasks.map((t) => t.id)), [top3FocusTasks])
 
-  // Tugas Reguler Hari Ini
+  // 📋 Kerjaan Lainnya: Non-belajar, bukan Top 3, non-blocked, non-done
   const regularTodayTasks = useMemo(() => {
-    return sortedTodayTasks.filter(
-      (t) => !topPriorityIds.has(t.id) && t.status !== 'BLOCKED' && t.status !== 'DONE'
+    return sortedNonLearningTasks.filter(
+      (t) => !top3FocusIds.has(t.id) && t.status !== 'BLOCKED' && t.status !== 'DONE'
     )
-  }, [sortedTodayTasks, topPriorityIds])
+  }, [sortedNonLearningTasks, top3FocusIds])
 
-  // Tugas Lagi Ketahan
+  // ⏳ Lagi Ketahan
   const blockedTodayTasks = useMemo(() => {
     return todayAllTasks.filter((t) => t.status === 'BLOCKED')
   }, [todayAllTasks])
 
-  // Tugas Lewat Deadline
+  // 🚨 Overdue
   const overdueTasks = useMemo(() => {
     return tasks.filter((t) => isTaskOverdue(t))
   }, [tasks])
 
-  // Tugas Udah Beres Hari Ini
+  // ✅ Selesai Hari Ini
   const completedTodayTasks = useMemo(() => {
     return todayAllTasks.filter((t) => t.status === 'DONE')
   }, [todayAllTasks])
 
-  // Backlog
+  // Task Belum Selesai Hari Ini (untuk Tutup Hari & Carry-over)
+  const unfinishedTodayTasks = useMemo(() => {
+    return todayAllTasks.filter((t) => t.status !== 'DONE')
+  }, [todayAllTasks])
+
+  // Hitungan progress Hari Ini
+  const todayActiveCount = todayAllTasks.filter((t) => t.status !== 'BLOCKED').length
+  const todayDoneCount = completedTodayTasks.length
+  const todayRemainingCount = Math.max(0, todayActiveCount - todayDoneCount)
+  const todayPct = todayActiveCount > 0 ? Math.round((todayDoneCount / todayActiveCount) * 100) : 0
+
+  // =========================================================================
+  // DATA SLICES UNTUK BESOK (TOMORROW)
+  // =========================================================================
+  const tomorrowAllTasks = useMemo(() => {
+    return filteredTasks.filter((t) => t.day_of_week === tomorrowDay)
+  }, [filteredTasks, tomorrowDay])
+
+  const tomorrowLearningTasks = useMemo(() => {
+    return tomorrowAllTasks.filter((t) => isLearningTask(t))
+  }, [tomorrowAllTasks])
+
+  const tomorrowNonLearningTasks = useMemo(() => {
+    return tomorrowAllTasks.filter((t) => !isLearningTask(t))
+  }, [tomorrowAllTasks])
+
+  const sortedTomorrowTasks = useMemo(() => {
+    return sortTasksByPriority(tomorrowNonLearningTasks)
+  }, [tomorrowNonLearningTasks])
+
+  const tomorrowTop3Tasks = useMemo(() => {
+    return sortedTomorrowTasks
+      .filter((t) => t.status !== 'DONE' && t.status !== 'BLOCKED')
+      .slice(0, 3)
+  }, [sortedTomorrowTasks])
+
+  const tomorrowTop3Ids = useMemo(() => new Set(tomorrowTop3Tasks.map((t) => t.id)), [tomorrowTop3Tasks])
+
+  const tomorrowRegularTasks = useMemo(() => {
+    return sortedTomorrowTasks.filter(
+      (t) => !tomorrowTop3Ids.has(t.id) && t.status !== 'BLOCKED' && t.status !== 'DONE'
+    )
+  }, [sortedTomorrowTasks, tomorrowTop3Ids])
+
+  // =========================================================================
+  // DATA SLICES UNTUK ANTREAN (BACKLOG) & SELESAI
+  // =========================================================================
   const backlogTasks = useMemo(() => {
     return filteredTasks.filter((t) => t.day_of_week === 'Backlog' && t.status !== 'DONE')
   }, [filteredTasks])
 
-  // Seluruh Tugas Beres
   const allCompletedTasks = useMemo(() => {
     return filteredTasks.filter((t) => t.status === 'DONE')
   }, [filteredTasks])
 
-  // Hitungan progres
-  const todayActiveCount = todayAllTasks.filter((t) => t.status !== 'BLOCKED').length
-  const todayDoneCount = completedTodayTasks.length
-  const todayPct = todayActiveCount > 0 ? Math.round((todayDoneCount / todayActiveCount) * 100) : 0
-
-  const currentProfile = STAFF_PROFILES[selectedStaff] || {
-    role: 'Specialist',
-    avatarBg: '#2563eb',
-    initial: selectedStaff.slice(0, 2).toUpperCase(),
-    badge: 'Specialist',
-  }
+  const currentProfile = STAFF_PROFILES[selectedStaff] || STAFF_PROFILES.Shalwa
 
   const formatTimer = (sec: number) => {
     const m = Math.floor(sec / 60)
     const s = sec % 60
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
   }
+
+  // Ranking icons
+  const rankingBadges = ['🥇 Fokus #1', '🥈 Fokus #2', '🥉 Fokus #3']
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', padding: '24px 28px', color: '#0f172a' }}>
@@ -704,9 +918,9 @@ export default function StaffTasksPage() {
       {/* HEADER UTAMA */}
       <div style={{ marginBottom: '18px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>
-          <span>Growth</span>
+          <span>Operasional</span>
           <span>/</span>
-          <span style={{ color: '#0f172a', fontWeight: 600 }}>Daily Planner Tim Marketplace</span>
+          <span style={{ color: '#0f172a', fontWeight: 600 }}>Daily Planner & To-Do List</span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
@@ -717,54 +931,88 @@ export default function StaffTasksPage() {
                   width: '44px',
                   height: '44px',
                   borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                  background: selectedStaff === 'Shalwa' ? 'linear-gradient(135deg, #2563eb, #3b82f6)' : 'linear-gradient(135deg, #ea580c, #f97316)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: '#ffffff',
-                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+                  boxShadow: selectedStaff === 'Shalwa' ? '0 4px 12px rgba(37, 99, 235, 0.25)' : '0 4px 12px rgba(234, 88, 12, 0.25)',
                 }}
               >
                 <Target size={24} />
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
-                    Daily Planner & To-Do List Tim Marketplace
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
+                    Personal Work Management
                   </h1>
                   <span
                     style={{
                       fontSize: '11px',
                       fontWeight: 700,
-                      backgroundColor: '#dbeafe',
-                      color: '#1d4ed8',
+                      backgroundColor: selectedStaff === 'Shalwa' ? '#dbeafe' : '#ffedd5',
+                      color: selectedStaff === 'Shalwa' ? '#1d4ed8' : '#c2410c',
                       padding: '2px 8px',
                       borderRadius: '12px',
                     }}
                   >
-                    Biar Ga Pusing
+                    {selectedStaff === 'Shalwa' ? 'Workspace Saya' : 'Mode Referensi'}
                   </span>
                 </div>
                 <p style={{ margin: '3px 0 0 0', fontSize: '13.5px', color: '#64748b' }}>
-                  Biar kerjaan lo ga numpuk & lo tau mana yang kudu digas duluan hari ini!
+                  {selectedStaff === 'Shalwa'
+                    ? 'Bantu Shalwa fokus pada tugas harian, belajar workflow, dan simpan ide tanpa pusing.'
+                    : 'Referensi cara kerja & pola prioritas dari Nandila (Asisten SPV).'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* TOMBOL AKSI CEPAT */}
+          {/* TOMBOL AKSI CEPAT HEADER */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {selectedStaff === 'Shalwa' && (
+              <button
+                onClick={() => {
+                  // Inisialisasi pilihan default tutup hari
+                  const init: Record<string, { target: 'TOMORROW' | 'DATE' | 'BACKLOG' | 'DISMISS'; day?: DayOfWeek }> = {}
+                  unfinishedTodayTasks.forEach((t) => {
+                    init[t.id] = { target: 'TOMORROW' }
+                  })
+                  setCloseDayDecisions(init)
+                  setShowCloseDayModal(true)
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  backgroundColor: '#0f172a',
+                  border: 'none',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(15, 23, 42, 0.25)',
+                }}
+                title="Review tugas belum selesai saat selesai kerja"
+              >
+                <Moon size={15} color="#38bdf8" />
+                <span>🌙 Tutup Hari</span>
+              </button>
+            )}
+
             <button
               onClick={() => {
                 setModalMode('ADD')
                 setFormTaskText('')
                 setFormDescription('')
                 setFormCategory('PROMO')
-                setFormPriority('HIGH')
+                setFormPriority('NORMAL')
                 setFormMarketplace('Shopee')
                 setFormPromoName('')
                 setFormEstimatedMinutes(45)
-                setFormDayOfWeek(activeTab === 'BACKLOG' ? 'Backlog' : selectedDay)
+                setFormDayOfWeek(activeTab === 'BACKLOG' ? 'Backlog' : activeTab === 'TOMORROW' ? tomorrowDay : selectedDay)
                 setFormDeadline('')
                 setShowTaskModal(true)
               }}
@@ -784,7 +1032,7 @@ export default function StaffTasksPage() {
               }}
             >
               <Plus size={16} />
-              <span>+ Tambah Kerjaan</span>
+              <span>+ Tambah Task</span>
             </button>
 
             <button
@@ -805,7 +1053,7 @@ export default function StaffTasksPage() {
               title="Salin 5 kolom langsung tempel di Google Sheets (Ctrl+V)"
             >
               <Copy size={15} />
-              <span>Salin ke Spreadsheet (1-Click)</span>
+              <span>Salin ke Spreadsheet</span>
             </button>
 
             <button
@@ -825,13 +1073,15 @@ export default function StaffTasksPage() {
               }}
             >
               <Download size={15} />
-              <span>Download .xlsx</span>
+              <span>.xlsx</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* SWITCHER AKUN STAFF & TAB NAVIGASI */}
+      {/* ========================================================================= */}
+      {/* 👤 WORKSPACE SWITCHER & TAB NAVIGASI                                      */}
+      {/* ========================================================================= */}
       <div
         style={{
           display: 'flex',
@@ -847,76 +1097,107 @@ export default function StaffTasksPage() {
           boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
         }}
       >
-        {/* PILIH AKUN (SHALWA & NANDILA) */}
+        {/* WORKSPACE SWITCHER: SHALWA (Tugas Saya) vs NANDILA (Referensi Belajar) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '12.5px', color: '#64748b', fontWeight: 600, marginRight: '4px' }}>
-            Akun Lo:
+          <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', marginRight: '4px' }}>
+            👤 WORKSPACE:
           </span>
-          {STAFF_LIST.map((staff) => {
-            const isSel = selectedStaff === staff
-            const prof = STAFF_PROFILES[staff]
-            return (
-              <button
-                key={staff}
-                onClick={() => setSelectedStaff(staff)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '6px 14px',
-                  borderRadius: '8px',
-                  border: isSel ? '2px solid #2563eb' : '1px solid #e2e8f0',
-                  backgroundColor: isSel ? '#eff6ff' : '#ffffff',
-                  color: isSel ? '#1e40af' : '#475569',
-                  fontSize: '13px',
-                  fontWeight: isSel ? 700 : 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <div
-                  style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    backgroundColor: isSel ? '#2563eb' : prof.avatarBg,
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                  }}
-                >
-                  {prof.initial}
-                </div>
-                <span>{staff}</span>
-                <span
-                  style={{
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    padding: '1px 5px',
-                    borderRadius: '4px',
-                    backgroundColor: isSel ? '#2563eb' : '#f1f5f9',
-                    color: isSel ? '#ffffff' : '#64748b',
-                  }}
-                >
-                  {prof.badge}
-                </span>
-              </button>
-            )
-          })}
+
+          {/* Tombol Workspace Shalwa */}
+          <button
+            onClick={() => setSelectedStaff('Shalwa')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '6px 14px',
+              borderRadius: '8px',
+              border: selectedStaff === 'Shalwa' ? '2px solid #2563eb' : '1px solid #e2e8f0',
+              backgroundColor: selectedStaff === 'Shalwa' ? '#eff6ff' : '#ffffff',
+              color: selectedStaff === 'Shalwa' ? '#1e40af' : '#475569',
+              fontSize: '13px',
+              fontWeight: selectedStaff === 'Shalwa' ? 700 : 500,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <div
+              style={{
+                width: '22px',
+                height: '22px',
+                borderRadius: '50%',
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '11px',
+                fontWeight: 800,
+              }}
+            >
+              SH
+            </div>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: '13px', lineHeight: 1.15, fontWeight: 700 }}>Shalwa</div>
+              <div style={{ fontSize: '10px', color: selectedStaff === 'Shalwa' ? '#2563eb' : '#94a3b8', fontWeight: 600 }}>
+                Tugas Saya
+              </div>
+            </div>
+          </button>
+
+          {/* Tombol Workspace Nandila */}
+          <button
+            onClick={() => setSelectedStaff('Nandila')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '6px 14px',
+              borderRadius: '8px',
+              border: selectedStaff === 'Nandila' ? '2px solid #ea580c' : '1px solid #e2e8f0',
+              backgroundColor: selectedStaff === 'Nandila' ? '#fff7ed' : '#ffffff',
+              color: selectedStaff === 'Nandila' ? '#c2410c' : '#475569',
+              fontSize: '13px',
+              fontWeight: selectedStaff === 'Nandila' ? 700 : 500,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <div
+              style={{
+                width: '22px',
+                height: '22px',
+                borderRadius: '50%',
+                backgroundColor: '#ea580c',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '11px',
+                fontWeight: 800,
+              }}
+            >
+              NA
+            </div>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: '13px', lineHeight: 1.15, fontWeight: 700 }}>Nandila</div>
+              <div style={{ fontSize: '10px', color: selectedStaff === 'Nandila' ? '#ea580c' : '#94a3b8', fontWeight: 600 }}>
+                Referensi Belajar
+              </div>
+            </div>
+          </button>
         </div>
 
-        {/* 4 TAB UTAMA */}
+        {/* 4 TAB NAVIGASI UTAMA */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* TAB 1: ☀️ Hari Ini */}
           <button
             onClick={() => setActiveTab('TODAY')}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '7px 16px',
+              padding: '7px 15px',
               borderRadius: '8px',
               border: activeTab === 'TODAY' ? '1.5px solid #2563eb' : '1px solid transparent',
               backgroundColor: activeTab === 'TODAY' ? '#eff6ff' : 'transparent',
@@ -937,17 +1218,53 @@ export default function StaffTasksPage() {
                 borderRadius: '10px',
               }}
             >
-              {todayAllTasks.filter((t) => t.status !== 'DONE').length}
+              {todayRemainingCount}
             </span>
           </button>
 
+          {/* TAB 2: 🌤 Besok (Plan Besok Sederhana) */}
+          <button
+            onClick={() => setActiveTab('TOMORROW')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 15px',
+              borderRadius: '8px',
+              border: activeTab === 'TOMORROW' ? '1.5px solid #2563eb' : '1px solid transparent',
+              backgroundColor: activeTab === 'TOMORROW' ? '#eff6ff' : 'transparent',
+              color: activeTab === 'TOMORROW' ? '#1e40af' : '#475569',
+              fontSize: '13px',
+              fontWeight: activeTab === 'TOMORROW' ? 700 : 500,
+              cursor: 'pointer',
+            }}
+          >
+            <Sunrise size={14} />
+            <span>🌤 Besok</span>
+            {tomorrowAllTasks.length > 0 && (
+              <span
+                style={{
+                  backgroundColor: activeTab === 'TOMORROW' ? '#2563eb' : '#e2e8f0',
+                  color: activeTab === 'TOMORROW' ? '#ffffff' : '#475569',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                }}
+              >
+                {tomorrowAllTasks.filter((t) => t.status !== 'DONE').length}
+              </span>
+            )}
+          </button>
+
+          {/* TAB 3: 📅 Plan Minggu Ini (Gambaran Fleksibel) */}
           <button
             onClick={() => setActiveTab('WEEKLY')}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '7px 16px',
+              padding: '7px 15px',
               borderRadius: '8px',
               border: activeTab === 'WEEKLY' ? '1.5px solid #2563eb' : '1px solid transparent',
               backgroundColor: activeTab === 'WEEKLY' ? '#eff6ff' : 'transparent',
@@ -958,16 +1275,17 @@ export default function StaffTasksPage() {
             }}
           >
             <Calendar size={14} />
-            <span>📅 Plan Minggu Ini</span>
+            <span>📅 Minggu Ini</span>
           </button>
 
+          {/* TAB 4: 📥 Antrean / Backlog (Inbox Pekerjaan) */}
           <button
             onClick={() => setActiveTab('BACKLOG')}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '7px 16px',
+              padding: '7px 15px',
               borderRadius: '8px',
               border: activeTab === 'BACKLOG' ? '1.5px solid #2563eb' : '1px solid transparent',
               backgroundColor: activeTab === 'BACKLOG' ? '#eff6ff' : 'transparent',
@@ -977,8 +1295,8 @@ export default function StaffTasksPage() {
               cursor: 'pointer',
             }}
           >
-            <Layers size={14} />
-            <span>📋 Antrean / Backlog</span>
+            <Inbox size={14} />
+            <span>📥 Antrean</span>
             {backlogTasks.length > 0 && (
               <span
                 style={{
@@ -995,13 +1313,14 @@ export default function StaffTasksPage() {
             )}
           </button>
 
+          {/* TAB TAMBAHAN: Udah Kelar */}
           <button
             onClick={() => setActiveTab('DONE')}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '7px 14px',
+              padding: '7px 12px',
               borderRadius: '8px',
               border: activeTab === 'DONE' ? '1.5px solid #059669' : '1px solid transparent',
               backgroundColor: activeTab === 'DONE' ? '#ecfdf5' : 'transparent',
@@ -1012,13 +1331,75 @@ export default function StaffTasksPage() {
             }}
           >
             <Check size={14} />
-            <span>Udah Kelar ({allCompletedTasks.length})</span>
+            <span>Kelar ({allCompletedTasks.length})</span>
           </button>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* ☀️ LEVEL 1: HARI INI (KERJAAN LO HARI INI)                                */}
+      {/* ⚠️ DISCLAIMER WORKSPACE NANDILA (REFERENSI BELAJAR)                       */}
+      {/* ========================================================================= */}
+      {selectedStaff === 'Nandila' && (
+        <div
+          style={{
+            backgroundColor: '#fff7ed',
+            border: '1.5px solid #fed7aa',
+            borderRadius: '12px',
+            padding: '14px 18px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '14px',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                backgroundColor: '#ea580c',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Eye size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#9a3412' }}>
+                👀 Referensi Cara Kerja Nandila (Asisten SPV)
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#c2410c', marginTop: '2px' }}>
+                Gunakan sebagai referensi untuk memahami pola kerja dan cara prioritas Nandila, bukan sebagai tugas kamu.
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setSelectedStaff('Shalwa')}
+            style={{
+              padding: '7px 16px',
+              borderRadius: '6px',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid #ea580c',
+              color: '#ea580c',
+              fontSize: '12.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            ← Kembali ke Workspace Shalwa
+          </button>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ☀️ LEVEL 1: HARI INI (DEFAULT VIEW)                                      */}
       {/* ========================================================================= */}
       {activeTab === 'TODAY' && (
         <div>
@@ -1027,26 +1408,26 @@ export default function StaffTasksPage() {
             style={{
               backgroundColor: '#ffffff',
               borderRadius: '14px',
-              padding: '20px 24px',
+              padding: '18px 22px',
               border: '1px solid #e2e8f0',
               marginBottom: '20px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               flexWrap: 'wrap',
-              gap: '20px',
+              gap: '16px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
             }}
           >
             <div>
-              <div style={{ fontSize: '19px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
-                Semangat ya, {selectedStaff}! 👋
+              <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
+                Selamat datang, {selectedStaff} 👋
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#475569' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#475569' }}>
                 <Calendar size={15} color="#2563eb" />
                 <span style={{ fontWeight: 600 }}>{formatDateIndonesian(activeDayObj.date)}</span>
                 <span>•</span>
-                <span>Fokus beresin yang urgent dulu biar cepet santai!</span>
+                <span>{selectedStaff === 'Shalwa' ? 'Selesaikan 3 Fokus Utama dulu hari ini!' : 'Pola kerja Nandila'}</span>
               </div>
             </div>
 
@@ -1080,7 +1461,7 @@ export default function StaffTasksPage() {
                         style={{
                           fontSize: '10.5px',
                           fontWeight: 700,
-                          backgroundColor: isSel ? '#ea580c' : '#cbd5e1',
+                          backgroundColor: isSel ? '#2563eb' : '#cbd5e1',
                           color: '#ffffff',
                           padding: '1px 5px',
                           borderRadius: '8px',
@@ -1098,8 +1479,8 @@ export default function StaffTasksPage() {
             <div style={{ minWidth: '220px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                 <span style={{ fontSize: '12.5px', color: '#64748b', fontWeight: 600 }}>Progres Hari Ini</span>
-                <span style={{ fontSize: '13.5px', fontWeight: 800, color: todayPct === 100 ? '#059669' : '#0f172a' }}>
-                  {todayDoneCount} dari {todayActiveCount} kelar ({todayPct}%) 🚀
+                <span style={{ fontSize: '13px', fontWeight: 800, color: todayPct === 100 ? '#059669' : '#0f172a' }}>
+                  {todayDoneCount} dari {todayActiveCount} task selesai
                 </span>
               </div>
               <div style={{ width: '100%', height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
@@ -1112,87 +1493,89 @@ export default function StaffTasksPage() {
                   }}
                 />
               </div>
+              <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px', textAlign: 'right' }}>
+                Sisa task: <strong style={{ color: todayRemainingCount > 0 ? '#ea580c' : '#059669' }}>{todayRemainingCount}</strong>
+              </div>
             </div>
           </div>
 
-          {/* PERINGATAN: KERJAAN YANG TELAT / LEWAT DEADLINE */}
+          {/* PERINGATAN: KERJAAN LEWAT DEADLINE (OVERDUE) */}
           {overdueTasks.length > 0 && (
             <div
               style={{
                 backgroundColor: '#fef2f2',
                 border: '1.5px solid #fecaca',
                 borderRadius: '12px',
-                padding: '16px 20px',
+                padding: '14px 18px',
                 marginBottom: '20px',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                <AlertCircle size={18} color="#dc2626" />
-                <span style={{ fontSize: '14px', fontWeight: 800, color: '#991b1b' }}>
-                  🚨 WADUH, INI LEWAT DEADLINE NIH ({overdueTasks.length} Kerjaan)
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <AlertCircle size={17} color="#dc2626" />
+                <span style={{ fontSize: '13.5px', fontWeight: 800, color: '#991b1b' }}>
+                  🚨 TUGAS MELEWATI DEADLINE ({overdueTasks.length} Task)
                 </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {overdueTasks.map((task) => (
                   <div
                     key={task.id}
                     style={{
                       backgroundColor: '#ffffff',
                       borderRadius: '8px',
-                      padding: '10px 14px',
+                      padding: '8px 12px',
                       border: '1px solid #fca5a5',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       flexWrap: 'wrap',
-                      gap: '10px',
+                      gap: '8px',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <button
                         onClick={() => handleToggleTask(task)}
                         style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8' }}
                       >
-                        <Square size={17} />
+                        <Square size={16} />
                       </button>
                       <div>
-                        <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#0f172a' }}>{task.task_text}</div>
-                        <div style={{ fontSize: '11.5px', color: '#b91c1c', fontWeight: 600 }}>
-                          ⚠️ Lewat batas waktu • Seharusnya kelar:{' '}
-                          {task.deadline ? new Date(task.deadline).toLocaleDateString('id-ID') : 'Kemarin'}
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{task.task_text}</div>
+                        <div style={{ fontSize: '11px', color: '#b91c1c' }}>
+                          Batas waktu: {task.deadline ? new Date(task.deadline).toLocaleDateString('id-ID') : 'Kemarin'}
                         </div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <button
                         onClick={() => handleScheduleTask(task, selectedDay)}
                         style={{
-                          padding: '5px 10px',
+                          padding: '4px 10px',
                           borderRadius: '6px',
                           border: '1px solid #cbd5e1',
                           backgroundColor: '#ffffff',
-                          fontSize: '12px',
+                          fontSize: '11.5px',
                           fontWeight: 600,
                           color: '#334155',
                           cursor: 'pointer',
                         }}
                       >
-                        Pindahin ke Hari Ini
+                        Pindahkan ke Hari Ini
                       </button>
                       <button
                         onClick={() => handleStartFocusMode(task)}
                         style={{
-                          padding: '5px 12px',
+                          padding: '4px 10px',
                           borderRadius: '6px',
                           border: 'none',
                           backgroundColor: '#dc2626',
                           color: '#ffffff',
-                          fontSize: '12px',
+                          fontSize: '11.5px',
                           fontWeight: 600,
                           cursor: 'pointer',
                         }}
                       >
-                        Gas Beresin Sekarang
+                        ▶ Mulai
                       </button>
                     </div>
                   </div>
@@ -1201,32 +1584,34 @@ export default function StaffTasksPage() {
             </div>
           )}
 
-          {/* SECTION 1: 🔥 3 KERJAAN PALING URGENT HARI INI */}
+          {/* ========================================================================= */}
+          {/* 🎯 SECTION 1: 3 FOKUS UTAMA HARI INI                                     */}
+          {/* ========================================================================= */}
           <div style={{ marginBottom: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em' }}>
-                  🔥 3 KERJAAN PALING URGENT HARI INI
+                  🎯 3 FOKUS UTAMA HARI INI
                 </span>
                 <span
                   style={{
                     fontSize: '11px',
                     fontWeight: 700,
-                    backgroundColor: '#fee2e2',
-                    color: '#dc2626',
+                    backgroundColor: '#eff6ff',
+                    color: '#2563eb',
                     padding: '2px 8px',
                     borderRadius: '10px',
                   }}
                 >
-                  Kudu Kelar Duluan
+                  Maksimal 3 Task
                 </span>
               </div>
               <span style={{ fontSize: '12px', color: '#64748b' }}>
-                Kelar-in 3 ini dulu ya, jangan loncat-loncat biar lo ga keteteran!
+                Pilih fokus dan selesaikan satu per satu dengan tenang.
               </span>
             </div>
 
-            {topPriorityTasks.length === 0 ? (
+            {top3FocusTasks.length === 0 ? (
               <div
                 style={{
                   backgroundColor: '#ffffff',
@@ -1239,13 +1624,14 @@ export default function StaffTasksPage() {
                   fontWeight: 600,
                 }}
               >
-                🎉 Asik! Ga ada kerjaan darurat hari ini. Lo bisa santai garap kerjaan rutin di bawah!
+                🎉 Semua fokus utama hari ini sudah selesai! Kamu bisa lanjut ke tugas tambahan di bawah.
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
-                {topPriorityTasks.map((task, idx) => {
-                  const prioConf = TASK_PRIORITY_CONFIG[task.priority] || TASK_PRIORITY_CONFIG.HIGH
+                {top3FocusTasks.map((task, idx) => {
+                  const prioConf = TASK_PRIORITY_CONFIG[task.priority] || TASK_PRIORITY_CONFIG.NORMAL
                   const catConf = TASK_CATEGORIES_CONFIG[task.category as TaskCategory] || TASK_CATEGORIES_CONFIG.PROMO
+                  const statusConf = TASK_STATUS_CONFIG[task.status] || TASK_STATUS_CONFIG.TODO
 
                   return (
                     <div
@@ -1253,59 +1639,74 @@ export default function StaffTasksPage() {
                       style={{
                         backgroundColor: '#ffffff',
                         borderRadius: '12px',
-                        border: task.priority === 'URGENT' ? '2px solid #f87171' : '1.5px solid #fed7aa',
+                        border: task.priority === 'URGENT' ? '2px solid #f87171' : '1.5px solid #cbd5e1',
                         padding: '16px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between',
-                        position: 'relative',
                       }}
                     >
                       <div>
-                        {/* Header Badge */}
+                        {/* Header Ranking & Badges */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {/* Ranking Badge 🥇 🥈 🥉 */}
                             <span
                               style={{
                                 fontSize: '11px',
                                 fontWeight: 800,
+                                backgroundColor: '#f1f5f9',
+                                color: '#0f172a',
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                              }}
+                            >
+                              {rankingBadges[idx] || `Fokus #${idx + 1}`}
+                            </span>
+
+                            {/* Priority Badge */}
+                            <span
+                              style={{
+                                fontSize: '10.5px',
+                                fontWeight: 700,
                                 backgroundColor: prioConf.bg,
                                 color: prioConf.color,
-                                padding: '2px 8px',
+                                padding: '2px 6px',
                                 borderRadius: '4px',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '4px',
+                                gap: '3px',
                               }}
                             >
                               <span>{prioConf.dot}</span>
-                              <span>{prioConf.label} #{idx + 1}</span>
+                              <span>{prioConf.label}</span>
                             </span>
 
+                            {/* Status Badge */}
                             <span
                               style={{
                                 fontSize: '10.5px',
                                 fontWeight: 600,
-                                backgroundColor: catConf.bg,
-                                color: catConf.color,
+                                backgroundColor: statusConf.bg,
+                                color: statusConf.color,
                                 padding: '2px 6px',
                                 borderRadius: '4px',
                               }}
                             >
-                              {catConf.label}
+                              {statusConf.label}
                             </span>
                           </div>
 
                           {task.marketplace && (
                             <span
                               style={{
-                                fontSize: '11px',
-                                fontWeight: 700,
+                                fontSize: '10.5px',
+                                fontWeight: 600,
                                 backgroundColor: '#f1f5f9',
-                                color: '#334155',
-                                padding: '2px 7px',
-                                borderRadius: '6px',
+                                color: '#475569',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
                               }}
                             >
                               {task.marketplace}
@@ -1313,7 +1714,7 @@ export default function StaffTasksPage() {
                           )}
                         </div>
 
-                        {/* Judul & Keterangan */}
+                        {/* Nama Task & Checkbox */}
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
                           <button
                             onClick={() => handleToggleTask(task)}
@@ -1326,29 +1727,29 @@ export default function StaffTasksPage() {
                               color: '#94a3b8',
                               flexShrink: 0,
                             }}
-                            title="Tandai udah kelar"
+                            title="Tandai selesai"
                           >
                             <Square size={18} />
                           </button>
 
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#0f172a', lineHeight: 1.35 }}>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', lineHeight: 1.35 }}>
                               {task.task_text}
                             </div>
                             {task.description && (
-                              <div style={{ fontSize: '12.5px', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
+                              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
                                 {task.description}
                               </div>
                             )}
                           </div>
                         </div>
 
-                        {/* Estimasi & Promo */}
+                        {/* Estimasi Waktu & Promo */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11.5px', color: '#64748b', marginTop: '10px' }}>
                           {task.estimated_minutes && (
                             <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                               <Clock size={12} />
-                              Estimasi: {task.estimated_minutes} Menit
+                              {task.estimated_minutes} Menit
                             </span>
                           )}
                           {task.promo_name && (
@@ -1360,7 +1761,7 @@ export default function StaffTasksPage() {
                         </div>
                       </div>
 
-                      {/* Tombol Aksi */}
+                      {/* Tombol Aksi Kompak */}
                       <div
                         style={{
                           display: 'flex',
@@ -1372,6 +1773,7 @@ export default function StaffTasksPage() {
                           borderTop: '1px solid #f1f5f9',
                         }}
                       >
+                        {/* Compact Mulai Button */}
                         <button
                           onClick={() => handleStartFocusMode(task)}
                           style={{
@@ -1388,8 +1790,8 @@ export default function StaffTasksPage() {
                             cursor: 'pointer',
                           }}
                         >
-                          <Target size={13} />
-                          <span>Gas Kerjain (Focus Mode)</span>
+                          <Play size={12} fill="#ffffff" />
+                          <span>Mulai</span>
                         </button>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1410,10 +1812,10 @@ export default function StaffTasksPage() {
                               alignItems: 'center',
                               gap: '3px',
                             }}
-                            title="Buka contekan cara ngerjain"
+                            title="Buka panduan SOP"
                           >
                             <Lightbulb size={12} color="#ea580c" />
-                            <span>Contekan SOP</span>
+                            <span>SOP</span>
                           </button>
 
                           <button
@@ -1427,7 +1829,7 @@ export default function StaffTasksPage() {
                               fontSize: '11.5px',
                               cursor: 'pointer',
                             }}
-                            title="Tandai lagi ketahan"
+                            title="Tandai tertunda"
                           >
                             <Pause size={12} />
                           </button>
@@ -1456,12 +1858,14 @@ export default function StaffTasksPage() {
             )}
           </div>
 
-          {/* SECTION 2: 📋 KERJAAN LAINNYA HARI INI */}
+          {/* ========================================================================= */}
+          {/* 📋 SECTION 2: KERJAAN LAINNYA HARI INI                                   */}
+          {/* ========================================================================= */}
           <div style={{ marginBottom: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
-                  📋 KERJAAN LAINNYA HARI INI ({selectedDay})
+                  📋 KERJAAN LAINNYA
                 </span>
                 <span
                   style={{
@@ -1473,11 +1877,11 @@ export default function StaffTasksPage() {
                     borderRadius: '10px',
                   }}
                 >
-                  {regularTodayTasks.length} Kerjaan
+                  {regularTodayTasks.length} Task
                 </span>
               </div>
               <span style={{ fontSize: '12px', color: '#64748b' }}>
-                Kalo yang urgent udah beres, lanjut hajar yang di bawah ini ya!
+                Task tambahan yang masih perlu dikerjakan hari ini.
               </span>
             </div>
 
@@ -1494,8 +1898,8 @@ export default function StaffTasksPage() {
               }}
             >
               {regularTodayTasks.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
-                  Ga ada kerjaan reguler tersisa buat hari ini. Santai dulu!
+                <div style={{ padding: '18px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                  Tidak ada kerjaan tambahan untuk hari ini.
                 </div>
               ) : (
                 regularTodayTasks.map((task) => {
@@ -1509,7 +1913,7 @@ export default function StaffTasksPage() {
                         backgroundColor: '#ffffff',
                         border: '1px solid #e2e8f0',
                         borderRadius: '8px',
-                        padding: '10px 14px',
+                        padding: '9px 12px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
@@ -1525,12 +1929,12 @@ export default function StaffTasksPage() {
                           <Square size={17} />
                         </button>
 
-                        <span style={{ fontSize: '11px' }} title={prioConf.label}>
+                        <span style={{ fontSize: '11px' }} title={`Prioritas: ${prioConf.label}`}>
                           {prioConf.dot}
                         </span>
 
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: '13.5px', fontWeight: 500, color: '#0f172a' }}>{task.task_text}</span>
+                          <span style={{ fontSize: '13px', fontWeight: 500, color: '#0f172a' }}>{task.task_text}</span>
                         </div>
 
                         {/* Label Kategori & Marketplace */}
@@ -1565,12 +1969,49 @@ export default function StaffTasksPage() {
                         </div>
                       </div>
 
-                      {/* Tombol Kanan */}
+                      {/* Tombol Kanan Kompak */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                         {task.estimated_minutes && (
-                          <span style={{ fontSize: '11px', color: '#64748b', marginRight: '6px' }}>
+                          <span style={{ fontSize: '11px', color: '#64748b', marginRight: '4px' }}>
                             {task.estimated_minutes}m
                           </span>
+                        )}
+
+                        <button
+                          onClick={() => handleStartFocusMode(task)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 8px',
+                            borderRadius: '5px',
+                            backgroundColor: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            color: '#1d4ed8',
+                            fontSize: '11.5px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                          title="Mulai di Focus Mode"
+                        >
+                          <Play size={10} fill="#1d4ed8" />
+                          <span>Mulai</span>
+                        </button>
+
+                        {top3FocusTasks.length < 3 && (
+                          <button
+                            onClick={() => handlePromoteToFocus(task)}
+                            style={{
+                              border: 'none',
+                              background: 'transparent',
+                              color: '#ea580c',
+                              cursor: 'pointer',
+                              padding: '3px',
+                            }}
+                            title="Jadikan Fokus Utama"
+                          >
+                            <Star size={14} />
+                          </button>
                         )}
 
                         <button
@@ -1585,7 +2026,7 @@ export default function StaffTasksPage() {
                             cursor: 'pointer',
                             padding: '3px',
                           }}
-                          title="Lihat Contekan SOP"
+                          title="Lihat SOP"
                         >
                           <Lightbulb size={14} />
                         </button>
@@ -1599,7 +2040,7 @@ export default function StaffTasksPage() {
                             cursor: 'pointer',
                             padding: '3px',
                           }}
-                          title="Tandai Lagi Ketahan"
+                          title="Tandai Tertunda"
                         >
                           <Pause size={14} />
                         </button>
@@ -1615,7 +2056,7 @@ export default function StaffTasksPage() {
                           }}
                           title="Edit"
                         >
-                          <Edit2 size={14} />
+                          <Edit2 size={13} />
                         </button>
 
                         <button
@@ -1629,7 +2070,7 @@ export default function StaffTasksPage() {
                           }}
                           title="Hapus"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={13} />
                         </button>
                       </div>
                     </div>
@@ -1637,45 +2078,292 @@ export default function StaffTasksPage() {
                 })
               )}
 
-              {/* INPUT CEPAT TAMBAH TUGAS */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '8px', borderTop: '1px solid #f1f5f9' }}>
-                <input
-                  type="text"
-                  placeholder={`+ Ketik kerjaan baru buat hari ${selectedDay}, langsung Enter aja...`}
-                  value={quickInputText}
-                  onChange={(e) => setQuickInputText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleQuickAddToday()
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '12.5px',
-                    outline: 'none',
-                  }}
-                />
-                <button
-                  onClick={handleQuickAddToday}
-                  style={{
-                    padding: '8px 14px',
-                    borderRadius: '6px',
-                    backgroundColor: '#0f172a',
-                    border: 'none',
-                    color: '#ffffff',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Gas Tambah
-                </button>
+              {/* QUICK ADD TASK DENGAN PILIHAN DESTINASI CEPAT */}
+              <div style={{ paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="+ Ketik kerjaan baru..."
+                    value={quickInputText}
+                    onChange={(e) => setQuickInputText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleQuickAdd()
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '12.5px',
+                      outline: 'none',
+                    }}
+                  />
+                  <button
+                    onClick={() => handleQuickAdd()}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      backgroundColor: '#0f172a',
+                      border: 'none',
+                      color: '#ffffff',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Simpan
+                  </button>
+                </div>
+
+                {/* DESTINATION SELECTOR PILLS */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600 }}>📍 Masukkan ke:</span>
+
+                  <button
+                    type="button"
+                    onClick={() => setQuickAddTarget('BACKLOG')}
+                    style={{
+                      padding: '3px 10px',
+                      borderRadius: '6px',
+                      border: quickAddTarget === 'BACKLOG' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                      backgroundColor: quickAddTarget === 'BACKLOG' ? '#eff6ff' : '#ffffff',
+                      color: quickAddTarget === 'BACKLOG' ? '#1d4ed8' : '#475569',
+                      fontSize: '11.5px',
+                      fontWeight: quickAddTarget === 'BACKLOG' ? 700 : 500,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    📥 Antrean (Default)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setQuickAddTarget('TODAY')}
+                    style={{
+                      padding: '3px 10px',
+                      borderRadius: '6px',
+                      border: quickAddTarget === 'TODAY' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                      backgroundColor: quickAddTarget === 'TODAY' ? '#eff6ff' : '#ffffff',
+                      color: quickAddTarget === 'TODAY' ? '#1d4ed8' : '#475569',
+                      fontSize: '11.5px',
+                      fontWeight: quickAddTarget === 'TODAY' ? 700 : 500,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ☀️ Hari Ini ({selectedDay})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setQuickAddTarget('TOMORROW')}
+                    style={{
+                      padding: '3px 10px',
+                      borderRadius: '6px',
+                      border: quickAddTarget === 'TOMORROW' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                      backgroundColor: quickAddTarget === 'TOMORROW' ? '#eff6ff' : '#ffffff',
+                      color: quickAddTarget === 'TOMORROW' ? '#1d4ed8' : '#475569',
+                      fontSize: '11.5px',
+                      fontWeight: quickAddTarget === 'TOMORROW' ? 700 : 500,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🌤 Besok ({tomorrowDay})
+                  </button>
+
+                  <select
+                    value={quickAddTarget === 'CUSTOM' ? quickAddCustomDay : ''}
+                    onChange={(e) => {
+                      setQuickAddTarget('CUSTOM')
+                      setQuickAddCustomDay(e.target.value as DayOfWeek)
+                    }}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      border: quickAddTarget === 'CUSTOM' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                      backgroundColor: quickAddTarget === 'CUSTOM' ? '#eff6ff' : '#ffffff',
+                      color: quickAddTarget === 'CUSTOM' ? '#1d4ed8' : '#475569',
+                      fontSize: '11.5px',
+                      cursor: 'pointer',
+                      outline: 'none',
+                    }}
+                  >
+                    <option value="" disabled>
+                      📅 Pilih Hari...
+                    </option>
+                    {DAYS_OF_WEEK.map((d) => (
+                      <option key={d} value={d}>
+                        Hari {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* SECTION 3: ⏳ LAGI KETAHAN / PENDING (NUNGGU PIHAK LAIN) */}
+          {/* ========================================================================= */}
+          {/* 📚 SECTION 3: BELAJAR & PRODUCT KNOWLEDGE                                 */}
+          {/* ========================================================================= */}
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '15px', fontWeight: 800, color: '#7c3aed' }}>
+                  📚 BELAJAR & PRODUCT KNOWLEDGE
+                </span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    backgroundColor: '#f5f3ff',
+                    color: '#7c3aed',
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                  }}
+                >
+                  {todayLearningTasks.length} Materi
+                </span>
+              </div>
+              <span style={{ fontSize: '12px', color: '#64748b' }}>
+                Dikerjakan pas ada waktu senggang atau saat butuh materinya.
+              </span>
+            </div>
+
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                borderRadius: '12px',
+                border: '1.5px solid #ddd6fe',
+                padding: '12px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}
+            >
+              {todayLearningTasks.length === 0 ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '12.5px' }}>
+                  Belum ada materi belajar yang dijadwalkan untuk hari ini.
+                </div>
+              ) : (
+                todayLearningTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    style={{
+                      backgroundColor: '#f5f3ff',
+                      border: '1px solid #ddd6fe',
+                      borderRadius: '8px',
+                      padding: '10px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                      <button
+                        onClick={() => handleToggleTask(task)}
+                        style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: '#7c3aed' }}
+                      >
+                        {task.status === 'DONE' ? <CheckSquare size={17} /> : <Square size={17} />}
+                      </button>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: task.status === 'DONE' ? '#94a3b8' : '#4c1d95',
+                            textDecoration: task.status === 'DONE' ? 'line-through' : 'none',
+                          }}
+                        >
+                          {task.task_text}
+                        </div>
+                        {task.description && (
+                          <div style={{ fontSize: '11.5px', color: '#6d28d9', marginTop: '2px' }}>
+                            {task.description}
+                          </div>
+                        )}
+                      </div>
+
+                      <span
+                        style={{
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          backgroundColor: '#ede9fe',
+                          color: '#6d28d9',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                        }}
+                      >
+                        Materi Belajar
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                      <button
+                        onClick={() => {
+                          const sop = getTaskSOP(task.task_text)
+                          setActiveSOPTask({ text: task.task_text, sop })
+                        }}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #c4b5fd',
+                          color: '#6d28d9',
+                          fontSize: '11.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <BookOpen size={12} />
+                        <span>Buka Materi</span>
+                      </button>
+
+                      {task.status !== 'DONE' && (
+                        <button
+                          onClick={() => handlePromoteToFocus(task)}
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #cbd5e1',
+                            color: '#475569',
+                            fontSize: '11.5px',
+                            cursor: 'pointer',
+                          }}
+                          title="Jadikan Fokus Hari Ini"
+                        >
+                          ⭐ Fokuskan
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => handleDeleteTask(task.id)}
+                        style={{
+                          border: 'none',
+                          background: 'none',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          padding: '4px',
+                        }}
+                        title="Arsipkan / Hapus"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* ⏳ SECTION 4: LAGI KETAHAN / PENDING (NUNGGU PIHAK LAIN)                 */}
+          {/* ========================================================================= */}
           {blockedTodayTasks.length > 0 && (
             <div
               style={{
@@ -1690,11 +2378,11 @@ export default function StaffTasksPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <AlertTriangle size={18} color="#d97706" />
                   <span style={{ fontSize: '14px', fontWeight: 800, color: '#92400e' }}>
-                    ⏳ LAGI KETAHAN / PENDING ({blockedTodayTasks.length} Kerjaan)
+                    ⏸ TERTUNDA / MENUNGGU PIHAK LAIN ({blockedTodayTasks.length} Task)
                   </span>
                 </div>
                 <span style={{ fontSize: '11.5px', color: '#b45309' }}>
-                  Tenang, ini ga dihitung beban hari ini karena lo lagi nungguin respon pihak lain (RM/Finance/Ka Vanny).
+                  Tidak dihitung beban aktif karena sedang menunggu respon pihak eksternal.
                 </span>
               </div>
 
@@ -1717,7 +2405,7 @@ export default function StaffTasksPage() {
                     <div>
                       <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#0f172a' }}>{task.task_text}</div>
                       <div style={{ fontSize: '12px', color: '#b45309', marginTop: '2px', fontWeight: 500 }}>
-                        ⚠️ Lagi ketahan karena: {task.blocked_reason || 'Lagi nunggu kabar atau approval pihak lain'}
+                        Alasan tertunda: {task.blocked_reason || 'Menunggu kabar atau approval pihak lain'}
                       </div>
                     </div>
 
@@ -1745,7 +2433,541 @@ export default function StaffTasksPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 📅 LEVEL 2: PLAN MINGGU INI                                               */}
+      {/* 🌤 LEVEL 1B: RENCANA BESOK (PLAN BESOK SEDERHANA)                        */}
+      {/* ========================================================================= */}
+      {activeTab === 'TOMORROW' && (
+        <div>
+          {/* HEADER RENCANA BESOK */}
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '14px',
+              padding: '18px 22px',
+              border: '1px solid #e2e8f0',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '16px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <Sunrise size={22} color="#ea580c" />
+                <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                  🌤 RENCANA BESOK ({tomorrowDay}, {tomorrowDayObj.dateStr})
+                </h2>
+              </div>
+              <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+                Pilih maksimal 3 fokus utama untuk besok agar paginya tidak bingung harus mulai dari mana.
+              </p>
+            </div>
+
+            {/* QUICK ACTIONS PLAN BESOK */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  setSelectedTaskIdsToMove([])
+                  setShowBacklogPickerModal(true)
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '6px',
+                  backgroundColor: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  color: '#334155',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <Inbox size={14} />
+                <span>← Ambil dari Antrean</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setSelectedTaskIdsToMove([])
+                  setShowTodayPickerModal(true)
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '6px',
+                  backgroundColor: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  color: '#334155',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <RotateCcw size={14} />
+                <span>← Ambil Task Hari Ini</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setModalMode('ADD')
+                  setFormTaskText('')
+                  setFormDescription('')
+                  setFormCategory('PROMO')
+                  setFormPriority('NORMAL')
+                  setFormMarketplace('Shopee')
+                  setFormPromoName('')
+                  setFormEstimatedMinutes(45)
+                  setFormDayOfWeek(tomorrowDay)
+                  setFormDeadline('')
+                  setShowTaskModal(true)
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '6px',
+                  backgroundColor: '#2563eb',
+                  border: 'none',
+                  color: '#ffffff',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <Plus size={14} />
+                <span>+ Task Besok</span>
+              </button>
+            </div>
+          </div>
+
+          {/* SECTION 1: 🎯 PILIH FOKUS BESOK (MAKSIMAL 3) */}
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
+                  🎯 3 FOKUS UTAMA BESOK
+                </span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    backgroundColor: '#eff6ff',
+                    color: '#2563eb',
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                  }}
+                >
+                  {tomorrowTop3Tasks.length} / 3 Terpilih
+                </span>
+              </div>
+              <span style={{ fontSize: '12px', color: '#64748b' }}>
+                Paling banyak 3 fokus utama agar target tercapai tanpa terbebani.
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
+              {tomorrowTop3Tasks.map((task, idx) => {
+                const prioConf = TASK_PRIORITY_CONFIG[task.priority] || TASK_PRIORITY_CONFIG.NORMAL
+                const catConf = TASK_CATEGORIES_CONFIG[task.category as TaskCategory] || TASK_CATEGORIES_CONFIG.PROMO
+
+                return (
+                  <div
+                    key={task.id}
+                    style={{
+                      backgroundColor: '#ffffff',
+                      borderRadius: '12px',
+                      border: '1.5px solid #cbd5e1',
+                      padding: '16px',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          backgroundColor: '#f1f5f9',
+                          color: '#0f172a',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                        }}
+                      >
+                        {rankingBadges[idx] || `Fokus #${idx + 1}`}
+                      </span>
+
+                      <span
+                        style={{
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          backgroundColor: prioConf.bg,
+                          color: prioConf.color,
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                        }}
+                      >
+                        {prioConf.dot} {prioConf.label}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
+                      {task.task_text}
+                    </div>
+                    {task.description && (
+                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '10px' }}>
+                        {task.description}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: '1px solid #f1f5f9', fontSize: '11.5px' }}>
+                      <span style={{ color: '#64748b' }}>
+                        {task.marketplace || 'Marketplace'} • {task.estimated_minutes || 45}m
+                      </span>
+                      <button
+                        onClick={() => handleScheduleTask(task, 'Backlog')}
+                        style={{
+                          border: 'none',
+                          background: 'none',
+                          color: '#64748b',
+                          cursor: 'pointer',
+                          fontSize: '11.5px',
+                        }}
+                      >
+                        Kembalikan ke Antrean
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Slot Placeholder jika < 3 */}
+              {Array.from({ length: Math.max(0, 3 - tomorrowTop3Tasks.length) }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    backgroundColor: '#f8fafc',
+                    borderRadius: '12px',
+                    border: '1.5px dashed #cbd5e1',
+                    padding: '24px 16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
+                    {rankingBadges[tomorrowTop3Tasks.length + i] || 'Fokus Kosong'}
+                  </span>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      onClick={() => setShowBacklogPickerModal(true)}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '6px',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '11.5px',
+                        color: '#2563eb',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      + Pilih dari Antrean
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* SECTION 2: 📋 TASK TAMBAHAN BESOK */}
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <span style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
+                📋 TASK TAMBAHAN BESOK ({tomorrowRegularTasks.length})
+              </span>
+            </div>
+
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0',
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}
+            >
+              {tomorrowRegularTasks.length === 0 ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                  Belum ada task tambahan untuk besok.
+                </div>
+              ) : (
+                tomorrowRegularTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    style={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#0f172a' }}>{task.task_text}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <button
+                        onClick={() => handlePromoteToFocus(task)}
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          backgroundColor: '#eff6ff',
+                          border: '1px solid #bfdbfe',
+                          fontSize: '11px',
+                          color: '#1d4ed8',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Jadikan Fokus
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTask(task.id)}
+                        style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer' }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* SECTION 3: 📚 BELAJAR JIKA ADA WAKTU BESOK */}
+          {tomorrowLearningTasks.length > 0 && (
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ fontSize: '15px', fontWeight: 800, color: '#7c3aed', marginBottom: '10px' }}>
+                📚 BELAJAR JIKA ADA WAKTU BESOK ({tomorrowLearningTasks.length})
+              </div>
+              <div
+                style={{
+                  backgroundColor: '#ffffff',
+                  borderRadius: '12px',
+                  border: '1.5px solid #ddd6fe',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                {tomorrowLearningTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    style={{
+                      backgroundColor: '#f5f3ff',
+                      border: '1px solid #ddd6fe',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#4c1d95' }}>{task.task_text}</span>
+                    <button
+                      onClick={() => {
+                        const sop = getTaskSOP(task.task_text)
+                        setActiveSOPTask({ text: task.task_text, sop })
+                      }}
+                      style={{
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #c4b5fd',
+                        color: '#6d28d9',
+                        fontSize: '11px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Buka SOP
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 📥 LEVEL 3: ANTREAN SAYA (INBOX PEKERJAAN)                                 */}
+      {/* ========================================================================= */}
+      {activeTab === 'BACKLOG' && (
+        <div
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            padding: '20px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Inbox size={20} color="#2563eb" />
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                  📥 ANTREAN SAYA (Inbox Pekerjaan) ({backlogTasks.length} Task)
+                </h3>
+              </div>
+              <p style={{ margin: '3px 0 0 0', fontSize: '12.5px', color: '#64748b' }}>
+                Tempat menyimpan pekerjaan yang baru kepikiran, baru diberikan SPV, atau belum tahu kapan dikerjakan. Dijadwalkan pas kamu sudah siap!
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                setModalMode('ADD')
+                setFormDayOfWeek('Backlog')
+                setShowTaskModal(true)
+              }}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '6px',
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              + Tambah ke Antrean
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {backlogTasks.length === 0 ? (
+              <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
+                Kotak antrean kosong. Semua pekerjaan sudah terjadwal dengan rapi!
+              </div>
+            ) : (
+              backlogTasks.map((task) => (
+                <div
+                  key={task.id}
+                  style={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '12px',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: '260px' }}>
+                    <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#0f172a' }}>{task.task_text}</div>
+                    {task.description && (
+                      <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{task.description}</div>
+                    )}
+                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+                      Kategori: {task.category} • Estimasi: {task.estimated_minutes || 45} menit
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      onClick={() => handleScheduleTask(task, selectedDay)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        backgroundColor: '#eff6ff',
+                        color: '#2563eb',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ☀️ Kerjakan Hari Ini
+                    </button>
+
+                    <button
+                      onClick={() => handleScheduleTask(task, tomorrowDay)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        backgroundColor: '#fff7ed',
+                        color: '#ea580c',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      🌤 Jadwalkan Besok
+                    </button>
+
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) handleScheduleTask(task, e.target.value as DayOfWeek)
+                      }}
+                      defaultValue=""
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '12px',
+                        backgroundColor: '#ffffff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="" disabled>
+                        📅 Pilih Hari...
+                      </option>
+                      {DAYS_OF_WEEK.map((d) => (
+                        <option key={d} value={d}>
+                          Hari {d}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      onClick={() => handleDeleteTask(task.id)}
+                      style={{
+                        border: 'none',
+                        background: 'none',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        padding: '4px',
+                      }}
+                      title="Hapus"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 📅 LEVEL 2: PLAN MINGGU INI (GAMBARAN FLEKSIBEL)                          */}
       {/* ========================================================================= */}
       {activeTab === 'WEEKLY' && (
         <div>
@@ -1765,13 +2987,13 @@ export default function StaffTasksPage() {
           >
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '13px', fontWeight: 800, color: '#92400e', marginBottom: '4px' }}>
-                📌 Catatan Wajib Diingat Minggu Ini ({selectedStaff}) — Replikasi Row 249-250 Spreadsheet
+                📌 Catatan Wajib Diingat Minggu Ini ({selectedStaff}) — Catatan Row 249-250 Spreadsheet
               </div>
               <textarea
                 rows={2}
                 value={weeklyNote}
                 onChange={(e) => setWeeklyNote(e.target.value)}
-                placeholder="Tulis instruksi mingguan penting (misal: gabungin pdp varian, matiin diskon full month ganti ke diskon event)..."
+                placeholder="Tulis instruksi mingguan penting (misal: gabungin pdp varian, non aktifkan diskon full month)..."
                 style={{
                   width: '100%',
                   padding: '8px 12px',
@@ -1798,11 +3020,11 @@ export default function StaffTasksPage() {
                 flexShrink: 0,
               }}
             >
-              {noteSaveStatus === 'saved' ? 'Tersimpan!' : 'Simpen Catatan'}
+              {noteSaveStatus === 'saved' ? 'Tersimpan!' : 'Simpan Catatan'}
             </button>
           </div>
 
-          {/* Kolom 5 Hari Kompak */}
+          {/* Kolom 5 Hari Kompak (Gambaran Mingguan Tanpa Paksaan) */}
           <div
             style={{
               display: 'grid',
@@ -1831,7 +3053,7 @@ export default function StaffTasksPage() {
                     display: 'flex',
                     flexDirection: 'column',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-                    minHeight: '520px',
+                    minHeight: '480px',
                   }}
                 >
                   {/* Header Kolom */}
@@ -1849,122 +3071,130 @@ export default function StaffTasksPage() {
                       <span style={{ fontSize: '11px', opacity: 0.9 }}>{dayObj.dateStr}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11.5px', opacity: 0.85 }}>
-                      <span>{totalDone}/{totalActive} Kelar</span>
+                      <span>{totalDone}/{totalActive} Selesai</span>
                       <span>{totalActive > 0 ? Math.round((totalDone / totalActive) * 100) : 0}%</span>
                     </div>
                   </div>
 
                   {/* Kelompok Tugas */}
-                  <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto' }}>
-                    {/* 1. KUDU BANGET */}
-                    {prioTasks.length > 0 && (
-                      <div>
-                        <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#dc2626', marginBottom: '6px', textTransform: 'uppercase' }}>
-                          🔥 Kudu Banget ({prioTasks.length})
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                          {prioTasks.map((t) => (
-                            <div
-                              key={t.id}
-                              style={{
-                                backgroundColor: t.status === 'DONE' ? '#f8fafc' : '#fff7ed',
-                                border: t.status === 'DONE' ? '1px solid #e2e8f0' : '1px solid #fed7aa',
-                                borderRadius: '6px',
-                                padding: '6px 8px',
-                                fontSize: '12px',
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: '6px',
-                              }}
-                            >
-                              <button
-                                onClick={() => handleToggleTask(t)}
-                                style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: t.status === 'DONE' ? '#059669' : '#ea580c' }}
-                              >
-                                {t.status === 'DONE' ? <CheckSquare size={14} /> : <Square size={14} />}
-                              </button>
-                              <span
-                                style={{
-                                  flex: 1,
-                                  color: t.status === 'DONE' ? '#94a3b8' : '#0f172a',
-                                  textDecoration: t.status === 'DONE' ? 'line-through' : 'none',
-                                  fontWeight: t.status === 'DONE' ? 400 : 600,
-                                }}
-                              >
-                                {t.task_text}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+                  <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto' }}>
+                    {dayTasks.length === 0 ? (
+                      <div style={{ padding: '20px 10px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>
+                        Tidak ada task terjadwal
                       </div>
-                    )}
+                    ) : (
+                      <>
+                        {/* 1. Prioritas Utama */}
+                        {prioTasks.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#dc2626', marginBottom: '4px', textTransform: 'uppercase' }}>
+                              🎯 Fokus ({prioTasks.length})
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {prioTasks.map((t) => (
+                                <div
+                                  key={t.id}
+                                  style={{
+                                    backgroundColor: t.status === 'DONE' ? '#f8fafc' : '#fff7ed',
+                                    border: t.status === 'DONE' ? '1px solid #e2e8f0' : '1px solid #fed7aa',
+                                    borderRadius: '6px',
+                                    padding: '5px 8px',
+                                    fontSize: '11.5px',
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '6px',
+                                  }}
+                                >
+                                  <button
+                                    onClick={() => handleToggleTask(t)}
+                                    style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: t.status === 'DONE' ? '#059669' : '#ea580c' }}
+                                  >
+                                    {t.status === 'DONE' ? <CheckSquare size={13} /> : <Square size={13} />}
+                                  </button>
+                                  <span
+                                    style={{
+                                      flex: 1,
+                                      color: t.status === 'DONE' ? '#94a3b8' : '#0f172a',
+                                      textDecoration: t.status === 'DONE' ? 'line-through' : 'none',
+                                      fontWeight: t.status === 'DONE' ? 400 : 600,
+                                    }}
+                                  >
+                                    {t.task_text}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
-                    {/* 2. SANTAI / REGULER */}
-                    {normalTasks.length > 0 && (
-                      <div>
-                        <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', marginBottom: '6px', textTransform: 'uppercase' }}>
-                          📋 Santai / Reguler ({normalTasks.length})
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                          {normalTasks.map((t) => (
-                            <div
-                              key={t.id}
-                              style={{
-                                backgroundColor: t.status === 'DONE' ? '#f8fafc' : '#ffffff',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '6px',
-                                padding: '6px 8px',
-                                fontSize: '12px',
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: '6px',
-                              }}
-                            >
-                              <button
-                                onClick={() => handleToggleTask(t)}
-                                style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: t.status === 'DONE' ? '#059669' : '#94a3b8' }}
-                              >
-                                {t.status === 'DONE' ? <CheckSquare size={14} /> : <Square size={14} />}
-                              </button>
-                              <span
-                                style={{
-                                  flex: 1,
-                                  color: t.status === 'DONE' ? '#94a3b8' : '#334155',
-                                  textDecoration: t.status === 'DONE' ? 'line-through' : 'none',
-                                }}
-                              >
-                                {t.task_text}
-                              </span>
+                        {/* 2. Reguler */}
+                        {normalTasks.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', marginBottom: '4px', textTransform: 'uppercase' }}>
+                              📋 Reguler ({normalTasks.length})
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {normalTasks.map((t) => (
+                                <div
+                                  key={t.id}
+                                  style={{
+                                    backgroundColor: t.status === 'DONE' ? '#f8fafc' : '#ffffff',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '6px',
+                                    padding: '5px 8px',
+                                    fontSize: '11.5px',
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '6px',
+                                  }}
+                                >
+                                  <button
+                                    onClick={() => handleToggleTask(t)}
+                                    style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: t.status === 'DONE' ? '#059669' : '#94a3b8' }}
+                                  >
+                                    {t.status === 'DONE' ? <CheckSquare size={13} /> : <Square size={13} />}
+                                  </button>
+                                  <span
+                                    style={{
+                                      flex: 1,
+                                      color: t.status === 'DONE' ? '#94a3b8' : '#334155',
+                                      textDecoration: t.status === 'DONE' ? 'line-through' : 'none',
+                                    }}
+                                  >
+                                    {t.task_text}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
-                    {/* 3. LAGI KETAHAN */}
-                    {blockedTasks.length > 0 && (
-                      <div>
-                        <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#b45309', marginBottom: '6px', textTransform: 'uppercase' }}>
-                          ⏳ Lagi Ketahan ({blockedTasks.length})
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                          {blockedTasks.map((t) => (
-                            <div
-                              key={t.id}
-                              style={{
-                                backgroundColor: '#fffbeb',
-                                border: '1px solid #fde68a',
-                                borderRadius: '6px',
-                                padding: '6px 8px',
-                                fontSize: '11.5px',
-                                color: '#92400e',
-                              }}
-                            >
-                              ⚠️ {t.task_text}
+                        {/* 3. Tertunda */}
+                        {blockedTasks.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#b45309', marginBottom: '4px', textTransform: 'uppercase' }}>
+                              ⏸ Tertunda ({blockedTasks.length})
                             </div>
-                          ))}
-                        </div>
-                      </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {blockedTasks.map((t) => (
+                                <div
+                                  key={t.id}
+                                  style={{
+                                    backgroundColor: '#fffbeb',
+                                    border: '1px solid #fde68a',
+                                    borderRadius: '6px',
+                                    padding: '5px 8px',
+                                    fontSize: '11px',
+                                    color: '#92400e',
+                                  }}
+                                >
+                                  ⏸ {t.task_text}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -1975,141 +3205,7 @@ export default function StaffTasksPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 📋 LEVEL 3: ANTREAN / BACKLOG                                             */}
-      {/* ========================================================================= */}
-      {activeTab === 'BACKLOG' && (
-        <div
-          style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '12px',
-            padding: '20px',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
-                Antrean Kerjaan & Ide yang Belum Masuk Jadwal ({backlogTasks.length} Kerjaan)
-              </h3>
-              <p style={{ margin: '3px 0 0 0', fontSize: '12.5px', color: '#64748b' }}>
-                Tampung semua kerjaan & ide di sini. Kalo mau digarap, tinggal klik tombol "Pindahin ke Hari Ini"!
-              </p>
-            </div>
-
-            <button
-              onClick={() => {
-                setModalMode('ADD')
-                setFormDayOfWeek('Backlog')
-                setShowTaskModal(true)
-              }}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '6px',
-                backgroundColor: '#2563eb',
-                color: '#ffffff',
-                border: 'none',
-                fontSize: '12.5px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              + Bikin Kerjaan Baru
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {backlogTasks.length === 0 ? (
-              <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
-                Antrean backlog kosong nih. Mantap!
-              </div>
-            ) : (
-              backlogTasks.map((task) => (
-                <div
-                  key={task.id}
-                  style={{
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '8px',
-                    padding: '12px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '12px',
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: '260px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>{task.task_text}</div>
-                    {task.description && (
-                      <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{task.description}</div>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <select
-                      onChange={(e) => {
-                        if (e.target.value) handleScheduleTask(task, e.target.value as DayOfWeek)
-                      }}
-                      defaultValue=""
-                      style={{
-                        padding: '6px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '12px',
-                        backgroundColor: '#ffffff',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <option value="" disabled>
-                        Jadwalin ke...
-                      </option>
-                      {DAYS_OF_WEEK.map((d) => (
-                        <option key={d} value={d}>
-                          Hari {d}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      onClick={() => handleScheduleTask(task, 'Senin')}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        backgroundColor: '#eff6ff',
-                        color: '#2563eb',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Pindahin ke Hari Ini
-                    </button>
-
-                    <button
-                      onClick={() => handleDeleteTask(task.id)}
-                      style={{
-                        border: 'none',
-                        background: 'none',
-                        color: '#ef4444',
-                        cursor: 'pointer',
-                        padding: '4px',
-                      }}
-                      title="Hapus"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* ✔ TAB 4: UDAH KELAR (REKAP SELESAI)                                        */}
+      {/* ✔ TAB: UDAH KELAR (REKAP SELESAI)                                         */}
       {/* ========================================================================= */}
       {activeTab === 'DONE' && (
         <div
@@ -2123,17 +3219,17 @@ export default function StaffTasksPage() {
         >
           <div style={{ marginBottom: '16px' }}>
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#059669' }}>
-              Kerjaan yang Udah Lo Beresin 🎉 ({allCompletedTasks.length})
+              Tugas yang Telah Selesai 🎉 ({allCompletedTasks.length})
             </h3>
             <p style={{ margin: '3px 0 0 0', fontSize: '12.5px', color: '#64748b' }}>
-              Mantap banget! Ini rekap semua kerjaan yang udah beres lo kerjain.
+              Rekap seluruh pekerjaan yang sudah berhasil diselesaikan.
             </p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {allCompletedTasks.length === 0 ? (
               <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
-                Belum ada kerjaan yang kelar hari ini. Yuk gas selesaikan satu per satu!
+                Belum ada task yang selesai hari ini.
               </div>
             ) : (
               allCompletedTasks.map((task) => (
@@ -2153,7 +3249,7 @@ export default function StaffTasksPage() {
                     <button
                       onClick={() => handleToggleTask(task)}
                       style={{ border: 'none', background: 'none', color: '#059669', cursor: 'pointer' }}
-                      title="Balikin ke belum selesai"
+                      title="Kembalikan ke belum selesai"
                     >
                       <CheckSquare size={16} />
                     </button>
@@ -2170,7 +3266,547 @@ export default function StaffTasksPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 🎯 FOCUS MODE (ANTI-DISTRAKSI)                                            */}
+      {/* 🌙 MODAL: REVIEW TUTUP HARI                                               */}
+      {/* ========================================================================= */}
+      {showCloseDayModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            backdropFilter: 'blur(3px)',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '620px',
+              padding: '24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    backgroundColor: '#0f172a',
+                    color: '#38bdf8',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Moon size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0f172a' }}>
+                    🌙 TUTUP HARI — {selectedDay} ({activeDayObj.dateStr})
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12.5px', color: '#64748b' }}>
+                    Review hasil kerja hari ini sebelum log off & tentukan kelanjutan task yang belum selesai.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowCloseDayModal(false)}
+                style={{ border: 'none', background: 'none', color: '#64748b', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* SUMMARY STATS HARI INI */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '20px' }}>
+              <div style={{ backgroundColor: '#ecfdf5', borderRadius: '10px', padding: '12px', textAlign: 'center', border: '1px solid #a7f3d0' }}>
+                <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#047857' }}>✅ Selesai</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#065f46', marginTop: '2px' }}>
+                  {completedTodayTasks.length}
+                </div>
+              </div>
+
+              <div style={{ backgroundColor: '#eff6ff', borderRadius: '10px', padding: '12px', textAlign: 'center', border: '1px solid #bfdbfe' }}>
+                <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#1d4ed8' }}>▶ Sedang Dikerjakan</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#1e40af', marginTop: '2px' }}>
+                  {todayAllTasks.filter((t) => t.status === 'IN_PROGRESS').length}
+                </div>
+              </div>
+
+              <div style={{ backgroundColor: '#f1f5f9', borderRadius: '10px', padding: '12px', textAlign: 'center', border: '1px solid #cbd5e1' }}>
+                <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#475569' }}>📌 Belum Mulai</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#334155', marginTop: '2px' }}>
+                  {todayAllTasks.filter((t) => t.status === 'TODO').length}
+                </div>
+              </div>
+            </div>
+
+            {/* DAFTAR TASK BELUM SELESAI */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>
+                  TASK BELUM SELESAI ({unfinishedTodayTasks.length})
+                </span>
+                {unfinishedTodayTasks.length > 0 && (
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      onClick={() => {
+                        const nextDec: any = {}
+                        unfinishedTodayTasks.forEach((t) => {
+                          nextDec[t.id] = { target: 'TOMORROW' }
+                        })
+                        setCloseDayDecisions(nextDec)
+                      }}
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        backgroundColor: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        fontSize: '11px',
+                        color: '#1d4ed8',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Semua ke Besok
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        const nextDec: any = {}
+                        unfinishedTodayTasks.forEach((t) => {
+                          nextDec[t.id] = { target: 'BACKLOG' }
+                        })
+                        setCloseDayDecisions(nextDec)
+                      }}
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        backgroundColor: '#f1f5f9',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '11px',
+                        color: '#475569',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Semua ke Antrean
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {unfinishedTodayTasks.length === 0 ? (
+                <div style={{ padding: '24px', backgroundColor: '#ecfdf5', borderRadius: '10px', textAlign: 'center', border: '1px solid #a7f3d0' }}>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#065f46' }}>🎉 Keren banget, {selectedStaff}!</div>
+                  <div style={{ fontSize: '13px', color: '#047857', marginTop: '4px' }}>
+                    Semua task hari ini sudah selesai tuntas. Selamat beristirahat!
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {unfinishedTodayTasks.map((task) => {
+                    const currentDec = closeDayDecisions[task.id] || { target: 'TOMORROW' }
+
+                    return (
+                      <div
+                        key={task.id}
+                        style={{
+                          backgroundColor: '#f8fafc',
+                          borderRadius: '8px',
+                          padding: '10px 14px',
+                          border: '1px solid #e2e8f0',
+                        }}
+                      >
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '8px' }}>
+                          {task.task_text}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginRight: '4px' }}>
+                            Pindahkan ke:
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCloseDayDecisions((prev) => ({
+                                ...prev,
+                                [task.id]: { target: 'TOMORROW' },
+                              }))
+                            }
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              border: currentDec.target === 'TOMORROW' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                              backgroundColor: currentDec.target === 'TOMORROW' ? '#eff6ff' : '#ffffff',
+                              color: currentDec.target === 'TOMORROW' ? '#1d4ed8' : '#475569',
+                              fontSize: '11px',
+                              fontWeight: currentDec.target === 'TOMORROW' ? 700 : 500,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            🌤 Besok ({tomorrowDay})
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCloseDayDecisions((prev) => ({
+                                ...prev,
+                                [task.id]: { target: 'BACKLOG' },
+                              }))
+                            }
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              border: currentDec.target === 'BACKLOG' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                              backgroundColor: currentDec.target === 'BACKLOG' ? '#eff6ff' : '#ffffff',
+                              color: currentDec.target === 'BACKLOG' ? '#1d4ed8' : '#475569',
+                              fontSize: '11px',
+                              fontWeight: currentDec.target === 'BACKLOG' ? 700 : 500,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            📥 Antrean
+                          </button>
+
+                          <select
+                            value={currentDec.target === 'DATE' ? currentDec.day || '' : ''}
+                            onChange={(e) =>
+                              setCloseDayDecisions((prev) => ({
+                                ...prev,
+                                [task.id]: { target: 'DATE', day: e.target.value as DayOfWeek },
+                              }))
+                            }
+                            style={{
+                              padding: '3px 6px',
+                              borderRadius: '4px',
+                              border: currentDec.target === 'DATE' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                              backgroundColor: currentDec.target === 'DATE' ? '#eff6ff' : '#ffffff',
+                              color: currentDec.target === 'DATE' ? '#1d4ed8' : '#475569',
+                              fontSize: '11px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <option value="" disabled>
+                              📅 Pilih Hari...
+                            </option>
+                            {DAYS_OF_WEEK.map((d) => (
+                              <option key={d} value={d}>
+                                Hari {d}
+                              </option>
+                            ))}
+                          </select>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCloseDayDecisions((prev) => ({
+                                ...prev,
+                                [task.id]: { target: 'DISMISS' },
+                              }))
+                            }
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              border: currentDec.target === 'DISMISS' ? '1.5px solid #dc2626' : '1px solid #cbd5e1',
+                              backgroundColor: currentDec.target === 'DISMISS' ? '#fef2f2' : '#ffffff',
+                              color: currentDec.target === 'DISMISS' ? '#b91c1c' : '#64748b',
+                              fontSize: '11px',
+                              fontWeight: currentDec.target === 'DISMISS' ? 700 : 500,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ✓ Tidak Perlu Lagi
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* TOMBOL MODAL FOOTER */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
+              <button
+                onClick={() => setShowCloseDayModal(false)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: '#475569',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Tutup
+              </button>
+              <button
+                onClick={handleTutupHariSubmit}
+                disabled={isSubmittingCloseDay}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#0f172a',
+                  color: '#ffffff',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {isSubmittingCloseDay ? 'Menyimpan...' : 'Simpan & Selesaikan Tutup Hari'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 📥 MODAL: AMBIL DARI ANTREAN KE BESOK                                     */}
+      {/* ========================================================================= */}
+      {showBacklogPickerModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '560px',
+              padding: '22px',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                ← Ambil Task dari Antrean untuk Besok ({tomorrowDay})
+              </h3>
+              <button
+                onClick={() => setShowBacklogPickerModal(false)}
+                style={{ border: 'none', background: 'none', color: '#64748b', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '18px' }}>
+              {backlogTasks.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                  Tidak ada task di Antrean.
+                </div>
+              ) : (
+                backlogTasks.map((t) => {
+                  const isChecked = selectedTaskIdsToMove.includes(t.id)
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => {
+                        setSelectedTaskIdsToMove((prev) =>
+                          isChecked ? prev.filter((id) => id !== t.id) : [...prev, t.id]
+                        )
+                      }}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: isChecked ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
+                        backgroundColor: isChecked ? '#eff6ff' : '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input type="checkbox" checked={isChecked} onChange={() => {}} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{t.task_text}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>
+                          Kategori: {t.category} • Estimasi: {t.estimated_minutes || 45}m
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={() => setShowBacklogPickerModal(false)}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => handleMoveTasksToTomorrow(selectedTaskIdsToMove)}
+                disabled={isMovingTasks || selectedTaskIdsToMove.length === 0}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '6px',
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {isMovingTasks ? 'Memindahkan...' : `Jadwalkan ${selectedTaskIdsToMove.length} Task ke Besok`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🔄 MODAL: AMBIL DARI TASK HARI INI KE BESOK                              */}
+      {/* ========================================================================= */}
+      {showTodayPickerModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '560px',
+              padding: '22px',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                ← Bawa Task Belum Selesai Hari Ini ke Besok ({tomorrowDay})
+              </h3>
+              <button
+                onClick={() => setShowTodayPickerModal(false)}
+                style={{ border: 'none', background: 'none', color: '#64748b', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '18px' }}>
+              {unfinishedTodayTasks.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                  Tidak ada task hari ini yang tersisa.
+                </div>
+              ) : (
+                unfinishedTodayTasks.map((t) => {
+                  const isChecked = selectedTaskIdsToMove.includes(t.id)
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => {
+                        setSelectedTaskIdsToMove((prev) =>
+                          isChecked ? prev.filter((id) => id !== t.id) : [...prev, t.id]
+                        )
+                      }}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: isChecked ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
+                        backgroundColor: isChecked ? '#eff6ff' : '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input type="checkbox" checked={isChecked} onChange={() => {}} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{t.task_text}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>
+                          Prioritas: {t.priority} • Status: {t.status}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={() => setShowTodayPickerModal(false)}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => handleMoveTasksToTomorrow(selectedTaskIdsToMove)}
+                disabled={isMovingTasks || selectedTaskIdsToMove.length === 0}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '6px',
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {isMovingTasks ? 'Memindahkan...' : `Bawa ${selectedTaskIdsToMove.length} Task ke Besok`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🎯 FOCUS MODE (DISTRACTION-FREE WORKSPACE)                                 */}
       {/* ========================================================================= */}
       {focusModeTask && (
         <div
@@ -2204,8 +3840,8 @@ export default function StaffTasksPage() {
                 <Target size={20} />
               </div>
               <div>
-                <div style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '0.02em' }}>MODE FOKUS (ANTI-DISTRAKSI)</div>
-                <div style={{ fontSize: '12px', color: '#94a3b8' }}>Fokus satu kerjaan ini dulu ya, jangan buka tab lain dulu!</div>
+                <div style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '0.02em' }}>MODE FOKUS</div>
+                <div style={{ fontSize: '12px', color: '#94a3b8' }}>Kerjakan satu task ini dengan tuntas tanpa distraksi.</div>
               </div>
             </div>
 
@@ -2222,7 +3858,7 @@ export default function StaffTasksPage() {
                 fontWeight: 600,
               }}
             >
-              ✕ Balik ke List
+              ✕ Kembali ke Daftar
             </button>
           </div>
 
@@ -2231,7 +3867,7 @@ export default function StaffTasksPage() {
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
               <span
                 style={{
-                  backgroundColor: '#dc2626',
+                  backgroundColor: '#2563eb',
                   color: '#ffffff',
                   fontSize: '11px',
                   fontWeight: 800,
@@ -2249,7 +3885,7 @@ export default function StaffTasksPage() {
               )}
             </div>
 
-            <h1 style={{ fontSize: '32px', fontWeight: 800, margin: '0 0 12px 0', lineHeight: 1.3 }}>
+            <h1 style={{ fontSize: '30px', fontWeight: 800, margin: '0 0 12px 0', lineHeight: 1.3 }}>
               {focusModeTask.task_text}
             </h1>
 
@@ -2273,11 +3909,11 @@ export default function StaffTasksPage() {
               </button>
             </div>
 
-            {/* Contekan SOP */}
+            {/* Panduan SOP */}
             <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '18px', textAlign: 'left', marginBottom: '32px', border: '1px solid rgba(255,255,255,0.1)' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#38bdf8', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Lightbulb size={14} />
-                <span>Contekan Cara Ngerjain (SOP Singkat):</span>
+                <span>Panduan SOP Eksekusi:</span>
               </div>
               <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#e2e8f0', lineHeight: 1.6 }}>
                 {getTaskSOP(focusModeTask.task_text).steps.slice(0, 3).map((st, i) => (
@@ -2286,7 +3922,7 @@ export default function StaffTasksPage() {
               </ul>
             </div>
 
-            {/* Tombol Aksi Besar */}
+            {/* Tombol Aksi */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
               <button
                 onClick={handleCompleteInFocusMode}
@@ -2306,7 +3942,7 @@ export default function StaffTasksPage() {
                 }}
               >
                 <Check size={18} />
-                <span>Udah Beres, Lanjut Next!</span>
+                <span>Selesaikan & Lanjut</span>
               </button>
 
               <button
@@ -2329,7 +3965,7 @@ export default function StaffTasksPage() {
                 }}
               >
                 <Pause size={16} />
-                <span>Ketahan Pihak Lain</span>
+                <span>Tertunda</span>
               </button>
 
               <button
@@ -2349,19 +3985,19 @@ export default function StaffTasksPage() {
                 }}
               >
                 <SkipForward size={16} />
-                <span>Skip Dulu</span>
+                <span>Lewati</span>
               </button>
             </div>
           </div>
 
           <div style={{ textAlign: 'center', fontSize: '12px', color: '#64748b' }}>
-            Klik 'Udah Beres' kalo settingan di Seller Centre / ERP udah lo submit ya!
+            Klik 'Selesaikan & Lanjut' jika pengaturan di Seller Centre / sistem sudah selesai.
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: TAMBAH / EDIT KERJAAN                                              */}
+      {/* MODAL: TAMBAH / EDIT TASK                                                 */}
       {/* ========================================================================= */}
       {showTaskModal && (
         <div
@@ -2391,7 +4027,7 @@ export default function StaffTasksPage() {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0f172a' }}>
-                {modalMode === 'ADD' ? '+ Bikin Kerjaan Baru' : 'Edit Kerjaan'}
+                {modalMode === 'ADD' ? '+ Buat Task Baru' : 'Edit Task'}
               </h3>
               <button
                 onClick={() => setShowTaskModal(false)}
@@ -2404,7 +4040,7 @@ export default function StaffTasksPage() {
             {/* Nama Kerjaan */}
             <div style={{ marginBottom: '14px' }}>
               <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
-                Nama Kerjaan *
+                Nama Task *
               </label>
               <input
                 type="text"
@@ -2425,11 +4061,11 @@ export default function StaffTasksPage() {
             {/* Keterangan */}
             <div style={{ marginBottom: '14px' }}>
               <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
-                Catatan / Detail Tambahan (Boleh Kosong)
+                Catatan / Detail Tambahan
               </label>
               <textarea
                 rows={2}
-                placeholder="Tulis SKU apa aja, batas diskon berapa persen, atau pesan pimpinan..."
+                placeholder="Tulis SKU target, batas diskon, atau instruksi pimpinan..."
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
                 style={{
@@ -2447,7 +4083,7 @@ export default function StaffTasksPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
-                  Seberapa Mendesak?
+                  Tingkat Prioritas (Default: Normal)
                 </label>
                 <select
                   value={formPriority}
@@ -2461,16 +4097,16 @@ export default function StaffTasksPage() {
                     backgroundColor: '#ffffff',
                   }}
                 >
-                  <option value="URGENT">🔴 Kudu Banget (Urgent)</option>
-                  <option value="HIGH">🟠 Penting (High)</option>
-                  <option value="NORMAL">🔵 Biasa Aja (Normal)</option>
-                  <option value="LOW">⚪ Kalo Sempet (Low)</option>
+                  <option value="NORMAL">🔵 Normal (Default)</option>
+                  <option value="HIGH">🟠 High</option>
+                  <option value="URGENT">🔴 Urgent</option>
+                  <option value="LOW">⚪ Low</option>
                 </select>
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
-                  Kategori Kerjaan
+                  Kategori Task
                 </label>
                 <select
                   value={formCategory}
@@ -2488,7 +4124,8 @@ export default function StaffTasksPage() {
                   <option value="PROMO">🔥 Promo & Campaign</option>
                   <option value="PROJECT">🚀 Project Toko</option>
                   <option value="MONITORING">📊 Monitoring & Cek</option>
-                  <option value="URGENT">🚨 Darurat / Kudu Cepat</option>
+                  <option value="LEARNING">📚 Materi & Belajar</option>
+                  <option value="URGENT">🚨 Darurat / Cepat</option>
                 </select>
               </div>
             </div>
@@ -2523,7 +4160,7 @@ export default function StaffTasksPage() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
-                  Mau Dikerjain Kapan?
+                  Jadwal Pengerjaan
                 </label>
                 <select
                   value={formDayOfWeek}
@@ -2542,7 +4179,7 @@ export default function StaffTasksPage() {
                       Hari {d}
                     </option>
                   ))}
-                  <option value="Backlog">📋 Masukin ke Antrean / Backlog</option>
+                  <option value="Backlog">📥 Masukkan ke Antrean (Inbox)</option>
                 </select>
               </div>
             </div>
@@ -2551,7 +4188,7 @@ export default function StaffTasksPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
-                  Promo Terkait (Kalo Ada)
+                  Nama Promo Terkait
                 </label>
                 <input
                   type="text"
@@ -2571,7 +4208,7 @@ export default function StaffTasksPage() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
-                  Kira-kira Berapa Menit?
+                  Estimasi Waktu (Menit)
                 </label>
                 <input
                   type="number"
@@ -2619,7 +4256,7 @@ export default function StaffTasksPage() {
                   cursor: 'pointer',
                 }}
               >
-                {modalMode === 'ADD' ? 'Simpen Kerjaan' : 'Update Kerjaan'}
+                {modalMode === 'ADD' ? 'Simpan Task' : 'Update Task'}
               </button>
             </div>
           </div>
@@ -2627,7 +4264,7 @@ export default function StaffTasksPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: LAGI KETAHAN KARENA APA?                                           */}
+      {/* MODAL: TERTUNDA / BLOCK REASON                                            */}
       {/* ========================================================================= */}
       {blockingTask && (
         <div
@@ -2655,17 +4292,17 @@ export default function StaffTasksPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
               <AlertTriangle size={20} color="#d97706" />
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
-                Lagi Ketahan Karena Apa Nih?
+                Tandai Sebagai Tertunda
               </h3>
             </div>
 
             <p style={{ fontSize: '12.5px', color: '#64748b', margin: '0 0 14px 0', lineHeight: 1.4 }}>
-              Apa yang bikin kerjaan <strong>"{blockingTask.task_text}"</strong> belum bisa diselesaikan saat ini?
+              Mengapa task <strong>"{blockingTask.task_text}"</strong> belum dapat dilanjutkan?
             </p>
 
             <textarea
               rows={3}
-              placeholder="Contoh: Lagi nungguin ACC harga diskon dari Finance, atau nungguin kiriman materi banner dari Ka Vanny..."
+              placeholder="Contoh: Menunggu approval harga promo dari Finance, atau menunggu materi banner..."
               value={blockedReasonInput}
               onChange={(e) => setBlockedReasonInput(e.target.value)}
               style={{
@@ -2709,7 +4346,7 @@ export default function StaffTasksPage() {
                   cursor: 'pointer',
                 }}
               >
-                Tandai Ketahan
+                Tandai Tertunda
               </button>
             </div>
           </div>
@@ -2717,7 +4354,7 @@ export default function StaffTasksPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: CONTEKAN & PANDUAN CARA NGERJAIN (SOP)                             */}
+      {/* MODAL: PANDUAN CARA NGERJAIN (SOP & MATERI)                               */}
       {/* ========================================================================= */}
       {activeSOPTask && (
         <div
@@ -2800,20 +4437,20 @@ export default function StaffTasksPage() {
               </button>
             </div>
 
-            {/* Kenapa Ini Kudu Beres */}
+            {/* Sasaran Task */}
             <div style={{ backgroundColor: '#f8fafc', padding: '12px 14px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #e2e8f0' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '3px' }}>
-                🎯 Kenapa ini kudu beres:
+                🎯 Tujuan Task:
               </div>
               <div style={{ fontSize: '13px', color: '#1e293b', lineHeight: 1.45 }}>
                 {activeSOPTask.sop.objective}
               </div>
             </div>
 
-            {/* Caranya Gampang (Steps) */}
+            {/* Langkah Eksekusi */}
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
-                📋 Caranya gampang (Langkah demi langkah):
+                📋 Langkah-langkah Eksekusi:
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {activeSOPTask.sop.steps.map((st, i) => (
@@ -2842,10 +4479,10 @@ export default function StaffTasksPage() {
               </div>
             </div>
 
-            {/* Acuan Parameter */}
+            {/* Parameter Kunci */}
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
-                ⚙️ Acuan Parameter yang Harus Diingat:
+                ⚙️ Acuan Parameter Kunci:
               </div>
               <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#475569' }}>
                 {activeSOPTask.sop.parameters.map((p, idx) => (
@@ -2854,10 +4491,10 @@ export default function StaffTasksPage() {
               </ul>
             </div>
 
-            {/* Tips Biar Ga Boncos */}
+            {/* Tips Eksekusi */}
             <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', padding: '10px 12px', borderRadius: '8px', marginBottom: '18px' }}>
               <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#b45309', marginBottom: '2px' }}>
-                💡 Tips biar lo ga boncos & ga pusing:
+                💡 Tips Praktis:
               </div>
               <div style={{ fontSize: '12px', color: '#78350f' }}>{activeSOPTask.sop.tips}</div>
             </div>
@@ -2876,7 +4513,7 @@ export default function StaffTasksPage() {
                   cursor: 'pointer',
                 }}
               >
-                Sip, Gue Paham!
+                Paham & Tutup
               </button>
             </div>
           </div>
