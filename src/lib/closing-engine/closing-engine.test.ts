@@ -4,13 +4,17 @@ import {
   processClosingTransactions,
   getClosingPeriod,
   isOrderCancelled,
+  getDaysInMonth,
+  getDynamicPeriodLabels,
+  generateMasterClosingTSV,
+  generateStandardMasterClosingTSV,
   RawOrderTransaction
 } from './index'
 
 describe('Closing Calculation Engine — Business Rules', () => {
 
   describe('Rule 1 & Test Case 1: 100 orders, 10 cancelled, same discount, same period', () => {
-    it('should calculate valid_orders = 90 and final_closing_qty = 45', () => {
+    it('should calculate valid_orders = 90 and final_closing_qty = 45 when duplicate promo exists', () => {
       // 90 orders valid, 10 orders cancelled
       const txs: RawOrderTransaction[] = [
         ...Array.from({ length: 90 }).map((_, i) => ({
@@ -58,8 +62,8 @@ describe('Closing Calculation Engine — Business Rules', () => {
     })
   })
 
-  describe('Test Case 2: 100 orders, 0 cancelled, same discount, same period', () => {
-    it('should calculate valid_orders = 100 and final_closing_qty = 50', () => {
+  describe('Rule 3: Duplicate Discount Rule vs Unique Promo', () => {
+    it('applies divide-by-2 when duplicate promo exists in the same period', () => {
       const txs: RawOrderTransaction[] = Array.from({ length: 100 }).map((_, i) => ({
         id: `valid-${i}`,
         orderNumber: `ORD-V-${i}`,
@@ -73,16 +77,123 @@ describe('Closing Calculation Engine — Business Rules', () => {
         price: 50000,
         discountAmount: 5000,
         quantity: 1,
+        orderStatus: 'Selesai',
+        isDuplicatePromo: true
+      }))
+
+      const result = calculateClosingGroup(txs, undefined, true)
+      expect(result.appliedRule).toBe('DIVIDE_VALID_ORDERS_BY_2')
+      expect(result.finalClosingQty).toBe(50) // 100 ÷ 2 = 50
+    })
+
+    it('keeps Final QTY = Valid QTY when promo is UNIQUE (no duplicate promo in period)', () => {
+      const txs: RawOrderTransaction[] = [
+        ...Array.from({ length: 80 }).map((_, i) => ({
+          id: `valid-${i}`,
+          orderNumber: `ORD-V-${i}`,
+          date: '2026-09-10',
+          month: 'September',
+          period: 'PERIOD_1' as const,
+          marketplace: 'Shopee',
+          promotionCategory: 'Promo Flash Sale',
+          promotionName: 'Flash Sale Unique',
+          sku: 'SKU-THERASKIN-02',
+          price: 60000,
+          discountAmount: 10000,
+          quantity: 1,
+          orderStatus: 'Selesai',
+          isDuplicatePromo: false
+        })),
+        ...Array.from({ length: 8 }).map((_, i) => ({
+          id: `cancelled-${i}`,
+          orderNumber: `ORD-C-${i}`,
+          date: '2026-09-10',
+          month: 'September',
+          period: 'PERIOD_1' as const,
+          marketplace: 'Shopee',
+          promotionCategory: 'Promo Flash Sale',
+          promotionName: 'Flash Sale Unique',
+          sku: 'SKU-THERASKIN-02',
+          price: 60000,
+          discountAmount: 10000,
+          quantity: 1,
+          orderStatus: 'Batal',
+          isDuplicatePromo: false
+        }))
+      ]
+
+      const result = calculateClosingGroup(txs, undefined, false)
+
+      // When unique: Final QTY = Valid QTY = 80
+      expect(result.totalOrders).toBe(88)
+      expect(result.cancelledOrders).toBe(8)
+      expect(result.validOrders).toBe(80)
+      expect(result.appliedRule).toBe('STANDARD_NO_SPLIT')
+      expect(result.finalClosingQty).toBe(80)
+      // Finance Formula: Biaya = Final QTY × Harga Setelah Diskon = 80 × (60000 - 10000) = 80 × 50000 = 4,000,000
+      expect(result.biaya).toBe(80 * 50000)
+    })
+  })
+
+  describe('Dynamic End of Month Calculations', () => {
+    it('correctly calculates days in month and period labels', () => {
+      // September: 30 days
+      expect(getDaysInMonth(2026, 'September')).toBe(30)
+      const sepLabels = getDynamicPeriodLabels(2026, 'September')
+      expect(sepLabels.p1Label).toBe('Periode 1 (1–15 Sep)')
+      expect(sepLabels.p2Label).toBe('Periode 2 (16–30 Sep)')
+      expect(sepLabels.p1Header).toBe('QTY 1-15 Sep')
+      expect(sepLabels.p2Header).toBe('QTY 16-30 Sep')
+
+      // October: 31 days
+      expect(getDaysInMonth(2026, 'Oktober')).toBe(31)
+      const oktLabels = getDynamicPeriodLabels(2026, 'Oktober')
+      expect(oktLabels.p2Label).toBe('Periode 2 (16–31 Okt)')
+      expect(oktLabels.p2Header).toBe('QTY 16-31 Okt')
+
+      // February 2026 (non-leap year): 28 days
+      expect(getDaysInMonth(2026, 'Februari')).toBe(28)
+      const febLabels = getDynamicPeriodLabels(2026, 'Februari')
+      expect(febLabels.p2Label).toBe('Periode 2 (16–28 Feb)')
+      expect(febLabels.p2Header).toBe('QTY 16-28 Feb')
+
+      // February 2024 (leap year): 29 days
+      expect(getDaysInMonth(2024, 'Februari')).toBe(29)
+    })
+  })
+
+  describe('1-Click Copy Format for Master Closing', () => {
+    it('generates exact 6-column tab-separated format: Platform \\t Kode Promosi \\t Nama Promosi \\t SKU \\t Quantity \\t Biaya', () => {
+      const txs: RawOrderTransaction[] = Array.from({ length: 20 }).map((_, i) => ({
+        id: `tx-${i}`,
+        orderNumber: `ORD-${i}`,
+        date: '2026-09-05',
+        month: 'September',
+        period: 'PERIOD_1' as const,
+        marketplace: 'Shopee Pusat',
+        promotionCategory: 'Voucher Toko',
+        promotionName: 'Voucher Diskon 5K',
+        sku: 'FPK00000033',
+        price: 85000,
+        discountAmount: 5000,
+        quantity: 1,
         orderStatus: 'Selesai'
       }))
 
-      const result = calculateClosingGroup(txs)
+      const group = calculateClosingGroup(txs, undefined, true) // 20 orders / 2 = 10 pcs
+      // Price after discount: 85000 - 5000 = 80000
+      // Biaya: 10 × 80000 = 800,000
 
-      expect(result.totalOrders).toBe(100)
-      expect(result.cancelledOrders).toBe(0)
-      expect(result.validOrders).toBe(100)
-      expect(result.appliedRule).toBe('DIVIDE_VALID_ORDERS_BY_2')
-      expect(result.finalClosingQty).toBe(50) // 100 ÷ 2 = 50
+      const tsv = generateMasterClosingTSV([group])
+      const parts = tsv.split('\t')
+
+      expect(parts.length).toBe(6)
+      expect(parts[0]).toBe('Shopee Pusat')
+      expect(parts[1]).toBe('Voucher Toko')
+      expect(parts[2]).toBe('Voucher Diskon 5K')
+      expect(parts[3]).toBe('FPK00000033')
+      expect(parts[4]).toBe('10')
+      expect(parts[5]).toBe('800000')
     })
   })
 
