@@ -36,7 +36,8 @@ import {
   MapPin,
   Flame,
   Tag,
-  CheckCheck
+  CheckCheck,
+  TableProperties
 } from 'lucide-react'
 import * as xlsx from 'xlsx'
 import Papa from 'papaparse'
@@ -52,7 +53,7 @@ import {
   isShopeePlatform,
   classifyClosingType,
   RawOrderTransaction,
-  ClosingGroupAudit,
+  PatokanClosingRow,
   processClosingTransactions,
   calculateClosingGroup,
   getClosingPeriod,
@@ -63,60 +64,83 @@ import {
   normalizeDiscount,
   generateMasterClosingTSV,
   generateStandardMasterClosingTSV,
-  generateFullAuditTSV,
+  generatePatokanValuesTSV,
+  generateFullPatokanTSV,
   generateTheraskinClosingSeed
 } from '@/lib/closing-engine'
 
 export default function ClosingPage() {
-  // Main Data States
+  // Main Data States (Synchronized with Google Sheet Patokan '2026_Promo Theraskin')
   const [selectedBulan, setSelectedBulan] = useState('September')
   const [selectedTahun, setSelectedTahun] = useState(2026)
-  const [closingGroups, setClosingGroups] = useState<ClosingGroupAudit[]>(() => 
+  const [activeSheetTab, setActiveSheetTab] = useState<'ALL' | 'September' | 'September Cabang'>('ALL')
+  const [closingRows, setClosingRows] = useState<PatokanClosingRow[]>(() => 
     generateTheraskinClosingSeed('September', 2026)
   )
 
   // Filters
   const [selectedPlatform, setSelectedPlatform] = useState<string>('ALL')
+  const [selectedSubKategori, setSelectedSubKategori] = useState<string>('ALL')
   const [selectedClosingType, setSelectedClosingType] = useState<'ALL' | ClosingType>('ALL')
-  const [selectedPeriode, setSelectedPeriode] = useState<'ALL' | ClosingPeriodType>('ALL')
   const [closingStatus, setClosingStatus] = useState<ClosingStatus>('Ready for Finance')
-  const [activeTab, setActiveTab] = useState<'TABLE_REKAP' | 'PROMO_CATALOG' | 'RAW_ORDERS'>('TABLE_REKAP')
+  const [activeViewTab, setActiveViewTab] = useState<'PATOKAN_TABLE' | 'RAW_ORDERS'>('PATOKAN_TABLE')
   
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('')
   const [activeIssueFilter, setActiveIssueFilter] = useState<string | null>(null)
 
   // Feedback & Copy states
-  const [copiedMode, setCopiedMode] = useState<'NONE' | 'ALL' | 'REGULER' | 'CAMPAIGN' | '11COL' | 'AUDIT'>('NONE')
+  const [copiedMode, setCopiedMode] = useState<'NONE' | 'COLS_O_T' | 'FULL_PATOKAN' | 'MASTER_6COL'>('NONE')
   const [isProcessing, setIsProcessing] = useState(false)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
 
   // Modals
-  const [activeAuditModal, setActiveAuditModal] = useState<ClosingGroupAudit | null>(null)
-  const [activePaketModal, setActivePaketModal] = useState<ClosingGroupAudit | null>(null)
+  const [activeAuditModal, setActiveAuditModal] = useState<PatokanClosingRow | null>(null)
   const [showManualModal, setShowManualModal] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploadTargetBranch, setUploadTargetBranch] = useState<string>('AUTO')
+  const [uploadModalTab, setUploadModalTab] = useState<'FILE' | 'QUICK_PASTE' | 'SIMULATOR'>('FILE')
+  const [quickPasteText, setQuickPasteText] = useState('')
+  const [simForm, setSimForm] = useState({
+    marketplace: 'Lazada',
+    sku: 'PAK033POT010PCS',
+    date: '2026-09-05',
+    hargaAwal: 40200,
+    totalDiskon: 1608,
+    qty: 1
+  })
+  const [simResult, setSimResult] = useState<{
+    matched: boolean
+    targetRow?: PatokanClosingRow
+    hargaSetelahDiskon: number
+    period: 'PERIOD_1' | 'PERIOD_2'
+    biayaBrand: number
+    keterangan: string
+  } | null>(null)
   const [auditSearch, setAuditSearch] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Manual Add Form State
   const [manualForm, setManualForm] = useState({
-    bulan: 'September',
-    year: 2026,
-    period: 'PERIOD_1' as ClosingPeriodType,
-    platform: 'Shopee Semarang' as MarketplacePlatform,
-    closingType: 'REGULER' as ClosingType,
-    kodePromosi: 'Voucher Toko',
-    subCategory: 'Voucher Diskon Toko',
-    namaPromosi: 'Voucher Toko Semarang 5K',
-    sku: 'FPK00000033',
-    productName: 'Theraskin Perfect Glow Serum 20ml',
-    price: 85000,
-    discountAmount: 5000,
-    totalOrders: 100,
-    cancelledOrders: 10,
-    isDuplicatePromo: true
+    sheetTab: 'September Cabang' as 'September' | 'September Cabang',
+    marketplace: 'Shopee Semarang',
+    kategori: 'Toko',
+    subKategori: 'Flash Sale',
+    periodeBadge: 'DD & Payday',
+    tanggal: '1-7 Sep & 25-30 Sep',
+    sku: 'PAK033POT010PCS',
+    productName: 'THERASKIN Age Revival Protection Day Cream 10g',
+    hargaBulanan: 40200,
+    diskonPersen: 4,
+    totalDiskon: 1608,
+    targetQty: 20,
+    totalPromosi: 10,
+    ordersP1: 15,
+    cancelP1: 1,
+    ordersP2: 10,
+    cancelP2: 0,
+    isDuplicate: false,
+    closingType: 'CAMPAIGN' as ClosingType
   })
 
   // Format IDR currency
@@ -127,112 +151,72 @@ export default function ClosingPage() {
     return getDynamicPeriodLabels(selectedTahun, selectedBulan)
   }, [selectedTahun, selectedBulan])
 
-  // Validation issues detector across all rows
-  const validationSummary = useMemo(() => {
-    let duplicateCount = 0
-    let paketCount = 0
-    let missingSkuCount = 0
-    let invalidPriceCount = 0
+  // Filter rows based on Tab Patokan, Platform, Sub Kategori, and Search
+  const filteredRows = useMemo(() => {
+    return closingRows.filter(r => {
+      // Tab Patokan (September vs September Cabang)
+      if (activeSheetTab !== 'ALL' && r.sheetTab !== activeSheetTab) return false
 
-    closingGroups.forEach(g => {
-      if (g.isDuplicatePromo) duplicateCount++
-      if (g.isPaketDiskon) paketCount++
-      if (!g.sku || g.sku === 'All SKU' || g.sku === 'SKU-Umum') missingSkuCount++
-      if (g.price <= 0 || g.priceAfterDiscount <= 0) invalidPriceCount++
+      // Platform & Branch
+      if (selectedPlatform !== 'ALL') {
+        if (!r.marketplace.toLowerCase().includes(selectedPlatform.toLowerCase())) return false
+      }
+
+      // Sub Kategori
+      if (selectedSubKategori !== 'ALL' && r.subKategori !== selectedSubKategori) return false
+
+      // Closing Type
+      if (selectedClosingType !== 'ALL' && r.closingType !== selectedClosingType) return false
+
+      // Search Query
+      const q = searchQuery.toLowerCase().trim()
+      if (q) {
+        const match = 
+          r.sku.toLowerCase().includes(q) ||
+          r.productName.toLowerCase().includes(q) ||
+          r.marketplace.toLowerCase().includes(q) ||
+          r.subKategori.toLowerCase().includes(q) ||
+          r.tanggal.toLowerCase().includes(q)
+        if (!match) return false
+      }
+
+      // Issue filter
+      if (activeIssueFilter === 'DUPLICATE') {
+        if (!r.isDuplicateP1 && !r.isDuplicateP2) return false
+      }
+
+      return true
+    })
+  }, [closingRows, activeSheetTab, selectedPlatform, selectedSubKategori, selectedClosingType, searchQuery, activeIssueFilter])
+
+  // Summary Metrics calculated directly from Patokan Columns
+  const summaryMetrics = useMemo(() => {
+    let totalQtyP1 = 0
+    let totalBiayaP1 = 0
+    let totalQtyP2 = 0
+    let totalBiayaP2 = 0
+    let grandTotalQty = 0
+    let grandTotalBiaya = 0
+
+    filteredRows.forEach(r => {
+      totalQtyP1 += (r.qtyP1 || 0)
+      totalBiayaP1 += (r.biayaP1 || 0)
+      totalQtyP2 += (r.qtyP2 || 0)
+      totalBiayaP2 += (r.biayaP2 || 0)
+      grandTotalQty += (r.grandTotalQty || 0)
+      grandTotalBiaya += (r.grandTotalBiaya || 0)
     })
 
     return {
-      duplicateCount,
-      paketCount,
-      missingSkuCount,
-      invalidPriceCount,
-      totalIssues: duplicateCount + paketCount + missingSkuCount + invalidPriceCount
+      totalQtyP1,
+      totalBiayaP1,
+      totalQtyP2,
+      totalBiayaP2,
+      grandTotalQty,
+      grandTotalBiaya,
+      totalRows: filteredRows.length
     }
-  }, [closingGroups])
-
-  // Filter rows based on dropdowns, search, closingType, and active issue filter
-  const filteredGroups = useMemo(() => {
-    return closingGroups.filter(g => {
-      // Month
-      const matchBulan = selectedBulan === 'ALL' || g.month.toLowerCase() === selectedBulan.toLowerCase()
-      
-      // Platform & Branch
-      let matchPlatform = true
-      if (selectedPlatform === 'ALL') {
-        matchPlatform = true
-      } else if (selectedPlatform === 'SHOPEE_ALL') {
-        matchPlatform = isShopeePlatform(g.marketplace)
-      } else {
-        matchPlatform = g.marketplace.toLowerCase().includes(selectedPlatform.toLowerCase())
-      }
-
-      // Closing Type (Reguler vs Campaign)
-      const matchClosingType = selectedClosingType === 'ALL' || g.closingType === selectedClosingType
-
-      // Period
-      const matchPeriode = selectedPeriode === 'ALL' || g.closingPeriod === selectedPeriode
-      
-      // Search
-      const q = searchQuery.toLowerCase().trim()
-      const matchSearch = !q || 
-        g.sku.toLowerCase().includes(q) || 
-        g.promotionName.toLowerCase().includes(q) || 
-        (g.productName && g.productName.toLowerCase().includes(q)) ||
-        g.promotionCategory.toLowerCase().includes(q) ||
-        g.marketplace.toLowerCase().includes(q)
-
-      // Issue filter
-      let matchIssue = true
-      if (activeIssueFilter === 'DUPLICATE_PROMO') {
-        matchIssue = Boolean(g.isDuplicatePromo)
-      } else if (activeIssueFilter === 'PAKET_DISKON') {
-        matchIssue = Boolean(g.isPaketDiskon)
-      } else if (activeIssueFilter === 'MISSING_SKU') {
-        matchIssue = !g.sku || g.sku === 'All SKU' || g.sku === 'SKU-Umum'
-      } else if (activeIssueFilter === 'INVALID_PRICE') {
-        matchIssue = g.price <= 0 || g.priceAfterDiscount <= 0
-      }
-
-      return matchBulan && matchPlatform && matchClosingType && matchPeriode && matchSearch && matchIssue
-    })
-  }, [closingGroups, selectedBulan, selectedPlatform, selectedClosingType, selectedPeriode, searchQuery, activeIssueFilter])
-
-  // Summary statistics for Filtered Rows
-  const totalBiayaPromosi = useMemo(() => {
-    return filteredGroups.reduce((sum, g) => sum + (g.biaya || g.totalBiayaPromo || 0), 0)
-  }, [filteredGroups])
-
-  const totalBiayaReguler = useMemo(() => {
-    return filteredGroups.filter(g => g.closingType === 'REGULER').reduce((sum, g) => sum + (g.biaya || 0), 0)
-  }, [filteredGroups])
-
-  const totalBiayaCampaign = useMemo(() => {
-    return filteredGroups.filter(g => g.closingType === 'CAMPAIGN').reduce((sum, g) => sum + (g.biaya || 0), 0)
-  }, [filteredGroups])
-
-  const totalClosingQty = useMemo(() => {
-    return filteredGroups.reduce((sum, g) => sum + g.finalClosingQty, 0)
-  }, [filteredGroups])
-
-  const totalValidOrders = useMemo(() => {
-    return filteredGroups.reduce((sum, g) => sum + g.validOrders, 0)
-  }, [filteredGroups])
-
-  const totalCancelledOrders = useMemo(() => {
-    return filteredGroups.reduce((sum, g) => sum + g.cancelledOrders, 0)
-  }, [filteredGroups])
-
-  const totalRawOrders = totalValidOrders + totalCancelledOrders
-
-  // Period-specific subtotals
-  const p1Rows = filteredGroups.filter(g => g.closingPeriod === 'PERIOD_1')
-  const p2Rows = filteredGroups.filter(g => g.closingPeriod === 'PERIOD_2')
-
-  const p1Qty = p1Rows.reduce((sum, g) => sum + g.finalClosingQty, 0)
-  const p1Biaya = p1Rows.reduce((sum, g) => sum + (g.biaya || 0), 0)
-
-  const p2Qty = p2Rows.reduce((sum, g) => sum + g.finalClosingQty, 0)
-  const p2Biaya = p2Rows.reduce((sum, g) => sum + (g.biaya || 0), 0)
+  }, [filteredRows])
 
   // Safe clipboard helper
   const safeCopyToClipboard = async (text: string) => {
@@ -261,57 +245,33 @@ export default function ClosingPage() {
     }
   }
 
-  // 1-Click Copy Handlers
-  const handleCopyAll = async () => {
-    if (filteredGroups.length === 0) return
-    const tsv = generateMasterClosingTSV(filteredGroups)
+  // 1-Click: COPY KOLOM O s/d T (Qty 1-15, Biaya 1-15, Qty 16-30, Biaya 16-30, Grand Total Qty, Grand Total Biaya)
+  const handleCopyColsOT = async () => {
+    if (filteredRows.length === 0) return
+    const tsv = generatePatokanValuesTSV(filteredRows)
     await safeCopyToClipboard(tsv)
-    setCopiedMode('ALL')
-    showToast(`Tercopy ${filteredGroups.length} baris (Semua Closing)! Siap paste (Ctrl+V) ke Master Closing.`)
+    setCopiedMode('COLS_O_T')
+    showToast(`Tercopy ${filteredRows.length} baris Kolom O s/d T! Tinggal klik cell O2 di Google Sheet lalu Ctrl+V.`)
     setTimeout(() => setCopiedMode('NONE'), 4000)
   }
 
-  const handleCopyReguler = async () => {
-    const regulerRows = filteredGroups.filter(g => g.closingType === 'REGULER')
-    if (regulerRows.length === 0) {
-      alert('Tidak ada baris Closingan Reguler pada filter saat ini!')
-      return
-    }
-    const tsv = generateMasterClosingTSV(filteredGroups, 'REGULER')
+  // 1-Click: COPY SELURUH SHEET PATOKAN (Kolom B s/d T)
+  const handleCopyFullPatokan = async () => {
+    if (filteredRows.length === 0) return
+    const tsv = generateFullPatokanTSV(filteredRows)
     await safeCopyToClipboard(tsv)
-    setCopiedMode('REGULER')
-    showToast(`Tercopy ${regulerRows.length} baris khusus Closingan Reguler! Siap paste ke Sheet Master Closing.`)
+    setCopiedMode('FULL_PATOKAN')
+    showToast(`Tercopy seluruh spreadsheet patokan (Kolom B s/d T) dengan header!`)
     setTimeout(() => setCopiedMode('NONE'), 4000)
   }
 
-  const handleCopyCampaign = async () => {
-    const campaignRows = filteredGroups.filter(g => g.closingType === 'CAMPAIGN')
-    if (campaignRows.length === 0) {
-      alert('Tidak ada baris Closingan Campaign pada filter saat ini!')
-      return
-    }
-    const tsv = generateMasterClosingTSV(filteredGroups, 'CAMPAIGN')
+  // Copy 6-Column Master Closing format
+  const handleCopyMaster6Col = async () => {
+    if (filteredRows.length === 0) return
+    const tsv = generateMasterClosingTSV(filteredRows)
     await safeCopyToClipboard(tsv)
-    setCopiedMode('CAMPAIGN')
-    showToast(`Tercopy ${campaignRows.length} baris khusus Closingan Campaign! Siap paste ke Sheet Master Closing.`)
-    setTimeout(() => setCopiedMode('NONE'), 4000)
-  }
-
-  const handleCopyStandard11Col = async () => {
-    if (filteredGroups.length === 0) return
-    const tsv = generateStandardMasterClosingTSV(filteredGroups)
-    await safeCopyToClipboard(tsv)
-    setCopiedMode('11COL')
-    showToast(`Tercopy format 11 kolom Master Closing dengan header.`)
-    setTimeout(() => setCopiedMode('NONE'), 4000)
-  }
-
-  const handleCopyFullAudit = async () => {
-    if (filteredGroups.length === 0) return
-    const tsv = generateFullAuditTSV(filteredGroups)
-    await safeCopyToClipboard(tsv)
-    setCopiedMode('AUDIT')
-    showToast(`Tercopy format audit rincian lengkap (Total Order, Batal, Valid, Cabang, Rule, QTY, Biaya).`)
+    setCopiedMode('MASTER_6COL')
+    showToast(`Tercopy format 6 kolom Master Closing Finance (Platform, Kode, Promo, SKU, Qty, Biaya).`)
     setTimeout(() => setCopiedMode('NONE'), 4000)
   }
 
@@ -325,92 +285,67 @@ export default function ClosingPage() {
   const handleRecalculateClosing = () => {
     setIsProcessing(true)
     setTimeout(() => {
-      const updated = closingGroups.map(g => {
-        const recalculated = calculateClosingGroup(g.transactions, undefined, g.isDuplicatePromo)
-        recalculated.subCategory = g.subCategory
-        recalculated.productName = g.productName
-        recalculated.isPaketDiskon = g.isPaketDiskon
-        recalculated.bundleComponents = g.bundleComponents
-        return recalculated
-      })
-      setClosingGroups(updated)
+      setClosingRows(prev => prev.map(r => {
+        const qtyP1 = r.isDuplicateP1 ? (r.validOrdersP1 || 0) / 2 : (r.validOrdersP1 || 0)
+        const qtyP2 = r.isDuplicateP2 ? (r.validOrdersP2 || 0) / 2 : (r.validOrdersP2 || 0)
+        const biayaP1 = qtyP1 * r.totalDiskon
+        const biayaP2 = qtyP2 * r.totalDiskon
+        const grandTotalQty = qtyP1 + qtyP2
+        const grandTotalBiaya = biayaP1 + biayaP2
+
+        return {
+          ...r,
+          qtyP1,
+          biayaP1,
+          qtyP2,
+          biayaP2,
+          grandTotalQty,
+          grandTotalBiaya,
+          finalClosingQty: grandTotalQty,
+          biaya: grandTotalBiaya,
+          totalBiayaPromo: grandTotalBiaya
+        }
+      }))
       setIsProcessing(false)
-      showToast('Kalkulasi Closing selesai! Semua pesanan valid, cabang, rule duplikat, dan biaya telah diperbarui.')
+      showToast('Kalkulasi closing selesai! Qty 1-15, Qty 16-30, dan Biaya Promosi telah diperbarui.')
     }, 400)
   }
 
-  // Toggle Duplicate Rule on a specific row
-  const handleToggleDuplicateRule = (groupId: string) => {
-    if (closingStatus === 'Closed') {
-      alert('Status closing saat ini CLOSED (Terkunci). Silakan klik tombol "Reopen Closing" terlebih dahulu jika ingin mengedit.')
-      return
-    }
-
-    setClosingGroups(prev => prev.map(g => {
-      if (g.groupId === groupId) {
-        const newIsDuplicate = !g.isDuplicatePromo
-        const updated = calculateClosingGroup(g.transactions, undefined, newIsDuplicate)
-        updated.subCategory = g.subCategory
-        updated.productName = g.productName
-        updated.isPaketDiskon = g.isPaketDiskon
-        updated.bundleComponents = g.bundleComponents
-        return updated
-      }
-      return g
-    }))
-  }
-
-  // Export Excel (.xlsx) with clean formatting for Finance
+  // Export Excel (.xlsx) matching exact patokan columns
   const handleExportExcel = () => {
-    if (filteredGroups.length === 0) {
+    if (filteredRows.length === 0) {
       alert('Tidak ada data yang dapat diekspor!')
       return
     }
 
     try {
-      const masterRows = filteredGroups.map(r => ({
-        'Platform': r.marketplace,
-        'Cabang': r.branchCity || '-',
-        'Tipe Closing': r.closingType,
-        'Kode Promosi': r.promotionCategory,
-        'Nama Promosi': r.promotionName,
-        'Kode SKU': r.sku,
-        'Nama Produk': r.productName || '',
-        'Periode': r.periodLabel,
-        'Harga Bulanan': r.price,
-        'Diskon': r.discountPercent > 0 ? `${r.discountPercent}%` : '',
-        'Total Diskon': r.discountAmount,
-        'Harga Promo (Net)': r.priceAfterDiscount,
-        'Quantity': r.finalClosingQty,
-        'Biaya Promo (Net)': Math.round(r.biaya)
-      }))
-
-      const auditRows = filteredGroups.map(r => ({
-        'Platform': r.marketplace,
-        'Cabang': r.branchCity || '-',
-        'Tipe Closing': r.closingType,
-        'Periode': r.periodLabel,
-        'Kode Promosi': r.promotionCategory,
-        'Nama Promosi': r.promotionName,
+      const exportData = filteredRows.map(r => ({
+        'Marketplace': r.marketplace,
+        'Kategori': r.kategori,
+        'Sub Kategori': r.subKategori,
+        'Periode': r.periodeBadge,
+        'Tanggal': r.tanggal,
         'SKU': r.sku,
-        'Total Orders': r.totalOrders,
-        'Pesanan Batal': r.cancelledOrders,
-        'Pesanan Valid': r.validOrders,
-        'Duplicate Rule': r.isDuplicatePromo ? 'Ya (÷2)' : 'Tidak',
-        'Final QTY': r.finalClosingQty,
-        'Harga Promo': r.priceAfterDiscount,
-        'Biaya Closing': Math.round(r.biaya),
-        'Formula': r.formulaDescription
+        'Product Name': r.productName,
+        'HARGA Bulanan': r.hargaBulanan,
+        'Diskon': r.diskonPersen > 0 ? `${r.diskonPersen}%` : '',
+        'Total Diskon': r.totalDiskon,
+        'Harga Promo': r.hargaPromo,
+        'Qty': r.targetQty,
+        'Total Promosi': r.totalPromosi,
+        'Qty 1-15 Sep': r.qtyP1,
+        'Biaya 1-15 Sep': Math.round(r.biayaP1),
+        'Qty 16-30 Sep': r.qtyP2,
+        'Biaya 16-30 Sep': Math.round(r.biayaP2),
+        'GRAND TOTAL QTY TERJUAL': r.grandTotalQty,
+        'GRAND TOTAL BIAYA PROMOSI': Math.round(r.grandTotalBiaya)
       }))
 
       const wb = xlsx.utils.book_new()
-      const wsMaster = xlsx.utils.json_to_sheet(masterRows)
-      const wsAudit = xlsx.utils.json_to_sheet(auditRows)
+      const ws = xlsx.utils.json_to_sheet(exportData)
+      xlsx.utils.book_append_sheet(wb, ws, '2026_Promo Theraskin')
 
-      xlsx.utils.book_append_sheet(wb, wsMaster, 'Rekap Closing Master')
-      xlsx.utils.book_append_sheet(wb, wsAudit, 'Audit Finance')
-
-      const filename = `Rekap_Closing_${selectedPlatform}_${selectedBulan}_${selectedTahun}.xlsx`
+      const filename = `2026_Promo_Theraskin_${selectedBulan}_${selectedTahun}.xlsx`
       xlsx.writeFile(wb, filename)
       showToast(`Berhasil mengekspor ${filename}`)
     } catch (err) {
@@ -419,7 +354,104 @@ export default function ClosingPage() {
     }
   }
 
-  // Handle Upload Raw Order Excel / CSV via Automated Smart Pipeline
+  // Reusable order processor for File Upload, Quick Paste, and Testing
+  const applyRawOrders = (rawData: any[], targetMarketplace: string) => {
+    let matchedOrdersCount = 0
+    let unmatchedOrdersCount = 0
+    const updatedRows = [...closingRows]
+
+    rawData.forEach((row: any) => {
+      // 1. Order created time (Tanggal 1-14 Sep masuk Periode 1)
+      const dateRaw = row['Order created time'] || row['Order Created Time'] || row['Waktu Pesanan Dibuat'] || row['Waktu Pembayaran Dilakukan'] || row['Created Time'] || row['Tanggal'] || row['createTime'] || row['Date'] || new Date().toISOString()
+      const status = (row['Status Pesanan'] || row['Order Status'] || row['Status'] || row['status'] || 'Selesai').toString()
+      const isCancelled = isOrderCancelled(status)
+      
+      // 2. SKU and Nama Produk (Dilihat nama productnya juga untuk pencocokan)
+      const sku = (row['Nomor Referensi SKU'] || row['Seller SKU'] || row['sellerSku'] || row['SKU'] || '').toString().trim()
+      const productNameRaw = (row['Nama Produk'] || row['Product Name'] || row['Item Name'] || row['itemName'] || '').toString().trim()
+      
+      // 3. Quantity
+      const qty = parseInt(String(row['Jumlah'] || row['Quantity'] || row['qty'] || '1').replace(/[^0-9]/g, '')) || 1
+
+      // 4. SKU Subtotal After Discount (Kolom kuning patokan user: harga setelah diskon riil)
+      const rawNetPrice = row['SKU Subtotal After Discount'] || row['Subtotal After Discount'] || row['Harga Setelah Diskon'] || row['paidPrice'] || row['Paid Price'] || row['Harga Kesepakatan']
+      let hargaNetUnit = 0
+      let hargaNetTotal = 0
+      let totalDiskon = 0
+
+      if (rawNetPrice !== undefined && rawNetPrice !== null && String(rawNetPrice).trim() !== '') {
+        const parsedNet = parseFloat(String(rawNetPrice).replace(/[^0-9.]/g, '')) || 0
+        hargaNetTotal = parsedNet
+        hargaNetUnit = qty > 0 ? parsedNet / qty : parsedNet
+        const hargaAwal = parseFloat(String(row['Harga Awal'] || row['Original Price'] || row['SKU Unit Original Price'] || row['unitPrice'] || row['Harga Produk'] || row['Harga'] || '0').replace(/[^0-9.]/g, '')) || 0
+        totalDiskon = Math.max(0, hargaAwal - hargaNetUnit)
+      } else {
+        const hargaAwal = parseFloat(String(row['Harga Awal'] || row['Original Price'] || row['SKU Unit Original Price'] || row['unitPrice'] || row['Harga Produk'] || row['Harga'] || '0').replace(/[^0-9.]/g, '')) || 0
+        totalDiskon = parseFloat(String(row['Total Diskon'] || row['Diskon Promosi'] || row['Potongan Penjual'] || row['Diskon'] || row['discount'] || '0').replace(/[^0-9.]/g, '')) || 0
+        hargaNetUnit = Math.max(0, hargaAwal - totalDiskon)
+        hargaNetTotal = hargaNetUnit * qty
+      }
+
+      // Period determination: Tanggal 1-15 (misal 1-14 Sep) -> PERIOD_1, 16-30/31 -> PERIOD_2
+      const period = getClosingPeriod(dateRaw)
+
+      // 5. Match against catalog rows (by Platform, SKU / Nama Produk, dan Harga Promo Kolom L)
+      const matchedRowIndex = updatedRows.findIndex(r => {
+        const platformKey = targetMarketplace === 'AUTO' ? '' : targetMarketplace.toLowerCase().split(' ')[0]
+        const matchPlatform = !platformKey || r.marketplace.toLowerCase().includes(platformKey)
+        
+        // SKU or Product Name match
+        const p1 = productNameRaw.toLowerCase()
+        const p2 = r.productName.toLowerCase()
+        const matchSkuOrName = (sku && r.sku.toLowerCase() === sku.toLowerCase()) || 
+                               (p1 && p2 && (p1.includes(p2) || p2.includes(p1))) ||
+                               r.sku === 'All SKU'
+        
+        // Match Harga Promo (unit price vs Kolom L, or total price vs Kolom L)
+        const matchPromoPrice = Math.abs(r.hargaPromo - hargaNetUnit) <= 500 || Math.abs(r.hargaPromo - hargaNetTotal) <= 500
+        const matchVoucher = r.sku === 'All SKU' && Math.abs(r.totalDiskon - totalDiskon) <= 100
+
+        return matchPlatform && (matchVoucher || (matchSkuOrName && matchPromoPrice))
+      })
+
+      if (matchedRowIndex !== -1) {
+        matchedOrdersCount++
+        const r = updatedRows[matchedRowIndex]
+        
+        if (period === 'PERIOD_1') {
+          r.totalOrdersP1 = (r.totalOrdersP1 || 0) + qty
+          if (isCancelled) {
+            r.cancelledOrdersP1 = (r.cancelledOrdersP1 || 0) + qty
+          } else {
+            r.validOrdersP1 = (r.validOrdersP1 || 0) + qty
+          }
+        } else {
+          r.totalOrdersP2 = (r.totalOrdersP2 || 0) + qty
+          if (isCancelled) {
+            r.cancelledOrdersP2 = (r.cancelledOrdersP2 || 0) + qty
+          } else {
+            r.validOrdersP2 = (r.validOrdersP2 || 0) + qty
+          }
+        }
+
+        // Recompute Qty & Biaya
+        r.qtyP1 = r.isDuplicateP1 ? Math.max(0, r.validOrdersP1) / 2 : Math.max(0, r.validOrdersP1)
+        r.biayaP1 = r.qtyP1 * r.totalDiskon
+        r.qtyP2 = r.isDuplicateP2 ? Math.max(0, r.validOrdersP2) / 2 : Math.max(0, r.validOrdersP2)
+        r.biayaP2 = r.qtyP2 * r.totalDiskon
+        r.grandTotalQty = r.qtyP1 + r.qtyP2
+        r.grandTotalBiaya = r.biayaP1 + r.biayaP2
+      } else {
+        unmatchedOrdersCount++
+      }
+    })
+
+    setClosingRows(updatedRows)
+    setClosingStatus('Data Imported')
+    return { matchedOrdersCount, unmatchedOrdersCount }
+  }
+
+  // Handle Upload Raw Order Excel / CSV with Automated Smart Price-Matching
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -443,7 +475,7 @@ export default function ClosingPage() {
         throw new Error('File tidak memiliki baris data.')
       }
 
-      // Determine platform / branch
+      // Auto-detect branch / platform
       let targetMarketplace = 'Shopee Semarang'
       if (uploadTargetBranch !== 'AUTO') {
         targetMarketplace = uploadTargetBranch
@@ -455,66 +487,12 @@ export default function ClosingPage() {
         else if (filenameLow.includes('pusat')) targetMarketplace = 'Shopee Pusat'
         else if (filenameLow.includes('tiktok')) targetMarketplace = 'TikTok Shop'
         else if (filenameLow.includes('lazada')) targetMarketplace = 'Lazada'
-        else if (selectedPlatform !== 'ALL' && selectedPlatform !== 'SHOPEE_ALL') targetMarketplace = selectedPlatform
+        else if (selectedPlatform !== 'ALL') targetMarketplace = selectedPlatform
       }
 
-      // Convert raw rows into RawOrderTransaction objects
-      const transactions: RawOrderTransaction[] = rawData.map((row: any, idx: number) => {
-        const dateRaw = row['Waktu Pesanan Dibuat'] || row['Waktu Pembayaran Dilakukan'] || row['Created Time'] || row['Tanggal'] || new Date().toISOString()
-        const status = (
-          row['Status Pesanan'] || 
-          row['Order Status'] || 
-          row['Status'] || 
-          'Selesai'
-        ).toString()
-
-        const orderNumber = row['No. Pesanan'] || row['Order ID'] || row['Order SN'] || `ORD-${idx + 1}`
-        const sku = row['Nomor Referensi SKU'] || row['Seller SKU'] || row['SKU'] || 'FPK00000033'
-        const productName = row['Nama Produk'] || row['Product Name'] || 'Produk Theraskin'
-        const promoName = row['Nama Promosi'] || row['Voucher Ditanggung Penjual'] || row['Paket Diskon'] || row['Flash Sale'] || 'Promo Diskon'
-        const hargaAwal = parseFloat(row['Harga Awal'] || row['Original Price'] || row['Harga'] || '85000') || 85000
-        const totalDiskon = parseFloat(row['Total Diskon'] || row['Diskon Promosi'] || row['Potongan Penjual'] || row['Diskon'] || '5000') || 5000
-        const qty = parseInt(row['Jumlah'] || row['Quantity'] || '1') || 1
-        
-        // Anti-Pusing: Otomatis potong periode 1 (1-15) vs 2 (16-30/31)
-        const period = getClosingPeriod(dateRaw)
-
-        let promoCategory = 'Voucher Toko'
-        const promoLow = promoName.toLowerCase()
-        if (promoLow.includes('flash sale')) promoCategory = 'Promo Flash Sale'
-        else if (promoLow.includes('paket') || promoLow.includes('combo')) promoCategory = 'Paket Diskon'
-        else if (promoLow.includes('membership') || promoLow.includes('member')) promoCategory = 'Voucher Brand Membership'
-        else if (promoLow.includes('live') || promoLow.includes('video')) promoCategory = 'Voucher Live / Video'
-
-        // Anti-Pusing: Otomatis klasifikasi Reguler vs Campaign
-        const closingType = classifyClosingType(promoCategory, promoName, hargaAwal, totalDiskon)
-
-        return {
-          id: `tx-${idx}-${orderNumber}`,
-          orderNumber,
-          date: dateRaw,
-          month: selectedBulan,
-          period,
-          marketplace: targetMarketplace,
-          closingType,
-          promotionCategory: promoCategory,
-          promotionName: promoName,
-          sku,
-          productName,
-          price: hargaAwal,
-          discountAmount: totalDiskon,
-          quantity: qty,
-          orderStatus: status,
-          customerUsername: row['Username (Pembeli)'] || row['Customer'] || ''
-        }
-      })
-
-      // Run through Closing Calculation Engine
-      const result = processClosingTransactions(transactions)
-      setClosingGroups(prev => [...result.groups, ...prev])
-      setClosingStatus('Data Imported')
+      const res = applyRawOrders(rawData, targetMarketplace)
       setShowUploadModal(false)
-      showToast(`Sukses! ${transactions.length} pesanan otomatis disortir ke Periode 1 & 2 untuk ${targetMarketplace}.`)
+      showToast(`Sukses! ${rawData.length} pesanan diproses, ${res.matchedOrdersCount} pesanan otomatis cocok dengan Harga Promo katalog.`)
 
     } catch (err) {
       console.error('Failed to parse order file:', err)
@@ -525,109 +503,228 @@ export default function ClosingPage() {
     }
   }
 
-  // Handle Manual Row Submission with Engine Calculation
+  // Handle Quick Paste Process
+  const handleQuickPasteProcess = () => {
+    if (!quickPasteText.trim()) return
+    setIsProcessing(true)
+    try {
+      let parsed = Papa.parse(quickPasteText, { header: true, skipEmptyLines: true }).data
+      if (!parsed || parsed.length === 0 || Object.keys(parsed[0] || {}).length <= 1) {
+        parsed = Papa.parse(quickPasteText, { delimiter: '\t', header: true, skipEmptyLines: true }).data
+      }
+      if (!parsed || parsed.length === 0) {
+        alert('Teks tidak dapat dibaca sebagai tabel. Pastikan copy tabel dari Excel atau Google Sheet.')
+        return
+      }
+
+      let targetMarketplace = uploadTargetBranch === 'AUTO' ? 'Shopee Semarang' : uploadTargetBranch
+      const res = applyRawOrders(parsed, targetMarketplace)
+      setShowUploadModal(false)
+      setQuickPasteText('')
+      showToast(`Sukses Quick Paste! ${parsed.length} pesanan diproses: ${res.matchedOrdersCount} berhasil dicocokkan ke Harga Promo katalog.`)
+    } catch (err) {
+      console.error(err)
+      alert('Gagal memproses data Quick Paste. Pastikan format kolom sesuai.')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Handle Run Simulator Test
+  const handleRunSimulator = () => {
+    const net = Math.max(0, simForm.hargaAwal - simForm.totalDiskon)
+    const period = getClosingPeriod(simForm.date)
+    
+    // Find matched row in catalog
+    const target = closingRows.find(r => {
+      const matchPlatform = r.marketplace.toLowerCase().includes(simForm.marketplace.toLowerCase().split(' ')[0])
+      const matchSku = r.sku.toLowerCase() === simForm.sku.toLowerCase() || r.sku === 'All SKU'
+      const matchPrice = Math.abs(r.hargaPromo - net) <= 500
+      const matchVoucher = r.sku === 'All SKU' && Math.abs(r.totalDiskon - simForm.totalDiskon) <= 100
+      return matchPlatform && (matchVoucher || (matchSku && matchPrice))
+    })
+
+    if (target) {
+      const biaya = simForm.qty * target.totalDiskon
+      setSimResult({
+        matched: true,
+        targetRow: target,
+        hargaSetelahDiskon: net,
+        period,
+        biayaBrand: biaya,
+        keterangan: `COCOK 100%! Pesanan ${simForm.sku} di ${target.marketplace} memiliki Harga Promo Rp ${net.toLocaleString('id-ID')} (identik dengan Kolom L di Google Sheet). Karena tanggal pesanan adalah ${simForm.date}, maka masuk ke ${period === 'PERIOD_1' ? 'Periode 1 (Qty 1–15 Sep)' : 'Periode 2 (Qty 16–30 Sep)'}.`
+      })
+    } else {
+      setSimResult({
+        matched: false,
+        hargaSetelahDiskon: net,
+        period,
+        biayaBrand: 0,
+        keterangan: `TIDAK ADA ROW PROMO YANG COCOK: Di ${simForm.marketplace}, tidak ada promosi dengan SKU '${simForm.sku}' pada Harga Promo Rp ${net.toLocaleString('id-ID')}. Pesanan ini tidak akan dimasukkan ke closing promo (terjual harga normal atau promo lain).`
+      })
+    }
+  }
+
+  // Handle Apply Single Simulator Result to Main Table
+  const handleApplySimulatorToRows = () => {
+    if (!simResult?.matched || !simResult.targetRow) return
+    const rowId = simResult.targetRow.id
+    setClosingRows(prev => prev.map(r => {
+      if (r.id !== rowId) return r
+      const qty = simForm.qty
+      let v1 = r.validOrdersP1 || 0
+      let v2 = r.validOrdersP2 || 0
+      if (simResult.period === 'PERIOD_1') {
+        v1 += qty
+      } else {
+        v2 += qty
+      }
+      const qtyP1 = r.isDuplicateP1 ? v1 / 2 : v1
+      const qtyP2 = r.isDuplicateP2 ? v2 / 2 : v2
+      const biayaP1 = qtyP1 * r.totalDiskon
+      const biayaP2 = qtyP2 * r.totalDiskon
+      return {
+        ...r,
+        validOrdersP1: v1,
+        validOrdersP2: v2,
+        totalOrdersP1: (r.totalOrdersP1 || 0) + (simResult.period === 'PERIOD_1' ? qty : 0),
+        totalOrdersP2: (r.totalOrdersP2 || 0) + (simResult.period === 'PERIOD_2' ? qty : 0),
+        qtyP1,
+        biayaP1,
+        qtyP2,
+        biayaP2,
+        grandTotalQty: qtyP1 + qtyP2,
+        grandTotalBiaya: biayaP1 + biayaP2
+      }
+    }))
+    setShowUploadModal(false)
+    showToast(`1 Transaksi simulasi (${simForm.sku}) berhasil ditambahkan ke baris ${simResult.targetRow.productName}!`)
+  }
+
+  // Handle Manual Row Submission
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
     const { 
-      totalOrders, 
-      cancelledOrders, 
-      price, 
-      discountAmount, 
-      bulan, 
-      year, 
-      period, 
-      platform, 
-      closingType,
-      kodePromosi, 
-      subCategory,
-      namaPromosi, 
+      sheetTab,
+      marketplace, 
+      kategori, 
+      subKategori, 
+      periodeBadge, 
+      tanggal, 
       sku, 
       productName, 
-      isDuplicatePromo 
+      hargaBulanan, 
+      diskonPersen, 
+      totalDiskon, 
+      targetQty, 
+      totalPromosi, 
+      ordersP1, 
+      cancelP1, 
+      ordersP2, 
+      cancelP2, 
+      isDuplicate,
+      closingType
     } = manualForm
 
-    const validOrders = Math.max(0, totalOrders - cancelledOrders)
+    const hargaPromo = Math.max(0, hargaBulanan - totalDiskon)
+    const validP1 = Math.max(0, ordersP1 - cancelP1)
+    const validP2 = Math.max(0, ordersP2 - cancelP2)
 
-    const txs: RawOrderTransaction[] = [
-      ...Array.from({ length: validOrders }).map((_, i) => ({
-        id: `manual-v-${Date.now()}-${i}`,
-        orderNumber: `ORD-M-V-${i + 1}`,
-        date: period === 'PERIOD_1' ? `${year}-09-05` : `${year}-09-20`,
-        month: bulan,
-        period,
-        marketplace: platform,
-        closingType,
-        promotionCategory: kodePromosi,
-        promotionName: namaPromosi,
-        sku,
-        productName,
-        price,
-        discountAmount,
-        quantity: 1,
-        orderStatus: 'Selesai',
-        isDuplicatePromo
-      })),
-      ...Array.from({ length: cancelledOrders }).map((_, i) => ({
-        id: `manual-c-${Date.now()}-${i}`,
-        orderNumber: `ORD-M-C-${i + 1}`,
-        date: period === 'PERIOD_1' ? `${year}-09-06` : `${year}-09-21`,
-        month: bulan,
-        period,
-        marketplace: platform,
-        closingType,
-        promotionCategory: kodePromosi,
-        promotionName: namaPromosi,
-        sku,
-        productName,
-        price,
-        discountAmount,
-        quantity: 1,
-        orderStatus: 'Dibatalkan',
-        isDuplicatePromo
-      }))
-    ]
+    const qtyP1 = isDuplicate ? validP1 / 2 : validP1
+    const qtyP2 = isDuplicate ? validP2 / 2 : validP2
+    const biayaP1 = qtyP1 * totalDiskon
+    const biayaP2 = qtyP2 * totalDiskon
+    const grandTotalQty = qtyP1 + qtyP2
+    const grandTotalBiaya = biayaP1 + biayaP2
 
-    const groupResult = calculateClosingGroup(txs, undefined, isDuplicatePromo)
-    groupResult.subCategory = subCategory
-    groupResult.productName = productName
-    groupResult.isPaketDiskon = kodePromosi.toLowerCase().includes('paket') || namaPromosi.toLowerCase().includes('paket')
-    if (groupResult.isPaketDiskon) {
-      groupResult.bundleComponents = [`${sku} (Utama)`]
+    const newRow: PatokanClosingRow = {
+      id: `row-manual-${Date.now()}`,
+      groupId: `grp-${Date.now()}`,
+      sheetTab,
+      marketplace,
+      kategori,
+      subKategori,
+      periodeBadge,
+      tanggal,
+      sku,
+      productName,
+      hargaBulanan,
+      diskonPersen,
+      totalDiskon,
+      hargaPromo,
+      targetQty,
+      totalPromosi,
+      qtyP1,
+      biayaP1,
+      qtyP2,
+      biayaP2,
+      grandTotalQty,
+      grandTotalBiaya,
+      month: selectedBulan,
+      year: selectedTahun,
+      closingType,
+      branchCity: marketplace.includes('Semarang') ? 'Semarang' : marketplace.includes('Bali') ? 'Bali' : marketplace.includes('Surabaya') ? 'Surabaya' : 'Pusat',
+      isShopeeBranch: isShopeePlatform(marketplace),
+      isDuplicateP1: isDuplicate,
+      isDuplicateP2: isDuplicate,
+      totalOrdersP1: ordersP1,
+      cancelledOrdersP1: cancelP1,
+      validOrdersP1: validP1,
+      totalOrdersP2: ordersP2,
+      cancelledOrdersP2: cancelP2,
+      validOrdersP2: validP2,
+      finalClosingQty: grandTotalQty,
+      biaya: grandTotalBiaya,
+      totalBiayaPromo: grandTotalBiaya,
+      price: hargaBulanan,
+      discountAmount: totalDiskon,
+      priceAfterDiscount: hargaPromo,
+      discountPercent: diskonPersen,
+      promotionCategory: subKategori,
+      promotionName: productName,
+      closingPeriod: 'PERIOD_1',
+      periodLabel: `Periode 1 (1–15 ${selectedBulan})`,
+      totalOrders: ordersP1 + ordersP2,
+      cancelledOrders: cancelP1 + cancelP2,
+      validOrders: validP1 + validP2,
+      appliedRule: isDuplicate ? 'DIVIDE_VALID_ORDERS_BY_2' : 'STANDARD_NO_SPLIT',
+      formulaDescription: isDuplicate ? `(${ordersP1 + ordersP2} total - ${cancelP1 + cancelP2} batal) ÷ 2 = ${grandTotalQty}` : `(${ordersP1 + ordersP2} total - ${cancelP1 + cancelP2} batal) = ${grandTotalQty}`,
+      hasSameDiscountInPeriod: isDuplicate,
+      transactions: []
     }
 
-    setClosingGroups([groupResult, ...closingGroups])
+    setClosingRows([newRow, ...closingRows])
     setShowManualModal(false)
-    showToast(`Baris promo "${namaPromosi}" (${platform} - ${closingType}) berhasil ditambahkan.`)
+    showToast(`Baris "${productName}" (${marketplace}) berhasil ditambahkan.`)
   }
 
-  const handleDeleteGroup = (groupId: string) => {
+  const handleDeleteRow = (id: string) => {
     if (closingStatus === 'Closed') {
-      alert('Closing berstatus CLOSED. Buka kunci closing jika ingin menghapus.')
+      alert('Closing berstatus CLOSED (Terkunci). Silakan reopen closing terlebih dahulu.')
       return
     }
-    if (confirm('Hapus baris promo closing ini?')) {
-      setClosingGroups(closingGroups.filter(g => g.groupId !== groupId))
+    if (confirm('Hapus baris closing ini dari patokan?')) {
+      setClosingRows(closingRows.filter(r => r.id !== id))
       showToast('Baris closing telah dihapus.')
     }
   }
 
-  // Reset demo seed
   const handleResetSeedData = () => {
-    if (confirm('Muat ulang data referensi lengkap Theraskin (Shopee Semarang, Bali, Surabaya, Pusat, TikTok, Lazada)?')) {
-      setClosingGroups(generateTheraskinClosingSeed(selectedBulan, selectedTahun))
-      setActiveIssueFilter(null)
-      setSearchQuery('')
+    if (confirm('Muat ulang data patokan Theraskin (Tab September & September Cabang)?')) {
+      setClosingRows(generateTheraskinClosingSeed(selectedBulan, selectedTahun))
+      setActiveSheetTab('ALL')
       setSelectedPlatform('ALL')
-      setSelectedClosingType('ALL')
-      showToast('Data referensi closing Theraskin multi-cabang berhasil dimuat ulang.')
+      setSelectedSubKategori('ALL')
+      setSearchQuery('')
+      showToast('Data patokan Theraskin berhasil dimuat ulang.')
     }
   }
 
-  // Filter raw orders for the Raw Orders Tab
+  // All transactions for Raw Orders tab
   const allRawTransactions = useMemo(() => {
-    return filteredGroups.flatMap(g => g.transactions)
-  }, [filteredGroups])
+    return filteredRows.flatMap(r => r.transactions || [])
+  }, [filteredRows])
 
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '40px' }}>
@@ -658,62 +755,98 @@ export default function ClosingPage() {
         </div>
       )}
 
-      {/* 2. ANTI-PUSING PIPELINE BANNER (ZERO-HEADACHE EXPLAINER) */}
+      {/* 2. SMART PRICE-MATCHING & WORKFLOW BANNER */}
       <div style={{
-        background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
+        background: 'linear-gradient(135deg, #1E3A8A 0%, #0F172A 100%)',
         color: '#FFFFFF',
         borderRadius: '12px',
-        padding: '16px 20px',
+        padding: '16px 22px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '14px',
-        boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)'
+        gap: '16px',
+        boxShadow: '0 4px 14px rgba(15, 23, 42, 0.18)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: 'rgba(37, 99, 235, 0.3)', border: '1px solid rgba(147, 197, 253, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#93C5FD' }}>
-            <Sparkles size={22} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', maxWidth: '850px' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: 'rgba(255, 255, 255, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FCD34D', flexShrink: 0 }}>
+            <Sparkles size={24} />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontWeight: 800, fontSize: '0.95rem', letterSpacing: '-0.01em', color: '#F8FAFC' }}>
-                Pipeline Closing Otomatis (Anti-Pusing Data Mentah)
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.01em', color: '#FFFFFF' }}>
+                Format Resmi Spreadsheet: '2026_Promo Theraskin'
               </span>
-              <span className="badge" style={{ backgroundColor: '#2563EB', color: '#FFFFFF', fontSize: '0.68rem', padding: '2px 8px' }}>
-                Multi-Cabang Shopee
+              <span className="badge" style={{ backgroundColor: '#FCD34D', color: '#78350F', fontSize: '0.68rem', padding: '2px 8px', fontWeight: 700 }}>
+                100% Identik Kolom B s/d T
               </span>
+              <a
+                href="https://docs.google.com/spreadsheets/d/1kPM6fmb81EzXoBybPbGSl1NSE2TL3SgdzJbQ88XZLNw/edit?usp=sharing"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontSize: '0.72rem',
+                  padding: '3px 9px',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                  color: '#FDE68A',
+                  border: '1px solid rgba(253, 230, 138, 0.4)',
+                  textDecoration: 'none',
+                  fontWeight: 700
+                }}
+              >
+                <ExternalLink size={12} />
+                Buka Google Sheet
+              </a>
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#94A3B8', marginTop: '2px' }}>
-              Upload file pesanan mentah ➔ Sistem otomatis potong <strong>Tgl 1–15 & 16–30/31</strong>, bersihkan batal (COUNT=0), pisahkan <strong>Shopee Semarang/Bali/Surabaya/Pusat</strong>, dan kelompokkan <strong>Harga Campaign vs Reguler</strong>.
+            <div style={{ fontSize: '0.8125rem', color: '#CBD5E1', marginTop: '3px', lineHeight: 1.45 }}>
+              Data mentah Shopee/TikTok/Lazada otomatis dihitung <strong>Harga Setelah Diskon ➔ Dicocokkan ke Harga Promo (Kuning)</strong>. Nilai closing langsung masuk ke <strong>Qty 1–15 & Biaya 1–15</strong> dan <strong>Qty 16–30 & Biaya 1–30</strong> dengan formula resmi: <code style={{ backgroundColor: 'rgba(255,255,255,0.12)', padding: '1px 5px', borderRadius: '4px' }}>Biaya = Qty × Total Diskon</code>.
             </div>
           </div>
         </div>
 
+        {/* Primary 1-Click Copy O-T Button */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
-            onClick={() => setShowUploadModal(true)}
+            onClick={handleCopyColsOT}
             className="btn-primary"
-            style={{ fontSize: '0.8125rem', padding: '7px 14px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#2563EB', fontWeight: 600 }}
+            style={{ 
+              fontSize: '0.8125rem', 
+              padding: '8px 16px', 
+              height: '38px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              backgroundColor: copiedMode === 'COLS_O_T' ? '#16A34A' : '#F59E0B', 
+              color: '#0F172A',
+              fontWeight: 800,
+              boxShadow: '0 2px 10px rgba(245, 158, 11, 0.35)'
+            }}
+            disabled={filteredRows.length === 0}
+            title="Salin Kolom O s/d T tab-separated. Klik cell O2 di Google Sheet lalu Ctrl+V!"
           >
-            <UploadCloud size={15} /> Upload File Order
+            {copiedMode === 'COLS_O_T' ? <Check size={16} /> : <Copy size={16} />}
+            {copiedMode === 'COLS_O_T' ? 'Tercopy! Tinggal Paste di Cell O2' : 'COPY KOLOM O–T (Qty & Biaya)'}
           </button>
+          
           <button
-            onClick={handleCopyAll}
+            onClick={() => setShowUploadModal(true)}
             className="btn-outline"
-            style={{ fontSize: '0.8125rem', padding: '7px 14px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(255,255,255,0.08)', color: '#FFFFFF', borderColor: 'rgba(255,255,255,0.2)' }}
-            disabled={filteredGroups.length === 0}
+            style={{ fontSize: '0.8125rem', padding: '8px 14px', height: '38px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(255,255,255,0.1)', color: '#FFFFFF', borderColor: 'rgba(255,255,255,0.25)' }}
           >
-            <Copy size={14} /> 1-Click Copy Master
+            <UploadCloud size={15} /> Upload Pesanan
           </button>
         </div>
       </div>
 
-      {/* 3. PAGE HEADER & PRIMARY ACTION BUTTONS */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+      {/* 3. PAGE HEADER & SECONDARY ACTIONS */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-            <h1 className="page-title" style={{ margin: 0 }}>Laporan Closing Promo</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h1 className="page-title" style={{ margin: 0 }}>Rekap Closing Promo & Diskon</h1>
             <span className="badge" style={{ backgroundColor: '#EFF6FF', color: '#2563EB', borderColor: '#DBEAFE', fontWeight: 600 }}>
               Working Closing Tool
             </span>
@@ -727,222 +860,139 @@ export default function ClosingPage() {
               </span>
             )}
           </div>
-          <p className="page-subtitle" style={{ maxWidth: '820px' }}>
-            Rekonsiliasi data promo untuk Finance. Menghasilkan <strong>Quantity + Biaya</strong> untuk <strong>Shopee (Pusat, Semarang, Bali, Surabaya)</strong>, <strong>TikTok Shop</strong>, dan <strong>Lazada</strong>, dengan pemisahan harga khusus Campaign.
+          <p className="page-subtitle" style={{ margin: 0, marginTop: '2px' }}>
+            Perhitungan nominal yang brand keluarkan untuk biaya promosi marketplace pada periode 1 (1–15) dan periode 2 (16–30/31).
           </p>
         </div>
 
-        {/* 1-Click Copy Strip (Reguler, Campaign, & Semua) */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button 
+            onClick={handleCopyFullPatokan} 
+            className="btn-outline" 
+            style={{ fontSize: '0.75rem', height: '34px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            title="Salin seluruh kolom B sampai T"
+          >
+            <TableProperties size={14} /> Copy Seluruh Sheet (B–T)
+          </button>
           
-          {/* Copy Reguler Only */}
           <button 
-            onClick={handleCopyReguler}
-            className="btn-outline"
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '6px', 
-              fontSize: '0.75rem', 
-              height: '36px',
-              backgroundColor: copiedMode === 'REGULER' ? 'var(--success-light)' : 'var(--surface)',
-              color: copiedMode === 'REGULER' ? 'var(--success)' : '#1E293B',
-              borderColor: copiedMode === 'REGULER' ? 'var(--success-border)' : 'var(--surface-border-strong)'
-            }}
-            title="Salin 6 kolom baris Closingan Reguler saja"
+            onClick={handleCopyMaster6Col} 
+            className="btn-outline" 
+            style={{ fontSize: '0.75rem', height: '34px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            title="Salin 6 kolom TSV untuk Master Closing"
           >
-            {copiedMode === 'REGULER' ? <Check size={14} /> : <Tag size={14} color="#2563EB" />}
-            {copiedMode === 'REGULER' ? 'Tercopy Reguler!' : 'Copy Closingan Reguler'}
+            <FileSpreadsheet size={14} /> Copy Master Closing (6-Kolom)
           </button>
 
-          {/* Copy Campaign Only */}
-          <button 
-            onClick={handleCopyCampaign}
-            className="btn-outline"
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '6px', 
-              fontSize: '0.75rem', 
-              height: '36px',
-              backgroundColor: copiedMode === 'CAMPAIGN' ? 'var(--success-light)' : 'var(--surface)',
-              color: copiedMode === 'CAMPAIGN' ? 'var(--success)' : '#1E293B',
-              borderColor: copiedMode === 'CAMPAIGN' ? 'var(--success-border)' : 'var(--surface-border-strong)'
-            }}
-            title="Salin 6 kolom baris Closingan Campaign saja"
-          >
-            {copiedMode === 'CAMPAIGN' ? <Check size={14} /> : <Flame size={14} color="#EA580C" />}
-            {copiedMode === 'CAMPAIGN' ? 'Tercopy Campaign!' : 'Copy Closingan Campaign'}
-          </button>
-
-          {/* 1-CLICK COPY ALL */}
-          <button 
-            onClick={handleCopyAll} 
-            className="btn-primary"
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              fontSize: '0.8125rem', 
-              height: '36px', 
-              backgroundColor: copiedMode === 'ALL' ? 'var(--success)' : '#2563EB',
-              fontWeight: 700,
-              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)'
-            }}
-            disabled={filteredGroups.length === 0}
-            title="Salin semua baris 6 kolom TSV: Platform | Kode Promosi | Nama Promosi | SKU | Quantity | Biaya"
-          >
-            {copiedMode === 'ALL' ? <Check size={16} /> : <Copy size={16} />}
-            {copiedMode === 'ALL' ? 'Tercopy Semua!' : 'COPY HASIL CLOSING'}
-          </button>
-
-          {/* Export Excel */}
           <button 
             onClick={handleExportExcel} 
-            className="btn-outline"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', height: '36px' }}
-            disabled={filteredGroups.length === 0}
+            className="btn-outline" 
+            style={{ fontSize: '0.75rem', height: '34px', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <Download size={14} /> Export Excel
           </button>
 
-          {/* Input Manual */}
           <button 
-            onClick={() => setShowManualModal(true)}
+            onClick={() => setShowManualModal(true)} 
             className="btn-outline" 
-            style={{ fontSize: '0.75rem', height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
-            disabled={closingStatus === 'Closed'}
+            style={{ fontSize: '0.75rem', height: '34px', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <Plus size={14} /> Input Manual
           </button>
         </div>
       </div>
 
-      {/* 4. MAIN FILTER & BRANCH SELECTOR BAR */}
-      <div className="card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      {/* 4. TAB PATOKAN SWITCHER (SESUAI TAB GOOGLE SHEET) */}
+      <div className="card" style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
         
-        {/* Row A: Month, Year, Period, Status */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-            
-            {/* Bulan */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>Bulan:</span>
-              <select 
-                value={selectedBulan} 
-                onChange={e => setSelectedBulan(e.target.value)} 
-                className="filter-select"
-                style={{ padding: '6px 12px', fontSize: '0.8125rem', borderRadius: '6px', border: '1px solid var(--surface-border-strong)', backgroundColor: 'var(--surface)' }}
-              >
-                <option value="Januari">Januari</option>
-                <option value="Februari">Februari</option>
-                <option value="Maret">Maret</option>
-                <option value="April">April</option>
-                <option value="Mei">Mei</option>
-                <option value="Juni">Juni</option>
-                <option value="Juli">Juli</option>
-                <option value="Agustus">Agustus</option>
-                <option value="September">September</option>
-                <option value="Oktober">Oktober</option>
-                <option value="November">November</option>
-                <option value="Desember">Desember</option>
-                <option value="ALL">Semua Bulan</option>
-              </select>
-            </div>
-
-            {/* Tahun */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>Tahun:</span>
-              <select 
-                value={selectedTahun} 
-                onChange={e => setSelectedTahun(parseInt(e.target.value))} 
-                className="filter-select"
-                style={{ padding: '6px 12px', fontSize: '0.8125rem', borderRadius: '6px', border: '1px solid var(--surface-border-strong)', backgroundColor: 'var(--surface)' }}
-              >
-                <option value={2026}>2026</option>
-                <option value={2025}>2025</option>
-                <option value={2024}>2024</option>
-              </select>
-            </div>
-
-            {/* Periode Closing (Dynamic 1-15 & 16-EOM) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>Periode:</span>
-              <select 
-                value={selectedPeriode} 
-                onChange={e => setSelectedPeriode(e.target.value as any)} 
-                className="filter-select"
-                style={{ padding: '6px 12px', fontSize: '0.8125rem', borderRadius: '6px', border: '1px solid var(--surface-border-strong)', backgroundColor: 'var(--surface)', fontWeight: 600 }}
-              >
-                <option value="ALL">Semua Periode (1 – {periodLabels.lastDay})</option>
-                <option value="PERIOD_1">{periodLabels.p1Label}</option>
-                <option value="PERIOD_2">{periodLabels.p2Label}</option>
-              </select>
-            </div>
-
-            {/* Status Closing */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>Status:</span>
-              <select 
-                value={closingStatus} 
-                onChange={e => setClosingStatus(e.target.value as ClosingStatus)} 
-                className="filter-select"
-                style={{ 
-                  padding: '6px 12px', 
-                  fontSize: '0.8125rem', 
-                  borderRadius: '6px', 
-                  border: '1px solid var(--surface-border-strong)', 
-                  backgroundColor: closingStatus === 'Closed' ? '#FEF2F2' : 'var(--surface)',
-                  fontWeight: 600,
-                  color: closingStatus === 'Closed' ? '#DC2626' : 'inherit'
+        {/* Tab Row: Pusat vs Cabang */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              Tab Google Sheet:
+            </span>
+            <div style={{ display: 'flex', backgroundColor: '#F1F5F9', borderRadius: '8px', padding: '3px' }}>
+              <button
+                onClick={() => setActiveSheetTab('ALL')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  fontSize: '0.8125rem',
+                  fontWeight: activeSheetTab === 'ALL' ? 700 : 500,
+                  backgroundColor: activeSheetTab === 'ALL' ? '#FFFFFF' : 'transparent',
+                  color: activeSheetTab === 'ALL' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  boxShadow: activeSheetTab === 'ALL' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  border: 'none',
+                  cursor: 'pointer'
                 }}
               >
-                <option value="Draft">Draft</option>
-                <option value="Data Imported">Data Imported</option>
-                <option value="Under Review">Under Review</option>
-                <option value="Ready for Finance">Ready for Finance</option>
-                <option value="Closed">🔒 Closed (Kunci Data)</option>
-              </select>
+                Semua Tab ({closingRows.length})
+              </button>
+              <button
+                onClick={() => setActiveSheetTab('September')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  fontSize: '0.8125rem',
+                  fontWeight: activeSheetTab === 'September' ? 700 : 500,
+                  backgroundColor: activeSheetTab === 'September' ? '#FFFFFF' : 'transparent',
+                  color: activeSheetTab === 'September' ? '#2563EB' : 'var(--text-secondary)',
+                  boxShadow: activeSheetTab === 'September' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <FileText size={14} /> Tab 'September' (Pusat, TikTok, Lazada)
+              </button>
+              <button
+                onClick={() => setActiveSheetTab('September Cabang')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  fontSize: '0.8125rem',
+                  fontWeight: activeSheetTab === 'September Cabang' ? 700 : 500,
+                  backgroundColor: activeSheetTab === 'September Cabang' ? '#FFFFFF' : 'transparent',
+                  color: activeSheetTab === 'September Cabang' ? '#EA580C' : 'var(--text-secondary)',
+                  boxShadow: activeSheetTab === 'September Cabang' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <MapPin size={14} /> Tab 'September Cabang' (Shopee Semarang, Bali, Surabaya)
+              </button>
             </div>
-
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button 
-              onClick={handleResetSeedData}
-              className="btn-ghost" 
-              style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}
-              title="Reset data awal multi-cabang"
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>Status Closing:</span>
+            <select
+              value={closingStatus}
+              onChange={e => setClosingStatus(e.target.value as ClosingStatus)}
+              className="filter-select"
+              style={{ padding: '5px 10px', fontSize: '0.8125rem', borderRadius: '6px', fontWeight: 600 }}
             >
-              <RefreshCw size={12} /> Reset Data Theraskin
-            </button>
-            {closingGroups.length > 0 && (
-              <button 
-                onClick={() => {
-                  if (closingStatus === 'Closed') {
-                    alert('Status Closed! Buka kunci terlebih dahulu.')
-                    return
-                  }
-                  if (confirm('Kosongkan semua data closing?')) setClosingGroups([])
-                }}
-                className="btn-ghost" 
-                style={{ fontSize: '0.75rem', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '4px' }}
-              >
-                <Trash2 size={12} /> Bersihkan
-              </button>
-            )}
+              <option value="Draft">Draft</option>
+              <option value="Data Imported">Data Imported</option>
+              <option value="Under Review">Under Review</option>
+              <option value="Ready for Finance">Ready for Finance</option>
+              <option value="Closed">🔒 Closed</option>
+            </select>
           </div>
         </div>
 
-        {/* Row B: Marketplace Platform & Shopee Branches Quick Switcher */}
+        {/* Filter Bar: Marketplace, Sub Kategori, Search */}
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px', paddingTop: '10px', borderTop: '1px solid var(--surface-border)' }}>
           
-          {/* Branch Pills */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginRight: '4px', textTransform: 'uppercase' }}>
-              Cabang / Toko:
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              Marketplace:
             </span>
-
             <button
               onClick={() => setSelectedPlatform('ALL')}
               style={{
@@ -952,15 +1002,12 @@ export default function ClosingPage() {
                 fontWeight: selectedPlatform === 'ALL' ? 700 : 500,
                 backgroundColor: selectedPlatform === 'ALL' ? '#0F172A' : '#F1F5F9',
                 color: selectedPlatform === 'ALL' ? '#FFFFFF' : 'var(--text-secondary)',
-                border: '1px solid',
-                borderColor: selectedPlatform === 'ALL' ? '#0F172A' : 'transparent',
+                border: 'none',
                 cursor: 'pointer'
               }}
             >
-              Semua Platform ({closingGroups.length})
+              Semua
             </button>
-
-            {/* Shopee Semarang */}
             <button
               onClick={() => setSelectedPlatform('Shopee Semarang')}
               style={{
@@ -972,16 +1019,11 @@ export default function ClosingPage() {
                 color: selectedPlatform === 'Shopee Semarang' ? '#FFFFFF' : '#C2410C',
                 border: '1px solid',
                 borderColor: selectedPlatform === 'Shopee Semarang' ? '#EA580C' : '#FED7AA',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
+                cursor: 'pointer'
               }}
             >
-              <MapPin size={12} /> Shopee Semarang
+              Shopee Semarang
             </button>
-
-            {/* Shopee Bali */}
             <button
               onClick={() => setSelectedPlatform('Shopee Bali')}
               style={{
@@ -993,16 +1035,11 @@ export default function ClosingPage() {
                 color: selectedPlatform === 'Shopee Bali' ? '#FFFFFF' : '#C2410C',
                 border: '1px solid',
                 borderColor: selectedPlatform === 'Shopee Bali' ? '#EA580C' : '#FED7AA',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
+                cursor: 'pointer'
               }}
             >
-              <MapPin size={12} /> Shopee Bali
+              Shopee Bali
             </button>
-
-            {/* Shopee Surabaya */}
             <button
               onClick={() => setSelectedPlatform('Shopee Surabaya')}
               style={{
@@ -1014,16 +1051,11 @@ export default function ClosingPage() {
                 color: selectedPlatform === 'Shopee Surabaya' ? '#FFFFFF' : '#C2410C',
                 border: '1px solid',
                 borderColor: selectedPlatform === 'Shopee Surabaya' ? '#EA580C' : '#FED7AA',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
+                cursor: 'pointer'
               }}
             >
-              <MapPin size={12} /> Shopee Surabaya
+              Shopee Surabaya
             </button>
-
-            {/* Shopee Pusat */}
             <button
               onClick={() => setSelectedPlatform('Shopee Pusat')}
               style={{
@@ -1040,8 +1072,6 @@ export default function ClosingPage() {
             >
               Shopee Pusat
             </button>
-
-            {/* TikTok Shop (Tanpa Cabang) */}
             <button
               onClick={() => setSelectedPlatform('TikTok Shop')}
               style={{
@@ -1051,15 +1081,12 @@ export default function ClosingPage() {
                 fontWeight: selectedPlatform === 'TikTok Shop' ? 700 : 500,
                 backgroundColor: selectedPlatform === 'TikTok Shop' ? '#0F172A' : '#F8FAFC',
                 color: selectedPlatform === 'TikTok Shop' ? '#FFFFFF' : '#0F172A',
-                border: '1px solid',
-                borderColor: selectedPlatform === 'TikTok Shop' ? '#0F172A' : '#CBD5E1',
+                border: '1px solid #CBD5E1',
                 cursor: 'pointer'
               }}
             >
               TikTok Shop
             </button>
-
-            {/* Lazada (Tanpa Cabang) */}
             <button
               onClick={() => setSelectedPlatform('Lazada')}
               style={{
@@ -1069,8 +1096,7 @@ export default function ClosingPage() {
                 fontWeight: selectedPlatform === 'Lazada' ? 700 : 500,
                 backgroundColor: selectedPlatform === 'Lazada' ? '#2563EB' : '#EFF6FF',
                 color: selectedPlatform === 'Lazada' ? '#FFFFFF' : '#1D4ED8',
-                border: '1px solid',
-                borderColor: selectedPlatform === 'Lazada' ? '#2563EB' : '#BFDBFE',
+                border: '1px solid #BFDBFE',
                 cursor: 'pointer'
               }}
             >
@@ -1078,906 +1104,835 @@ export default function ClosingPage() {
             </button>
           </div>
 
-          {/* Closing Type Selector: Reguler vs Campaign */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              Tipe:
-            </span>
-            <div style={{ display: 'flex', backgroundColor: '#F1F5F9', borderRadius: '8px', padding: '2px' }}>
-              <button
-                onClick={() => setSelectedClosingType('ALL')}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ position: 'relative', width: '260px' }}>
+              <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input
+                type="text"
+                placeholder="Cari SKU / Produk di patokan..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
                 style={{
-                  padding: '4px 10px',
+                  width: '100%',
+                  padding: '5px 10px 5px 30px',
+                  fontSize: '0.78rem',
                   borderRadius: '6px',
-                  fontSize: '0.75rem',
-                  fontWeight: selectedClosingType === 'ALL' ? 700 : 500,
-                  backgroundColor: selectedClosingType === 'ALL' ? '#FFFFFF' : 'transparent',
-                  color: selectedClosingType === 'ALL' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  boxShadow: selectedClosingType === 'ALL' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                  border: 'none',
-                  cursor: 'pointer'
+                  border: '1px solid var(--surface-border-strong)',
+                  backgroundColor: 'var(--surface)'
                 }}
-              >
-                Semua Tipe
-              </button>
-              <button
-                onClick={() => setSelectedClosingType('REGULER')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '0.75rem',
-                  fontWeight: selectedClosingType === 'REGULER' ? 700 : 500,
-                  backgroundColor: selectedClosingType === 'REGULER' ? '#FFFFFF' : 'transparent',
-                  color: selectedClosingType === 'REGULER' ? '#2563EB' : 'var(--text-secondary)',
-                  boxShadow: selectedClosingType === 'REGULER' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <Tag size={12} /> Promo Reguler
-              </button>
-              <button
-                onClick={() => setSelectedClosingType('CAMPAIGN')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '0.75rem',
-                  fontWeight: selectedClosingType === 'CAMPAIGN' ? 700 : 500,
-                  backgroundColor: selectedClosingType === 'CAMPAIGN' ? '#FFFFFF' : 'transparent',
-                  color: selectedClosingType === 'CAMPAIGN' ? '#EA580C' : 'var(--text-secondary)',
-                  boxShadow: selectedClosingType === 'CAMPAIGN' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <Flame size={12} /> Closingan Campaign
-              </button>
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  <X size={12} />
+                </button>
+              )}
             </div>
+
+            <button onClick={handleResetSeedData} className="btn-ghost" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Reset data patokan">
+              <RefreshCw size={12} />
+            </button>
           </div>
 
         </div>
 
       </div>
 
-      {/* 5. SUMMARY KPI CARDS (REGULER VS CAMPAIGN BREAKDOWN) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '14px' }}>
+      {/* 5. SUMMARY STRIP (GRAND TOTALS DARI SPREADSHEET PATOKAN) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
         
         {/* Total Program */}
         <div className="stat-card" style={{ padding: '14px 18px' }}>
-          <div className="stat-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>Total Program</span>
-            <Package size={15} color="var(--text-muted)" />
-          </div>
+          <div className="stat-label">Total Program Patokan</div>
           <div className="stat-value" style={{ fontSize: '1.4rem', marginTop: '4px' }}>
-            {filteredGroups.length} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-muted)' }}>baris</span>
+            {summaryMetrics.totalRows} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-muted)' }}>baris</span>
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-            {selectedPlatform === 'ALL' ? 'Multi-cabang & platform' : selectedPlatform}
+            {activeSheetTab === 'ALL' ? 'Semua Tab' : `Tab ${activeSheetTab}`}
           </div>
         </div>
 
-        {/* Total QTY Terjual */}
-        <div className="stat-card" style={{ padding: '14px 18px' }}>
-          <div className="stat-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>Total QTY Closing</span>
-            <Boxes size={15} color="#2563EB" />
+        {/* Qty & Biaya Periode 1 (1–15 Sep) */}
+        <div className="stat-card" style={{ padding: '14px 18px', backgroundColor: '#FEFCE8', borderColor: '#FEF08A' }}>
+          <div className="stat-label" style={{ color: '#854D0E', fontWeight: 700 }}>
+            Periode 1 (1–15 {selectedBulan.slice(0, 3)})
           </div>
-          <div className="stat-value" style={{ fontSize: '1.4rem', color: '#2563EB', marginTop: '4px' }}>
-            {totalClosingQty.toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>pcs</span>
+          <div className="stat-value" style={{ fontSize: '1.35rem', color: '#854D0E', marginTop: '4px' }}>
+            {summaryMetrics.totalQtyP1.toLocaleString()} pcs
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-            {totalValidOrders.toLocaleString()} valid (-{totalCancelledOrders} batal)
-          </div>
-        </div>
-
-        {/* Biaya Promo Reguler */}
-        <div className="stat-card" style={{ padding: '14px 18px', backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }}>
-          <div className="stat-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#1E40AF' }}>
-            <span>Biaya Promo Reguler</span>
-            <Tag size={15} color="#2563EB" />
-          </div>
-          <div className="stat-value" style={{ fontSize: '1.4rem', color: '#1E40AF', marginTop: '4px' }}>
-            {fmt(totalBiayaReguler)}
-          </div>
-          <div style={{ fontSize: '0.72rem', color: '#3B82F6', marginTop: '2px' }}>
-            Voucher & diskon toko
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#DC2626', marginTop: '2px' }}>
+            Biaya: {fmt(summaryMetrics.totalBiayaP1)}
           </div>
         </div>
 
-        {/* Biaya Closingan Campaign */}
-        <div className="stat-card" style={{ padding: '14px 18px', backgroundColor: '#FFF7ED', borderColor: '#FFEDD5' }}>
-          <div className="stat-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#C2410C' }}>
-            <span>Biaya Campaign</span>
-            <Flame size={15} color="#EA580C" />
+        {/* Qty & Biaya Periode 2 (16–30 Sep) */}
+        <div className="stat-card" style={{ padding: '14px 18px', backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+          <div className="stat-label" style={{ color: '#166534', fontWeight: 700 }}>
+            Periode 2 (16–{periodLabels.lastDay} {selectedBulan.slice(0, 3)})
           </div>
-          <div className="stat-value" style={{ fontSize: '1.4rem', color: '#EA580C', marginTop: '4px' }}>
-            {fmt(totalBiayaCampaign)}
+          <div className="stat-value" style={{ fontSize: '1.35rem', color: '#166534', marginTop: '4px' }}>
+            {summaryMetrics.totalQtyP2.toLocaleString()} pcs
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#F97316', marginTop: '2px' }}>
-            Harga khusus Campaign & Mega
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#DC2626', marginTop: '2px' }}>
+            Biaya: {fmt(summaryMetrics.totalBiayaP2)}
           </div>
         </div>
 
-        {/* Grand Total Biaya */}
+        {/* GRAND TOTAL BIAYA PROMOSI BRAND */}
         <div className="stat-card" style={{ padding: '14px 18px', backgroundColor: '#FEF2F2', borderColor: '#FECACA' }}>
-          <div className="stat-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#991B1B' }}>
-            <span>Grand Total Biaya</span>
-            <Calculator size={15} color="#DC2626" />
+          <div className="stat-label" style={{ color: '#991B1B', fontWeight: 700 }}>
+            GRAND TOTAL BIAYA PROMOSI
           </div>
           <div className="stat-value" style={{ fontSize: '1.4rem', color: '#DC2626', marginTop: '4px' }}>
-            {fmt(totalBiayaPromosi)}
+            {fmt(summaryMetrics.grandTotalBiaya)}
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#EF4444', marginTop: '2px' }}>
-            Total rekonsiliasi Finance
+          <div style={{ fontSize: '0.72rem', color: '#7F1D1D', marginTop: '2px' }}>
+            Grand Qty: <strong>{summaryMetrics.grandTotalQty.toLocaleString()} pcs</strong> terjual
           </div>
         </div>
 
       </div>
 
-      {/* 6. PERLU REVIEW PANEL */}
-      {validationSummary.totalIssues > 0 && (
-        <div style={{
-          backgroundColor: '#FFFDF5',
-          border: '1px solid #FEF08A',
-          borderRadius: '10px',
-          padding: '12px 18px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#854D0E', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <AlertTriangle size={15} color="#D97706" /> PERLU REVIEW ({validationSummary.totalIssues}):
-            </span>
+      {/* 6. MAIN TABLE IDENTIK DENGAN GOOGLE SHEET (KOLOM B s/d T) */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.04)' }}>
+        
+        <div style={{ overflowX: 'auto', maxHeight: '720px' }}>
+          <table className="data-table" style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'separate', borderSpacing: 0 }}>
+            
+            {/* TABLE HEADER MATCHING GOOGLE SHEET */}
+            <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#F8FAFC' }}>
+              <tr style={{ borderBottom: '2px solid var(--surface-border)' }}>
+                <th style={{ minWidth: '125px', position: 'sticky', left: 0, backgroundColor: '#F8FAFC', zIndex: 11 }}>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>[B]</div>
+                  Marketplace
+                </th>
+                <th style={{ minWidth: '70px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>[C]</div>
+                  Kategori
+                </th>
+                <th style={{ minWidth: '120px' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>[D]</div>
+                  Sub Kategori
+                </th>
+                <th style={{ minWidth: '100px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>[E]</div>
+                  Periode
+                </th>
+                <th style={{ minWidth: '130px' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>[F]</div>
+                  Tanggal
+                </th>
+                <th style={{ minWidth: '120px', fontFamily: 'monospace' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>[G]</div>
+                  SKU
+                </th>
+                <th style={{ minWidth: '220px' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>[H]</div>
+                  Product Name
+                </th>
+                <th style={{ textAlign: 'right', minWidth: '95px' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>[I]</div>
+                  HARGA Bulanan
+                </th>
+                <th style={{ textAlign: 'center', minWidth: '60px' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>[J]</div>
+                  Diskon
+                </th>
+                <th style={{ textAlign: 'right', minWidth: '95px' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>[K]</div>
+                  Total Diskon
+                </th>
+                
+                {/* KOLOM L: HARGA PROMO (KUNING) */}
+                <th style={{ textAlign: 'right', minWidth: '105px', backgroundColor: '#FEF08A', color: '#854D0E', fontWeight: 800 }}>
+                  <div style={{ fontSize: '0.65rem', color: '#854D0E', fontWeight: 900 }}>[L] HARGA PROMO</div>
+                  Harga Promo
+                </th>
 
-            {validationSummary.duplicateCount > 0 && (
-              <button
-                onClick={() => setActiveIssueFilter(activeIssueFilter === 'DUPLICATE_PROMO' ? null : 'DUPLICATE_PROMO')}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  backgroundColor: activeIssueFilter === 'DUPLICATE_PROMO' ? '#D97706' : '#FEF3C7',
-                  color: activeIssueFilter === 'DUPLICATE_PROMO' ? '#FFFFFF' : '#92400E',
-                  border: '1px solid #FDE68A'
-                }}
-              >
-                <span>⚠️ {validationSummary.duplicateCount} Duplicate Promo (÷2)</span>
-              </button>
-            )}
+                <th style={{ textAlign: 'center', minWidth: '60px' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>[M]</div>
+                  Qty
+                </th>
+                <th style={{ textAlign: 'center', minWidth: '70px' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>[N]</div>
+                  Total Promo
+                </th>
 
-            {validationSummary.paketCount > 0 && (
-              <button
-                onClick={() => setActiveIssueFilter(activeIssueFilter === 'PAKET_DISKON' ? null : 'PAKET_DISKON')}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  backgroundColor: activeIssueFilter === 'PAKET_DISKON' ? '#2563EB' : '#EFF6FF',
-                  color: activeIssueFilter === 'PAKET_DISKON' ? '#FFFFFF' : '#1E40AF',
-                  border: '1px solid #BFDBFE'
-                }}
-              >
-                <span>📦 {validationSummary.paketCount} Paket Diskon</span>
-              </button>
-            )}
-          </div>
+                {/* KOLOM O & P: PERIODE 1 (KUNING) */}
+                <th style={{ textAlign: 'center', minWidth: '85px', backgroundColor: '#FEF08A', color: '#854D0E', fontWeight: 800 }}>
+                  <div style={{ fontSize: '0.65rem', color: '#854D0E', fontWeight: 900 }}>[O] QTY 1-15</div>
+                  Qty 1-15 Sep
+                </th>
+                <th style={{ textAlign: 'right', minWidth: '105px', backgroundColor: '#FEFCE8', color: '#B45309', fontWeight: 700 }}>
+                  <div style={{ fontSize: '0.65rem', color: '#B45309', fontWeight: 800 }}>[P] BIAYA</div>
+                  Biaya 1-15 Sep
+                </th>
 
-          {activeIssueFilter && (
-            <button
-              onClick={() => setActiveIssueFilter(null)}
-              style={{ fontSize: '0.75rem', color: '#92400E', textDecoration: 'underline', cursor: 'pointer', fontWeight: 600 }}
-            >
-              Reset Filter Issue (Tampilkan Semua)
-            </button>
-          )}
-        </div>
-      )}
+                {/* KOLOM Q & R: PERIODE 2 (HIJAU) */}
+                <th style={{ textAlign: 'center', minWidth: '85px', backgroundColor: '#DCFCE7', color: '#166534', fontWeight: 800 }}>
+                  <div style={{ fontSize: '0.65rem', color: '#166534', fontWeight: 900 }}>[Q] QTY 16-30</div>
+                  Qty 16-30 Sep
+                </th>
+                <th style={{ textAlign: 'right', minWidth: '105px', backgroundColor: '#F0FDF4', color: '#15803D', fontWeight: 700 }}>
+                  <div style={{ fontSize: '0.65rem', color: '#15803D', fontWeight: 800 }}>[R] BIAYA</div>
+                  Biaya 16-30 Sep
+                </th>
 
-      {/* 7. VIEW MODE TABS */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--surface-border)', paddingBottom: '2px', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', gap: '4px' }}>
-          <button
-            onClick={() => setActiveTab('TABLE_REKAP')}
-            style={{
-              padding: '10px 18px',
-              fontSize: '0.875rem',
-              fontWeight: activeTab === 'TABLE_REKAP' ? 700 : 500,
-              color: activeTab === 'TABLE_REKAP' ? '#2563EB' : 'var(--text-secondary)',
-              borderBottom: activeTab === 'TABLE_REKAP' ? '2px solid #2563EB' : '2px solid transparent',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <Calculator size={16} /> Tabel Rekap Closing ({filteredGroups.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('PROMO_CATALOG')}
-            style={{
-              padding: '10px 18px',
-              fontSize: '0.875rem',
-              fontWeight: activeTab === 'PROMO_CATALOG' ? 700 : 500,
-              color: activeTab === 'PROMO_CATALOG' ? '#2563EB' : 'var(--text-secondary)',
-              borderBottom: activeTab === 'PROMO_CATALOG' ? '2px solid #2563EB' : '2px solid transparent',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <FileText size={16} /> Data Promo Closing
-          </button>
-          <button
-            onClick={() => setActiveTab('RAW_ORDERS')}
-            style={{
-              padding: '10px 18px',
-              fontSize: '0.875rem',
-              fontWeight: activeTab === 'RAW_ORDERS' ? 700 : 500,
-              color: activeTab === 'RAW_ORDERS' ? '#2563EB' : 'var(--text-secondary)',
-              borderBottom: activeTab === 'RAW_ORDERS' ? '2px solid #2563EB' : '2px solid transparent',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <Boxes size={16} /> Data Pesanan Mentah ({allRawTransactions.length})
-          </button>
-        </div>
+                {/* KOLOM S & T: GRAND TOTAL */}
+                <th style={{ textAlign: 'center', minWidth: '95px', backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: 800 }}>
+                  <div style={{ fontSize: '0.65rem', color: '#1D4ED8', fontWeight: 900 }}>[S] TOTAL QTY</div>
+                  GRAND TOTAL QTY
+                </th>
+                <th style={{ textAlign: 'right', minWidth: '125px', backgroundColor: '#FEF2F2', color: '#B91C1C', fontWeight: 800 }}>
+                  <div style={{ fontSize: '0.65rem', color: '#B91C1C', fontWeight: 900 }}>[T] TOTAL BIAYA</div>
+                  GRAND TOTAL BIAYA
+                </th>
 
-        {/* Quick Search */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ position: 'relative', width: '280px' }}>
-            <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input 
-              type="text" 
-              placeholder="Cari SKU / Promo / Cabang..." 
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '6px 12px 6px 32px',
-                fontSize: '0.8125rem',
-                borderRadius: '6px',
-                border: '1px solid var(--surface-border-strong)',
-                backgroundColor: 'var(--surface)'
-              }}
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                <X size={12} />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+                <th style={{ width: '60px', textAlign: 'center' }}>Aksi</th>
+              </tr>
+            </thead>
 
-      {/* ========================================================================= */}
-      {/* TAB 1: SPREADSHEET WORKING TABLE (MAIN INTERFACE)                        */}
-      {/* ========================================================================= */}
-      {activeTab === 'TABLE_REKAP' && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-          
-          <div style={{ overflowX: 'auto', maxHeight: '720px' }}>
-            <table className="data-table" style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'separate', borderSpacing: 0 }}>
-              
-              {/* STICKY HEADER */}
-              <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#F8FAFC' }}>
-                <tr style={{ borderBottom: '2px solid var(--surface-border)' }}>
-                  <th style={{ minWidth: '130px', position: 'sticky', left: 0, backgroundColor: '#F8FAFC', zIndex: 11 }}>Marketplace & Cabang</th>
-                  <th style={{ minWidth: '95px', textAlign: 'center' }}>Tipe Closing</th>
-                  <th style={{ minWidth: '130px' }}>Kategori (Kode)</th>
-                  <th style={{ minWidth: '140px' }}>Sub Kategori / Campaign</th>
-                  <th style={{ minWidth: '85px', textAlign: 'center' }}>Periode</th>
-                  <th style={{ minWidth: '110px' }}>Tanggal Promo</th>
-                  <th style={{ minWidth: '110px', fontFamily: 'monospace' }}>SKU</th>
-                  <th style={{ minWidth: '190px' }}>Product Name</th>
-                  <th style={{ textAlign: 'right', minWidth: '95px' }}>Harga Normal</th>
-                  <th style={{ textAlign: 'center', minWidth: '65px' }}>Diskon</th>
-                  <th style={{ textAlign: 'right', minWidth: '95px' }}>Total Diskon</th>
-                  <th style={{ textAlign: 'right', minWidth: '105px', backgroundColor: '#F1F5F9' }}>Harga Promo (Net)</th>
-                  <th style={{ textAlign: 'center', minWidth: '80px', backgroundColor: '#F8FAFC' }}>Total Orders</th>
-                  <th style={{ textAlign: 'center', minWidth: '75px', backgroundColor: '#FFF5F5', color: '#DC2626' }}>Batal</th>
-                  <th style={{ textAlign: 'center', minWidth: '75px', backgroundColor: '#F0FDF4', color: '#16A34A' }}>Valid</th>
-                  <th style={{ textAlign: 'center', minWidth: '105px' }}>Duplicate Rule</th>
-                  <th style={{ textAlign: 'center', minWidth: '95px', backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: 700 }}>FINAL QTY</th>
-                  <th style={{ textAlign: 'right', minWidth: '120px', backgroundColor: '#FEF2F2', color: '#B91C1C', fontWeight: 700 }}>BIAYA</th>
-                  <th style={{ width: '80px', textAlign: 'center' }}>Aksi</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {filteredGroups.length === 0 ? (
-                  <tr>
-                    <td colSpan={19} style={{ textAlign: 'center', padding: '60px 24px', backgroundColor: 'var(--surface)' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', maxWidth: '440px', margin: '0 auto', gap: '12px' }}>
-                        <div style={{ width: '52px', height: '52px', borderRadius: '14px', backgroundColor: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563EB', marginBottom: '4px' }}>
-                          <FileSpreadsheet size={28} />
-                        </div>
-                        <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)' }}>
-                          Belum Ada Data Closing Yang Cocok
-                        </div>
-                        <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-                          Tidak ditemukan baris closing untuk cabang / tipe promo yang dipilih. Klik <strong>"Upload File Order"</strong> untuk import otomatis atau <strong>"Reset Data Theraskin"</strong>.
-                        </p>
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                          <button onClick={handleResetSeedData} className="btn-primary" style={{ fontSize: '0.8125rem', padding: '8px 14px' }}>
-                            Muat Data Theraskin
-                          </button>
-                          <button onClick={() => setShowUploadModal(true)} className="btn-outline" style={{ fontSize: '0.8125rem', padding: '8px 14px' }}>
-                            Upload Pesanan
-                          </button>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredGroups.map((g) => {
-                    const isCampaign = g.closingType === 'CAMPAIGN'
-                    const platformBadgeColor = g.marketplace.includes('Shopee')
-                      ? { bg: '#FFF7ED', text: '#EA580C', border: '#FFEDD5' }
-                      : g.marketplace.includes('TikTok')
-                        ? { bg: '#F8FAFC', text: '#0F172A', border: '#E2E8F0' }
-                        : { bg: '#EFF6FF', text: '#2563EB', border: '#DBEAFE' }
-
-                    return (
-                      <tr key={g.groupId} style={{ borderBottom: '1px solid var(--surface-border)' }}>
-                        
-                        {/* 1. Marketplace & Cabang (Sticky Left) */}
-                        <td style={{ position: 'sticky', left: 0, backgroundColor: 'var(--surface)', zIndex: 5 }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <span className="badge" style={{ backgroundColor: platformBadgeColor.bg, color: platformBadgeColor.text, borderColor: platformBadgeColor.border, fontSize: '0.72rem' }}>
-                              {g.marketplace}
-                            </span>
-                            {g.branchCity && (
-                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '2px', paddingLeft: '4px' }}>
-                                <MapPin size={10} /> Cabang {g.branchCity}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* 2. Tipe Closing (Reguler vs Campaign) */}
-                        <td style={{ textAlign: 'center' }}>
-                          {isCampaign ? (
-                            <span className="badge" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', borderColor: '#FFEDD5', fontSize: '0.68rem', fontWeight: 700 }}>
-                              <Flame size={11} /> Campaign
-                            </span>
-                          ) : (
-                            <span className="badge" style={{ backgroundColor: '#EFF6FF', color: '#2563EB', borderColor: '#DBEAFE', fontSize: '0.68rem', fontWeight: 600 }}>
-                              <Tag size={11} /> Reguler
-                            </span>
-                          )}
-                        </td>
-
-                        {/* 3. Kategori Promosi */}
-                        <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                          {g.promotionCategory}
-                        </td>
-
-                        {/* 4. Sub Kategori / Campaign */}
-                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
-                          {g.subCategory || g.promotionName}
-                        </td>
-
-                        {/* 5. Periode */}
-                        <td style={{ textAlign: 'center' }}>
-                          <span className="badge" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontSize: '0.7rem' }}>
-                            {g.closingPeriod === 'PERIOD_1' ? '1–15' : `16–${periodLabels.lastDay}`} {g.month.slice(0, 3)}
-                          </span>
-                        </td>
-
-                        {/* 6. Tanggal Promo */}
-                        <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {g.periodDateRange || (g.closingPeriod === 'PERIOD_1' ? periodLabels.p1DateRange : periodLabels.p2DateRange)}
-                        </td>
-
-                        {/* 7. SKU */}
-                        <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#1E293B', fontSize: '0.8rem' }}>
-                          {g.sku}
-                        </td>
-
-                        {/* 8. Product Name */}
-                        <td style={{ color: 'var(--text-primary)', maxWidth: '220px', whiteSpace: 'normal', lineHeight: 1.3 }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <span>{g.productName || g.sku}</span>
-                            {g.isPaketDiskon && (
-                              <button 
-                                onClick={() => setActivePaketModal(g)}
-                                style={{ alignSelf: 'flex-start', fontSize: '0.68rem', color: '#2563EB', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
-                              >
-                                [ Review Paket Diskon ]
-                              </button>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* 9. Harga Normal */}
-                        <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>
-                          {fmt(g.price)}
-                        </td>
-
-                        {/* 10. Diskon % */}
-                        <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>
-                          {g.discountPercent > 0 ? `${g.discountPercent}%` : '-'}
-                        </td>
-
-                        {/* 11. Total Diskon (Rp) */}
-                        <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#D97706' }}>
-                          {fmt(g.discountAmount)}
-                        </td>
-
-                        {/* 12. Harga Promo (Harga Setelah Diskon / Beda saat Campaign) */}
-                        <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, backgroundColor: isCampaign ? '#FFF7ED' : '#F8FAFC', color: isCampaign ? '#C2410C' : 'var(--text-primary)' }}>
-                          {fmt(g.priceAfterDiscount)}
-                          {isCampaign && <span style={{ display: 'block', fontSize: '0.65rem', fontWeight: 600, color: '#EA580C' }}>Harga Campaign</span>}
-                        </td>
-
-                        {/* 13. Total Orders */}
-                        <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', backgroundColor: '#F8FAFC' }}>
-                          {g.totalOrders}
-                        </td>
-
-                        {/* 14. Pesanan Batal (Excluded, COUNT = 0) */}
-                        <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', color: g.cancelledOrders > 0 ? '#DC2626' : 'var(--text-muted)', backgroundColor: '#FFF5F5', fontWeight: g.cancelledOrders > 0 ? 700 : 400 }}>
-                          {g.cancelledOrders > 0 ? `-${g.cancelledOrders}` : '0'}
-                        </td>
-
-                        {/* 15. Pesanan Valid */}
-                        <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', color: '#16A34A', backgroundColor: '#F0FDF4', fontWeight: 700 }}>
-                          {g.validOrders}
-                        </td>
-
-                        {/* 16. Duplicate Rule (Ya ÷2 / Tidak) */}
-                        <td style={{ textAlign: 'center' }}>
-                          <button
-                            onClick={() => handleToggleDuplicateRule(g.groupId)}
-                            title="Klik untuk mengubah aturan duplikat promo"
-                            style={{
-                              border: 'none',
-                              cursor: closingStatus === 'Closed' ? 'not-allowed' : 'pointer',
-                              padding: 0,
-                              background: 'transparent'
-                            }}
-                          >
-                            {g.isDuplicatePromo ? (
-                              <span className="badge badge-warning" style={{ fontSize: '0.68rem', cursor: 'pointer' }}>
-                                Ya (÷2)
-                              </span>
-                            ) : (
-                              <span className="badge badge-neutral" style={{ fontSize: '0.68rem', cursor: 'pointer' }}>
-                                Tidak
-                              </span>
-                            )}
-                          </button>
-                        </td>
-
-                        {/* 17. FINAL QTY (Clickable drilldown) */}
-                        <td style={{ textAlign: 'center', backgroundColor: '#EFF6FF' }}>
-                          <button
-                            onClick={() => setActiveAuditModal(g)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              fontWeight: 800,
-                              fontSize: '0.9375rem',
-                              color: '#1D4ED8',
-                              textDecoration: 'underline',
-                              textUnderlineOffset: '3px'
-                            }}
-                            title="Klik untuk audit rincian transaksi"
-                          >
-                            {g.finalClosingQty}
-                          </button>
-                        </td>
-
-                        {/* 18. BIAYA (Final QTY × Harga Setelah Diskon) */}
-                        <td style={{ textAlign: 'right', fontWeight: 800, color: '#B91C1C', fontVariantNumeric: 'tabular-nums', backgroundColor: '#FEF2F2' }}>
-                          {fmt(g.biaya)}
-                        </td>
-
-                        {/* 19. Action column */}
-                        <td style={{ textAlign: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                            <button 
-                              onClick={() => setActiveAuditModal(g)} 
-                              style={{ background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '4px' }}
-                              title="Lihat Audit Detail"
-                            >
-                              <Eye size={15} />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteGroup(g.groupId)} 
-                              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
-                              title="Hapus baris ini"
-                              disabled={closingStatus === 'Closed'}
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </td>
-
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-
-              {/* SPREADSHEET FOOTERS & SUB-TOTALS */}
-              {filteredGroups.length > 0 && (
-                <tfoot>
-                  {/* Period 1 Subtotal */}
-                  <tr style={{ backgroundColor: '#F8FAFC', borderTop: '2px solid var(--surface-border)', fontSize: '0.8125rem' }}>
-                    <td colSpan={8} style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      SUBTOTAL {periodLabels.p1Header.toUpperCase()} ({p1Rows.length} program):
-                    </td>
-                    <td colSpan={8} style={{ textAlign: 'right', padding: '10px 16px', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                      Kuantitas & Biaya Periode 1:
-                    </td>
-                    <td style={{ textAlign: 'center', padding: '10px', fontWeight: 800, color: '#1D4ED8', backgroundColor: '#EFF6FF' }}>
-                      {p1Qty.toLocaleString()} pcs
-                    </td>
-                    <td style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 800, color: '#B91C1C', backgroundColor: '#FEF2F2' }}>
-                      {fmt(p1Biaya)}
-                    </td>
-                    <td></td>
-                  </tr>
-
-                  {/* Period 2 Subtotal */}
-                  <tr style={{ backgroundColor: '#F8FAFC', borderTop: '1px solid var(--surface-border)', fontSize: '0.8125rem' }}>
-                    <td colSpan={8} style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      SUBTOTAL {periodLabels.p2Header.toUpperCase()} ({p2Rows.length} program):
-                    </td>
-                    <td colSpan={8} style={{ textAlign: 'right', padding: '10px 16px', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                      Kuantitas & Biaya Periode 2:
-                    </td>
-                    <td style={{ textAlign: 'center', padding: '10px', fontWeight: 800, color: '#1D4ED8', backgroundColor: '#EFF6FF' }}>
-                      {p2Qty.toLocaleString()} pcs
-                    </td>
-                    <td style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 800, color: '#B91C1C', backgroundColor: '#FEF2F2' }}>
-                      {fmt(p2Biaya)}
-                    </td>
-                    <td></td>
-                  </tr>
-
-                  {/* GRAND TOTAL */}
-                  <tr style={{ backgroundColor: '#0F172A', color: '#FFFFFF', fontWeight: 800, fontSize: '0.875rem' }}>
-                    <td colSpan={8} style={{ padding: '14px 16px', color: '#F8FAFC' }}>
-                      GRAND TOTAL CLOSING ({filteredGroups.length} PROGRAM):
-                    </td>
-                    <td colSpan={4} style={{ textAlign: 'right', padding: '14px 16px', color: '#94A3B8', fontSize: '0.75rem' }}>
-                      Order: {totalRawOrders} (Batal: -{totalCancelledOrders})
-                    </td>
-                    <td style={{ textAlign: 'center', padding: '14px 8px', color: '#E2E8F0' }}>{totalRawOrders}</td>
-                    <td style={{ textAlign: 'center', padding: '14px 8px', color: '#FCA5A5' }}>-{totalCancelledOrders}</td>
-                    <td style={{ textAlign: 'center', padding: '14px 8px', color: '#86EFAC' }}>{totalValidOrders}</td>
-                    <td style={{ textAlign: 'center', padding: '14px 8px', color: '#FCD34D', fontSize: '0.75rem' }}>Final</td>
-                    <td style={{ textAlign: 'center', padding: '14px 8px', color: '#93C5FD', fontSize: '1.05rem', backgroundColor: '#1E293B' }}>
-                      {totalClosingQty.toLocaleString()} pcs
-                    </td>
-                    <td style={{ textAlign: 'right', padding: '14px 16px', color: '#FCA5A5', fontSize: '1.05rem', backgroundColor: '#1E293B' }}>
-                      {fmt(totalBiayaPromosi)}
-                    </td>
-                    <td></td>
-                  </tr>
-                </tfoot>
-              )}
-
-            </table>
-          </div>
-
-          {/* Bottom Bar with 1-Click Copy Reminder */}
-          <div style={{ padding: '12px 20px', backgroundColor: '#F8FAFC', borderTop: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-              <ShieldCheck size={16} color="var(--primary)" />
-              <span>
-                Format TSV 6 Kolom: <code>Platform / Cabang \t Kode Promosi \t Nama Promosi \t SKU \t Quantity \t Biaya</code> (Siap Paste di Master Closing)
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={handleCopyReguler}
-                className="btn-outline"
-                style={{ fontSize: '0.75rem', padding: '6px 12px', height: '32px' }}
-              >
-                Copy Reguler
-              </button>
-              <button
-                onClick={handleCopyCampaign}
-                className="btn-outline"
-                style={{ fontSize: '0.75rem', padding: '6px 12px', height: '32px' }}
-              >
-                Copy Campaign
-              </button>
-              <button
-                onClick={handleCopyAll}
-                className="btn-primary"
-                style={{ fontSize: '0.8125rem', padding: '6px 14px', backgroundColor: copiedMode === 'ALL' ? 'var(--success)' : '#2563EB' }}
-                disabled={filteredGroups.length === 0}
-              >
-                {copiedMode === 'ALL' ? <Check size={14} /> : <Copy size={14} />}
-                {copiedMode === 'ALL' ? 'Tercopy Semua' : 'COPY HASIL CLOSING'}
-              </button>
-            </div>
-          </div>
-
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* TAB 2: DATA PROMO CLOSING (REFERENCE CATALOG)                             */}
-      {/* ========================================================================= */}
-      {activeTab === 'PROMO_CATALOG' && (
-        <div className="card" style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Katalog Referensi Promo Closing (Reguler & Campaign)</h3>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
-                Daftar program promo acuan untuk rekonsiliasi data pesanan marketplace cabang dan pusat.
-              </p>
-            </div>
-            <span className="badge badge-info">{filteredGroups.length} Program Terdaftar</span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-            {filteredGroups.map(g => (
-              <div 
-                key={g.groupId} 
-                style={{ 
-                  border: '1px solid var(--surface-border)', 
-                  borderRadius: '10px', 
-                  padding: '16px', 
-                  backgroundColor: g.closingType === 'CAMPAIGN' ? '#FFFDF5' : '#FAFAFA',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <span className="badge" style={{ backgroundColor: '#EFF6FF', color: '#2563EB', fontSize: '0.72rem' }}>
-                    {g.marketplace}
-                  </span>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    {g.closingType === 'CAMPAIGN' ? (
-                      <span className="badge" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', fontSize: '0.68rem' }}>
-                        <Flame size={10} /> Campaign
-                      </span>
-                    ) : (
-                      <span className="badge badge-neutral" style={{ fontSize: '0.68rem' }}>
-                        <Tag size={10} /> Reguler
-                      </span>
-                    )}
-                    <span className="badge badge-neutral" style={{ fontSize: '0.68rem' }}>
-                      {g.closingPeriod === 'PERIOD_1' ? 'P1 (1-15)' : 'P2 (16-EOM)'}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>
-                    {g.promotionName}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {g.promotionCategory} • {g.subCategory}
-                  </div>
-                </div>
-
-                <div style={{ backgroundColor: '#FFFFFF', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', fontSize: '0.8125rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>SKU:</span>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{g.sku}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Produk:</span>
-                    <span style={{ fontWeight: 500, textAlign: 'right', maxWidth: '180px' }}>{g.productName}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Harga Promo:</span>
-                    <span style={{ fontWeight: 700, color: g.closingType === 'CAMPAIGN' ? '#EA580C' : 'var(--text-primary)' }}>
-                      {fmt(g.priceAfterDiscount)}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Diskon Satuan:</span>
-                    <span style={{ fontWeight: 600, color: '#D97706' }}>{fmt(g.discountAmount)}</span>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '6px', borderTop: '1px dashed var(--surface-border)', fontSize: '0.8125rem' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Hasil QTY: <strong>{g.finalClosingQty} pcs</strong></span>
-                  <button 
-                    onClick={() => setActiveAuditModal(g)}
-                    className="btn-outline" 
-                    style={{ fontSize: '0.75rem', padding: '4px 10px', height: '28px' }}
-                  >
-                    Rincian Audit
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* TAB 3: DATA PESANAN MENTAH (RAW ORDERS STREAM)                            */}
-      {/* ========================================================================= */}
-      {activeTab === 'RAW_ORDERS' && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            <div>
-              <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, margin: 0 }}>Audit Aliran Transaksi Pesanan Mentah</h3>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
-                Menampilkan seluruh transaksi pesanan individual dari Shopee (Semarang, Bali, Surabaya, Pusat), TikTok, dan Lazada.
-              </p>
-            </div>
-            <span className="badge badge-neutral">{allRawTransactions.length} Total Transaksi</span>
-          </div>
-
-          <div style={{ overflowX: 'auto', maxHeight: '560px' }}>
-            <table className="data-table" style={{ width: '100%', fontSize: '0.75rem' }}>
-              <thead style={{ position: 'sticky', top: 0, backgroundColor: '#F8FAFC', zIndex: 10 }}>
+            <tbody>
+              {filteredRows.length === 0 ? (
                 <tr>
-                  <th>No. Pesanan</th>
-                  <th>Tanggal</th>
-                  <th>Periode</th>
-                  <th>Platform & Cabang</th>
-                  <th>Tipe</th>
-                  <th>SKU</th>
-                  <th>Nama Produk</th>
-                  <th>Promosi</th>
-                  <th style={{ textAlign: 'right' }}>Harga</th>
-                  <th style={{ textAlign: 'right' }}>Diskon</th>
-                  <th style={{ textAlign: 'center' }}>Status Pesanan</th>
-                  <th style={{ textAlign: 'center' }}>Audit Status</th>
+                  <td colSpan={20} style={{ textAlign: 'center', padding: '60px 24px', backgroundColor: 'var(--surface)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                      <FileSpreadsheet size={32} color="#2563EB" />
+                      <div style={{ fontWeight: 700, fontSize: '1rem' }}>Tidak Ada Baris Promo Yang Sesuai</div>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
+                        Silakan pilih tab 'September' atau 'September Cabang', atau klik tombol reset.
+                      </p>
+                      <button onClick={handleResetSeedData} className="btn-primary" style={{ fontSize: '0.8125rem', padding: '6px 14px', marginTop: '6px' }}>
+                        Muat Data Patokan
+                      </button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {allRawTransactions.map(tx => {
-                  const isCancelled = isOrderCancelled(tx.orderStatus)
+              ) : (
+                filteredRows.map((r) => {
+                  const isShopee = isShopeePlatform(r.marketplace)
+                  const isDD = r.periodeBadge.includes('DD')
+
                   return (
-                    <tr key={tx.id} style={{ backgroundColor: isCancelled ? '#FFF5F5' : 'transparent' }}>
-                      <td style={{ fontFamily: 'monospace', fontWeight: 600, textDecoration: isCancelled ? 'line-through' : 'none' }}>
-                        {tx.orderNumber}
+                    <tr key={r.id} style={{ borderBottom: '1px solid var(--surface-border)' }}>
+                      
+                      {/* B: Marketplace (Sticky) */}
+                      <td style={{ position: 'sticky', left: 0, backgroundColor: 'var(--surface)', zIndex: 5, fontWeight: 600 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ color: isShopee ? '#EA580C' : r.marketplace.includes('TikTok') ? '#0F172A' : '#2563EB' }}>
+                            {r.marketplace}
+                          </span>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                            Tab: {r.sheetTab}
+                          </span>
+                        </div>
                       </td>
-                      <td>{typeof tx.date === 'string' ? tx.date.split('T')[0] : '2026-09'}</td>
-                      <td>
-                        <span className="badge" style={{ fontSize: '0.68rem', backgroundColor: '#F1F5F9' }}>
-                          {tx.period === 'PERIOD_1' ? '1–15' : '16–EOM'}
+
+                      {/* C: Kategori */}
+                      <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        {r.kategori}
+                      </td>
+
+                      {/* D: Sub Kategori */}
+                      <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {r.subKategori}
+                      </td>
+
+                      {/* E: Periode (Badge) */}
+                      <td style={{ textAlign: 'center' }}>
+                        <span 
+                          style={{ 
+                            fontSize: '0.7rem', 
+                            fontWeight: 700, 
+                            padding: '3px 8px', 
+                            borderRadius: '4px',
+                            backgroundColor: isDD ? '#DC2626' : '#F1F5F9',
+                            color: isDD ? '#FFFFFF' : '#475569'
+                          }}
+                        >
+                          {r.periodeBadge}
                         </span>
                       </td>
-                      <td>{tx.marketplace}</td>
-                      <td>
-                        {tx.closingType === 'CAMPAIGN' ? (
-                          <span className="badge" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', fontSize: '0.65rem' }}>Campaign</span>
-                        ) : (
-                          <span className="badge" style={{ backgroundColor: '#EFF6FF', color: '#2563EB', fontSize: '0.65rem' }}>Reguler</span>
-                        )}
+
+                      {/* F: Tanggal */}
+                      <td style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                        {r.tanggal}
                       </td>
-                      <td style={{ fontFamily: 'monospace' }}>{tx.sku}</td>
-                      <td style={{ maxWidth: '180px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {tx.productName || tx.sku}
+
+                      {/* G: SKU */}
+                      <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#1E293B', fontSize: '0.78rem' }}>
+                        {r.sku}
                       </td>
-                      <td>{tx.promotionName}</td>
-                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(tx.price)}</td>
-                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#D97706' }}>{fmt(tx.discountAmount)}</td>
+
+                      {/* H: Product Name */}
+                      <td style={{ color: 'var(--text-primary)', maxWidth: '240px', whiteSpace: 'normal', lineHeight: 1.3 }}>
+                        {r.productName}
+                      </td>
+
+                      {/* I: HARGA Bulanan */}
+                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>
+                        {r.hargaBulanan > 0 ? fmt(r.hargaBulanan) : '-'}
+                      </td>
+
+                      {/* J: Diskon (%) */}
+                      <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>
+                        {r.diskonPersen > 0 ? `${r.diskonPersen}%` : '-'}
+                      </td>
+
+                      {/* K: Total Diskon (Nominal Diskon Satuan yang ditanggung Brand) */}
+                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#D97706' }}>
+                        {fmt(r.totalDiskon)}
+                      </td>
+
+                      {/* L: Harga Promo (KUNING: Harga Setelah Diskon = HARGA Bulanan - Total Diskon) */}
+                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 800, backgroundColor: '#FEF9C3', color: '#854D0E' }}>
+                        {r.hargaPromo > 0 ? fmt(r.hargaPromo) : '-'}
+                      </td>
+
+                      {/* M: Qty Target */}
+                      <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>
+                        {r.targetQty || '-'}
+                      </td>
+
+                      {/* N: Total Promosi */}
+                      <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>
+                        {r.totalPromosi || '-'}
+                      </td>
+
+                      {/* O: Qty 1-15 Sep (KUNING: Diisi dari closing data mentah) */}
+                      <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontWeight: 800, backgroundColor: '#FEF08A', color: '#854D0E' }}>
+                        <button
+                          onClick={() => setActiveAuditModal(r)}
+                          style={{ background: 'none', border: 'none', fontWeight: 800, color: '#854D0E', cursor: 'pointer', textDecoration: r.qtyP1 > 0 ? 'underline' : 'none' }}
+                          title="Klik untuk rincian transaksi"
+                        >
+                          {r.qtyP1 || 0}
+                        </button>
+                      </td>
+
+                      {/* P: Biaya 1-15 Sep (= Qty 1-15 × Total Diskon) */}
+                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, backgroundColor: '#FEFCE8', color: r.biayaP1 > 0 ? '#B45309' : 'var(--text-muted)' }}>
+                        {r.biayaP1 > 0 ? fmt(r.biayaP1) : '0'}
+                      </td>
+
+                      {/* Q: Qty 16-30 Sep */}
+                      <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontWeight: 800, backgroundColor: '#DCFCE7', color: '#166534' }}>
+                        <button
+                          onClick={() => setActiveAuditModal(r)}
+                          style={{ background: 'none', border: 'none', fontWeight: 800, color: '#166534', cursor: 'pointer', textDecoration: r.qtyP2 > 0 ? 'underline' : 'none' }}
+                          title="Klik untuk rincian transaksi"
+                        >
+                          {r.qtyP2 || 0}
+                        </button>
+                      </td>
+
+                      {/* R: Biaya 16-30 Sep (= Qty 16-30 × Total Diskon) */}
+                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, backgroundColor: '#F0FDF4', color: r.biayaP2 > 0 ? '#15803D' : 'var(--text-muted)' }}>
+                        {r.biayaP2 > 0 ? fmt(r.biayaP2) : '0'}
+                      </td>
+
+                      {/* S: GRAND TOTAL QTY TERJUAL (= Qty 1-15 + Qty 16-30) */}
+                      <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontWeight: 800, backgroundColor: '#EFF6FF', color: '#1D4ED8' }}>
+                        {r.grandTotalQty || 0}
+                      </td>
+
+                      {/* T: GRAND TOTAL BIAYA PROMOSI (= Biaya 1-15 + Biaya 16-30) */}
+                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 800, backgroundColor: '#FEF2F2', color: r.grandTotalBiaya > 0 ? '#B91C1C' : 'var(--text-muted)' }}>
+                        {r.grandTotalBiaya > 0 ? fmt(r.grandTotalBiaya) : '0'}
+                      </td>
+
+                      {/* Actions */}
                       <td style={{ textAlign: 'center' }}>
-                        <span className="badge" style={{ backgroundColor: isCancelled ? '#FEE2E2' : '#DCFCE7', color: isCancelled ? '#991B1B' : '#166534', fontSize: '0.7rem' }}>
-                          {tx.orderStatus}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                          <button
+                            onClick={() => setActiveAuditModal(r)}
+                            style={{ background: 'none', border: 'none', color: '#2563EB', cursor: 'pointer', padding: '3px' }}
+                            title="Audit Bukti Transaksi"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteRow(r.id)}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '3px' }}
+                            title="Hapus baris ini"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
-                        {isCancelled ? (
-                          <span style={{ color: '#DC2626', fontWeight: 700 }}>COUNT = 0 (Batal)</span>
-                        ) : (
-                          <span style={{ color: '#16A34A', fontWeight: 700 }}>Valid (Dihitung)</span>
-                        )}
-                      </td>
+
                     </tr>
                   )
-                })}
-              </tbody>
-            </table>
-          </div>
+                })
+              )}
+            </tbody>
+
+            {/* GRAND TOTAL SPREADSHEET FOOTER */}
+            {filteredRows.length > 0 && (
+              <tfoot style={{ position: 'sticky', bottom: 0, zIndex: 10 }}>
+                <tr style={{ backgroundColor: '#0F172A', color: '#FFFFFF', fontWeight: 800, fontSize: '0.85rem' }}>
+                  <td colSpan={7} style={{ padding: '14px 16px', color: '#F8FAFC' }}>
+                    GRAND TOTAL ({filteredRows.length} BARIS PROMO):
+                  </td>
+                  <td colSpan={6} style={{ textAlign: 'right', padding: '14px 16px', color: '#94A3B8', fontSize: '0.75rem' }}>
+                    Total Biaya Promosi yang Dikeluarkan Brand:
+                  </td>
+                  
+                  {/* Kolom O: Total Qty 1-15 */}
+                  <td style={{ textAlign: 'center', padding: '14px 8px', color: '#FEF08A', backgroundColor: '#1E293B', fontSize: '0.95rem' }}>
+                    {summaryMetrics.totalQtyP1.toLocaleString()}
+                  </td>
+                  
+                  {/* Kolom P: Total Biaya 1-15 */}
+                  <td style={{ textAlign: 'right', padding: '14px 10px', color: '#FCD34D', backgroundColor: '#1E293B', fontSize: '0.9rem' }}>
+                    {fmt(summaryMetrics.totalBiayaP1)}
+                  </td>
+
+                  {/* Kolom Q: Total Qty 16-30 */}
+                  <td style={{ textAlign: 'center', padding: '14px 8px', color: '#86EFAC', backgroundColor: '#1E293B', fontSize: '0.95rem' }}>
+                    {summaryMetrics.totalQtyP2.toLocaleString()}
+                  </td>
+
+                  {/* Kolom R: Total Biaya 16-30 */}
+                  <td style={{ textAlign: 'right', padding: '14px 10px', color: '#86EFAC', backgroundColor: '#1E293B', fontSize: '0.9rem' }}>
+                    {fmt(summaryMetrics.totalBiayaP2)}
+                  </td>
+
+                  {/* Kolom S: Grand Total Qty */}
+                  <td style={{ textAlign: 'center', padding: '14px 8px', color: '#93C5FD', backgroundColor: '#0B1120', fontSize: '1.05rem' }}>
+                    {summaryMetrics.grandTotalQty.toLocaleString()} pcs
+                  </td>
+
+                  {/* Kolom T: Grand Total Biaya Promosi */}
+                  <td style={{ textAlign: 'right', padding: '14px 16px', color: '#FCA5A5', backgroundColor: '#0B1120', fontSize: '1.05rem' }}>
+                    {fmt(summaryMetrics.grandTotalBiaya)}
+                  </td>
+
+                  <td></td>
+                </tr>
+              </tfoot>
+            )}
+
+          </table>
         </div>
-      )}
+
+        {/* Bottom Bar: 1-Click Copy O-T Reminder */}
+        <div style={{ padding: '14px 20px', backgroundColor: '#F8FAFC', borderTop: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+            <CheckCheck size={18} color="#16A34A" />
+            <span>
+              <strong>Cara Copy-Paste ke Google Sheet:</strong> Klik tombol kuning <code>COPY KOLOM O–T</code> di bawah, lalu buka Google Sheet Anda, klik cell <strong>O2</strong> (baris pertama Qty 1-15 Sep), dan tekan <strong>Ctrl + V</strong>. Seluruh nilai Qty dan Biaya akan otomatis terisi rapi!
+            </span>
+          </div>
+
+          <button
+            onClick={handleCopyColsOT}
+            className="btn-primary"
+            style={{ 
+              fontSize: '0.8125rem', 
+              padding: '8px 18px', 
+              backgroundColor: copiedMode === 'COLS_O_T' ? '#16A34A' : '#F59E0B', 
+              color: '#0F172A',
+              fontWeight: 800,
+              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)'
+            }}
+            disabled={filteredRows.length === 0}
+          >
+            {copiedMode === 'COLS_O_T' ? <Check size={16} /> : <Copy size={16} />}
+            {copiedMode === 'COLS_O_T' ? 'Tercopy! Siap Paste di Cell O2' : 'COPY KOLOM O–T (Qty & Biaya)'}
+          </button>
+        </div>
+
+      </div>
 
       {/* ========================================================================= */}
-      {/* MODAL: SMART UPLOAD DENGAN TARGET CABANG                                  */}
+      {/* MODAL: SMART UPLOAD (OTOMATIS COCOKKAN KE HARGA PROMO)                    */}
       {/* ========================================================================= */}
       {showUploadModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(3px)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div className="card fade-in" style={{ width: '100%', maxWidth: '540px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(3px)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="card fade-in" style={{ width: '100%', maxWidth: '660px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             
+            {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--surface-border)', paddingBottom: '12px' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <UploadCloud size={20} color="#2563EB" />
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>Upload File Pesanan Marketplace</h3>
+                  <Calculator size={20} color="#2563EB" />
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>Input Pesanan & Pencocokan Harga Promo</h3>
                 </div>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
-                  Sistem otomatis membagi transaksi ke Periode 1 (1–15) dan Periode 2 (16–30/31).
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                  Membaca <strong>SKU Subtotal After Discount</strong> dan <strong>Order created time</strong> ➔ Mencocokkan ke kolom <strong>[L] Harga Promo (Kuning)</strong> katalog.
                 </p>
               </div>
               <button onClick={() => setShowUploadModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>
-                Pilih Target Platform / Cabang:
-              </label>
-              <select
-                value={uploadTargetBranch}
-                onChange={e => setUploadTargetBranch(e.target.value)}
-                className="filter-select"
-                style={{ width: '100%', padding: '8px 12px', fontSize: '0.875rem' }}
+            {/* Modal Tabs */}
+            <div style={{ display: 'flex', gap: '6px', borderBottom: '1px solid var(--surface-border)', paddingBottom: '10px' }}>
+              <button
+                onClick={() => setUploadModalTab('FILE')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  fontSize: '0.8125rem',
+                  fontWeight: uploadModalTab === 'FILE' ? 700 : 500,
+                  backgroundColor: uploadModalTab === 'FILE' ? '#2563EB' : '#F1F5F9',
+                  color: uploadModalTab === 'FILE' ? '#FFFFFF' : 'var(--text-secondary)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
               >
-                <option value="AUTO">✨ Auto-Detect (Otomatis deteksi dari nama file/header)</option>
-                <optgroup label="Shopee Multi-Cabang">
-                  <option value="Shopee Semarang">Shopee Semarang</option>
-                  <option value="Shopee Bali">Shopee Bali</option>
-                  <option value="Shopee Surabaya">Shopee Surabaya</option>
-                  <option value="Shopee Pusat">Shopee Pusat</option>
-                </optgroup>
-                <optgroup label="Platform Lainnya">
-                  <option value="TikTok Shop">TikTok Shop</option>
-                  <option value="Lazada">Lazada</option>
-                </optgroup>
-              </select>
+                <UploadCloud size={15} />
+                1. Upload File (.xlsx/.csv)
+              </button>
+              <button
+                onClick={() => setUploadModalTab('QUICK_PASTE')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  fontSize: '0.8125rem',
+                  fontWeight: uploadModalTab === 'QUICK_PASTE' ? 700 : 500,
+                  backgroundColor: uploadModalTab === 'QUICK_PASTE' ? '#2563EB' : '#F1F5F9',
+                  color: uploadModalTab === 'QUICK_PASTE' ? '#FFFFFF' : 'var(--text-secondary)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <FileText size={15} />
+                2. Quick Paste Teks Excel
+              </button>
+              <button
+                onClick={() => setUploadModalTab('SIMULATOR')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  fontSize: '0.8125rem',
+                  fontWeight: uploadModalTab === 'SIMULATOR' ? 700 : 500,
+                  backgroundColor: uploadModalTab === 'SIMULATOR' ? '#D97706' : '#FEF3C7',
+                  color: uploadModalTab === 'SIMULATOR' ? '#FFFFFF' : '#B45309',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Sparkles size={15} />
+                3. Tes Pencocokan Harga (Live)
+              </button>
             </div>
 
-            <div style={{
-              border: '2px dashed var(--surface-border-strong)',
-              borderRadius: '10px',
-              padding: '28px 20px',
-              textAlign: 'center',
-              backgroundColor: '#F8FAFC',
-              cursor: 'pointer'
-            }} onClick={() => fileInputRef.current?.click()}>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
-                accept=".xlsx,.xls,.csv" 
-                style={{ display: 'none' }} 
-              />
-              <UploadCloud size={32} color="#2563EB" style={{ margin: '0 auto 8px' }} />
-              <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>
-                Klik di sini untuk memilih file .xlsx atau .csv
+            {/* Target Branch Selector */}
+            {uploadModalTab !== 'SIMULATOR' && (
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>
+                  Target Platform / Cabang:
+                </label>
+                <select
+                  value={uploadTargetBranch}
+                  onChange={e => setUploadTargetBranch(e.target.value)}
+                  className="filter-select"
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.875rem' }}
+                >
+                  <option value="AUTO">✨ Auto-Detect (Otomatis dari nama file/header)</option>
+                  <optgroup label="Shopee Cabang (Tab 'September Cabang')">
+                    <option value="Shopee Semarang">Shopee Semarang</option>
+                    <option value="Shopee Bali">Shopee Bali</option>
+                    <option value="Shopee Surabaya">Shopee Surabaya</option>
+                  </optgroup>
+                  <optgroup label="Shopee Pusat & Lainnya (Tab 'September')">
+                    <option value="Shopee Pusat">Shopee Pusat</option>
+                    <option value="TikTok Shop">TikTok Shop</option>
+                    <option value="Lazada">Lazada</option>
+                  </optgroup>
+                </select>
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                Mendukung export pesanan resmi Shopee, TikTok Shop, atau Lazada
+            )}
+
+            {/* TAB 1: FILE UPLOAD */}
+            {uploadModalTab === 'FILE' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{
+                  border: '2px dashed var(--surface-border-strong)',
+                  borderRadius: '10px',
+                  padding: '28px 20px',
+                  textAlign: 'center',
+                  backgroundColor: '#F8FAFC',
+                  cursor: 'pointer'
+                }} onClick={() => fileInputRef.current?.click()}>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileUpload} 
+                    accept=".xlsx,.xls,.csv" 
+                    style={{ display: 'none' }} 
+                  />
+                  <UploadCloud size={32} color="#2563EB" style={{ margin: '0 auto 8px' }} />
+                  <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>
+                    Klik di sini untuk memilih file .xlsx atau .csv
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    Export OrderSKUList resmi Shopee, TikTok Shop, atau Lazada
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#FEFCE8', border: '1px solid #FEF08A', padding: '12px 14px', borderRadius: '8px', fontSize: '0.78rem', color: '#854D0E', lineHeight: 1.45 }}>
+                  🔍 <strong>Aturan Pencocokan Otomatis (Kolom Kuning):</strong>
+                  <ul style={{ margin: 0, paddingLeft: '18px', marginTop: '4px' }}>
+                    <li><strong>SKU Subtotal After Discount</strong>: Dihitung per unit <code>Subtotal ÷ Qty</code> ➔ Dicocokkan ke kolom <strong>[L] Harga Promo (Kuning)</strong> katalog.</li>
+                    <li><strong>Order created time</strong>: Pesanan tanggal <strong>1–14/15 September</strong> otomatis masuk <strong>[O] Qty 1–15 Sep</strong>; tanggal 16–30/31 masuk <strong>[Q] Qty 16–30 Sep</strong>.</li>
+                    <li><strong>Product Name / SKU</strong>: Memastikan nama barang atau SKU cocok dengan baris spreadsheet yang sesuai.</li>
+                    <li>Pesanan batal/retur otomatis bernilai <code>COUNT = 0</code> (tidak dimasukkan ke Qty).</li>
+                  </ul>
+                </div>
               </div>
-            </div>
+            )}
 
-            <div style={{ backgroundColor: '#EFF6FF', padding: '10px 14px', borderRadius: '8px', fontSize: '0.78rem', color: '#1E40AF', lineHeight: 1.4 }}>
-              💡 <strong>Zero-Headache Pipeline:</strong> Anda tidak perlu memisahkan tanggal manual di Excel. Tanggal 1–15 akan masuk Periode 1 dan tanggal 16–30/31 akan masuk Periode 2 secara otomatis.
-            </div>
+            {/* TAB 2: QUICK PASTE */}
+            {uploadModalTab === 'QUICK_PASTE' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
+                    Paste Baris Tabel OrderSKUList dari Excel / Google Sheet:
+                  </label>
+                  <button
+                    onClick={() => {
+                      setQuickPasteText(`Order ID\tSeller SKU\tProduct Name\tQuantity\tSKU Subtotal After Discount\tCreated Time\tOrder Status
+586072309974861411\tTWINSUNAGEPROTECTIONDC\tTwinpack Sun Protector Age Revival Protection Day Cream\t1\t77184\t14/09/2026 19:25:27\tDikirim
+586072309974861412\tPAK033POT010PCS\tTHERASKIN Age Revival Protection Day Cream Pot New 10 g Shrink\t1\t38592\t14/09/2026 20:10:00\tDikirim
+586072309974861413\tPAK032T010C\tTHERASKIN Age Revival Gentle Cleanser Tube 100 ml\t1\t39648\t14/09/2026 18:30:00\tDikirim
+586072309974861414\tPAK034POT010CS\tTHERASKIN Age Revival Moisture Lock Night Cream Pot New Mould 10 g Shrink\t2\t79680\t14/09/2026 21:40:52\tDikirim
+586072309974861415\tFTC00000030CS\tTheraskin Perfect Glow Face Cream\t1\t49664\t14/09/2026 21:30:22\tDikirim
+586072309974861416\tFTC00000015CI\tTheraskin Perfect Glow Brightening Serum\t1\t61920\t14/09/2026 22:57:25\tDikirim`)
+                    }}
+                    style={{
+                      fontSize: '0.72rem',
+                      padding: '3px 8px',
+                      borderRadius: '5px',
+                      backgroundColor: '#FEF3C7',
+                      color: '#92400E',
+                      border: '1px solid #FDE68A',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    📋 Isi Contoh Data dari Screenshot (1–14 Sep)
+                  </button>
+                </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <textarea
+                  rows={7}
+                  value={quickPasteText}
+                  onChange={e => setQuickPasteText(e.target.value)}
+                  placeholder="Contoh format TSV/CSV:&#10;Seller SKU&#9;Product Name&#9;Quantity&#9;SKU Subtotal After Discount&#9;Created Time&#9;Order Status&#10;TWINSUNAGEPROTECTIONDC&#9;Twinpack Sun Protector&#9;1&#9;77184&#9;14/09/2026 19:25:27&#9;Dikirim"
+                  style={{
+                    width: '100%',
+                    fontFamily: 'monospace',
+                    fontSize: '0.75rem',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--surface-border-strong)',
+                    backgroundColor: '#F8FAFC'
+                  }}
+                />
+
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  Tips: Cukup buka file Excel data mentah Anda, blok baris dari kolom A sampai P, tekan <code>Ctrl + C</code>, lalu paste di kotak ini!
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button
+                    onClick={handleQuickPasteProcess}
+                    className="btn-primary"
+                    disabled={!quickPasteText.trim() || isProcessing}
+                    style={{ fontSize: '0.8125rem', padding: '8px 18px' }}
+                  >
+                    {isProcessing ? 'Memproses...' : '⚡ Proses & Cocokkan ke Promo'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: LIVE SIMULATOR / MATCHER TEST */}
+            {uploadModalTab === 'SIMULATOR' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', backgroundColor: '#F8FAFC', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                  Uji coba satu pesanan mentah untuk melihat apakah harganya cocok dengan <strong>Harga Promo di Kolom L Google Sheet</strong>, masuk periode mana, dan berapa biaya promosi yang dihitung brand.
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', fontSize: '0.8125rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>Marketplace:</label>
+                    <select
+                      value={simForm.marketplace}
+                      onChange={e => setSimForm({ ...simForm, marketplace: e.target.value })}
+                      className="filter-select"
+                      style={{ width: '100%', padding: '6px 10px' }}
+                    >
+                      <option value="Lazada">Lazada (Tab September)</option>
+                      <option value="Shopee Semarang">Shopee Semarang (Tab September Cabang)</option>
+                      <option value="Shopee Bali">Shopee Bali (Tab September Cabang)</option>
+                      <option value="Shopee Surabaya">Shopee Surabaya (Tab September Cabang)</option>
+                      <option value="Shopee Pusat">Shopee Pusat (Tab September)</option>
+                      <option value="TikTok Shop">TikTok Shop (Tab September)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>Order created time (Tanggal):</label>
+                    <input
+                      type="text"
+                      value={simForm.date}
+                      placeholder="14/09/2026 23:47:20 atau 2026-09-05"
+                      onChange={e => setSimForm({ ...simForm, date: e.target.value })}
+                      style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--surface-border-strong)' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>SKU / Nama Produk:</label>
+                    <select
+                      value={simForm.sku}
+                      onChange={e => {
+                        const selectedSku = e.target.value
+                        const found = closingRows.find(r => r.sku === selectedSku)
+                        if (found) {
+                          setSimForm({
+                            ...simForm,
+                            sku: selectedSku,
+                            hargaAwal: found.hargaBulanan,
+                            totalDiskon: found.totalDiskon
+                          })
+                        } else {
+                          setSimForm({ ...simForm, sku: selectedSku })
+                        }
+                      }}
+                      className="filter-select"
+                      style={{ width: '100%', padding: '6px 10px', fontFamily: 'monospace' }}
+                    >
+                      <option value="TWINSUNAGEPROTECTIONDC">TWINSUNAGEPROTECTIONDC - Twinpack Sun Protector</option>
+                      <option value="PAK033POT010PCS">PAK033POT010PCS - Age Revival Day Cream</option>
+                      <option value="PAK032T010C">PAK032T010C - Age Revival Gentle Cleanser</option>
+                      <option value="PAK034POT010CS">PAK034POT010CS - Age Revival Night Cream</option>
+                      <option value="PAK036B100CS">PAK036B100CS - Age Revival Toner Essence</option>
+                      <option value="PAK035S010CS">PAK035S010CS - Age Revival Retinol Serum</option>
+                      <option value="FTC00000030CS">FTC00000030CS - Perfect Glow Face Cream</option>
+                      <option value="FPK038POT010PRI">FPK038POT010PRI - Perfect Glow Day Cream</option>
+                      <option value="FPK037T010CS">FPK037T010CS - Perfect Glow Facial Wash</option>
+                      <option value="FTC00000015CI">FTC00000015CI - Perfect Glow Serum</option>
+                      <option value="All SKU">All SKU - Voucher Belanja Toko</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>Jumlah (Quantity):</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={simForm.qty}
+                      onChange={e => setSimForm({ ...simForm, qty: parseInt(e.target.value) || 1 })}
+                      style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--surface-border-strong)' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>Harga Normal / Awal (Rp):</label>
+                    <input
+                      type="number"
+                      value={simForm.hargaAwal}
+                      onChange={e => setSimForm({ ...simForm, hargaAwal: parseFloat(e.target.value) || 0 })}
+                      style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--surface-border-strong)' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>Total Diskon Promosi (Rp):</label>
+                    <input
+                      type="number"
+                      value={simForm.totalDiskon}
+                      onChange={e => setSimForm({ ...simForm, totalDiskon: parseFloat(e.target.value) || 0 })}
+                      style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--surface-border-strong)' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Net Price Display */}
+                <div style={{ backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', padding: '10px 14px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: '0.8125rem', color: '#1E40AF' }}>
+                    <strong>SKU Subtotal After Discount:</strong> (Harga bayar riil pembeli)
+                  </div>
+                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1E40AF' }}>
+                    {fmt(Math.max(0, simForm.hargaAwal - simForm.totalDiskon))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={handleRunSimulator}
+                    className="btn-primary"
+                    style={{ fontSize: '0.8125rem', padding: '7px 16px', backgroundColor: '#D97706' }}
+                  >
+                    ⚡ Jalankan Tes Pencocokan
+                  </button>
+                </div>
+
+                {/* Simulator Result Box */}
+                {simResult && (
+                  <div style={{
+                    padding: '14px',
+                    borderRadius: '8px',
+                    border: '1px solid',
+                    borderColor: simResult.matched ? '#BBF7D0' : '#FECACA',
+                    backgroundColor: simResult.matched ? '#F0FDF4' : '#FEF2F2',
+                    fontSize: '0.8125rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, color: simResult.matched ? '#15803D' : '#DC2626', marginBottom: '6px' }}>
+                      {simResult.matched ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                      {simResult.matched ? 'HASIL: COCOK DENGAN MASTER PROMO GOOGLE SHEET!' : 'HASIL: TIDAK COCOK DENGAN PROMO MANAPUN'}
+                    </div>
+
+                    <div style={{ color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                      {simResult.keterangan}
+                    </div>
+
+                    {simResult.matched && simResult.targetRow && (
+                      <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #86EFAC', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: '#166534' }}>Target Kolom Spreadsheet:</div>
+                          <div style={{ fontWeight: 700, color: '#166534' }}>
+                            {simResult.period === 'PERIOD_1' ? 'Kolom [O] Qty 1–15 Sep' : 'Kolom [Q] Qty 16–30 Sep'} (+{simForm.qty})
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: '#166534' }}>Biaya Brand yang Dihitung:</div>
+                          <div style={{ fontWeight: 700, color: '#DC2626' }}>
+                            +{fmt(simResult.biayaBrand)} (di {simResult.period === 'PERIOD_1' ? 'Kolom [P]' : 'Kolom [R]'})
+                          </div>
+                        </div>
+
+                        <div style={{ gridColumn: 'span 2', marginTop: '6px' }}>
+                          <button
+                            onClick={handleApplySimulatorToRows}
+                            className="btn-primary"
+                            style={{ width: '100%', fontSize: '0.8125rem', padding: '6px 12px', backgroundColor: '#16A34A' }}
+                          >
+                            + Tambahkan Transaksi Ini ke Tabel Closing
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--surface-border)', paddingTop: '12px' }}>
               <button onClick={() => setShowUploadModal(false)} className="btn-outline" style={{ fontSize: '0.8125rem' }}>
-                Batal
+                Tutup
               </button>
             </div>
 
@@ -1986,228 +1941,89 @@ export default function ClosingPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 1: FINANCE AUDIT DRILLDOWN MODAL                                    */}
+      {/* MODAL: AUDIT DRILLDOWN (RINCIAN PERHITUNGAN BARIS PATOKAN)                */}
       {/* ========================================================================= */}
       {activeAuditModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(3px)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div className="card fade-in" style={{ width: '100%', maxWidth: '820px', maxHeight: '92vh', overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(3px)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="card fade-in" style={{ width: '100%', maxWidth: '780px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
             
-            {/* Modal Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--surface-border)', paddingBottom: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--surface-border)', paddingBottom: '12px' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <ShieldCheck size={20} color="#2563EB" />
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>
-                    Audit Bukti Perhitungan Finance
+                    Audit Rincian Baris Patokan Promo
                   </h3>
                   <span className="badge" style={{ backgroundColor: '#EFF6FF', color: '#2563EB' }}>
                     {activeAuditModal.marketplace}
                   </span>
-                  {activeAuditModal.closingType === 'CAMPAIGN' && (
-                    <span className="badge" style={{ backgroundColor: '#FFF7ED', color: '#EA580C' }}>
-                      Campaign
-                    </span>
-                  )}
                 </div>
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
-                  Rincian verifikasi matematis bagaimana angka Quantity <strong>{activeAuditModal.finalClosingQty} pcs</strong> dan Biaya <strong>{fmt(activeAuditModal.biaya)}</strong> diperoleh.
+                  Rincian transaksi dan formula perhitungan untuk baris spreadsheet ini.
                 </p>
               </div>
-              <button 
-                onClick={() => setActiveAuditModal(null)} 
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-              >
-                <X size={20} />
-              </button>
+              <button onClick={() => setActiveAuditModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
             </div>
 
             {/* Context Card */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', backgroundColor: '#F8FAFC', padding: '14px', borderRadius: '10px', border: '1px solid var(--surface-border)', fontSize: '0.8125rem' }}>
               <div>
-                <span style={{ color: 'var(--text-muted)' }}>Program Promo:</span>
-                <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{activeAuditModal.promotionName}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{activeAuditModal.promotionCategory}</div>
-              </div>
-              <div>
                 <span style={{ color: 'var(--text-muted)' }}>Produk & SKU:</span>
-                <div style={{ fontWeight: 600, fontFamily: 'monospace' }}>{activeAuditModal.sku}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{activeAuditModal.productName}</div>
+                <div style={{ fontWeight: 700, fontFamily: 'monospace' }}>{activeAuditModal.sku}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-primary)' }}>{activeAuditModal.productName}</div>
               </div>
               <div>
-                <span style={{ color: 'var(--text-muted)' }}>Periode Rekonsiliasi:</span>
-                <div style={{ fontWeight: 600 }}>{activeAuditModal.periodLabel}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{activeAuditModal.periodDateRange}</div>
+                <span style={{ color: 'var(--text-muted)' }}>Katalog Promo:</span>
+                <div style={{ fontWeight: 600 }}>{activeAuditModal.subKategori} ({activeAuditModal.periodeBadge})</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{activeAuditModal.tanggal}</div>
               </div>
-            </div>
-
-            {/* Step-by-Step Mathematical Calculation */}
-            <div style={{ backgroundColor: '#EFF6FF', border: '1px solid #DBEAFE', borderRadius: '10px', padding: '16px' }}>
-              <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: '#1E40AF', marginBottom: '10px' }}>
-                Langkah Perhitungan Sesuai Aturan Closing:
-              </h4>
-              <ol style={{ margin: 0, paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8125rem', color: '#1E3A8A' }}>
-                <li>
-                  Total pesanan masuk: <strong>{activeAuditModal.totalOrders} order</strong>
-                </li>
-                <li>
-                  Pesanan batal / cancelled yang dikeluarkan (COUNT = 0): <strong style={{ color: 'var(--danger)' }}>{activeAuditModal.cancelledOrders} order</strong>
-                </li>
-                <li>
-                  Total pesanan valid (memenuhi syarat closing): <strong>{activeAuditModal.totalOrders} - {activeAuditModal.cancelledOrders} = {activeAuditModal.validOrders} pesanan valid</strong>
-                </li>
-                <li>
-                  Evaluasi Duplicate Promo Rule: <strong>{activeAuditModal.isDuplicatePromo ? 'Ditemukan promo/diskon yang sama di periode ini ➔ Aturan (÷2) Aktif' : 'Promo UNIK di periode ini ➔ Tidak Dibagi 2'}</strong>
-                </li>
-                <li>
-                  Hasil Akhir Quantity: <strong style={{ color: '#2563EB', fontSize: '0.9375rem' }}>{activeAuditModal.finalClosingQty} PCS</strong> (Formula: {activeAuditModal.formulaDescription})
-                </li>
-                <li>
-                  Perhitungan Biaya Finance: <strong>{activeAuditModal.finalClosingQty} pcs × {fmt(activeAuditModal.priceAfterDiscount)} ({activeAuditModal.closingType === 'CAMPAIGN' ? 'Harga Khusus Campaign' : 'Harga Promo Net'}) = <span style={{ color: '#B91C1C', fontSize: '0.9375rem' }}>{fmt(activeAuditModal.biaya)}</span></strong>
-                </li>
-              </ol>
-            </div>
-
-            {/* Transactions Drilldown Table */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, margin: 0 }}>
-                  Daftar Transaksi Sumber ({activeAuditModal.transactions.length} pesanan):
-                </h4>
-                <div style={{ position: 'relative', width: '220px' }}>
-                  <Search size={13} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input 
-                    type="text" 
-                    placeholder="Filter No. Pesanan..." 
-                    value={auditSearch}
-                    onChange={e => setAuditSearch(e.target.value)}
-                    style={{ width: '100%', padding: '4px 8px 4px 26px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--surface-border)' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ maxHeight: '220px', overflowY: 'auto', border: '1px solid var(--surface-border)', borderRadius: '8px' }}>
-                <table className="data-table" style={{ width: '100%', fontSize: '0.75rem' }}>
-                  <thead>
-                    <tr>
-                      <th>No. Pesanan</th>
-                      <th>Tanggal</th>
-                      <th>Status Pesanan</th>
-                      <th>Diskon</th>
-                      <th>Status Audit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeAuditModal.transactions
-                      .filter(tx => !auditSearch || tx.orderNumber.toLowerCase().includes(auditSearch.toLowerCase()))
-                      .map((tx) => {
-                        const isCancelled = isOrderCancelled(tx.orderStatus)
-                        return (
-                          <tr key={tx.id} style={{ backgroundColor: isCancelled ? '#FFF5F5' : 'transparent' }}>
-                            <td style={{ fontFamily: 'monospace', textDecoration: isCancelled ? 'line-through' : 'none' }}>
-                              {tx.orderNumber}
-                            </td>
-                            <td>{typeof tx.date === 'string' ? tx.date.split('T')[0] : '2026-09'}</td>
-                            <td>
-                              <span className="badge" style={{ backgroundColor: isCancelled ? '#FEE2E2' : '#DCFCE7', color: isCancelled ? '#991B1B' : '#166534', fontSize: '0.68rem' }}>
-                                {tx.orderStatus}
-                              </span>
-                            </td>
-                            <td>{fmt(tx.discountAmount)}</td>
-                            <td>
-                              {isCancelled ? (
-                                <span style={{ color: 'var(--danger)', fontWeight: 700 }}>COUNT = 0 (Batal)</span>
-                              ) : (
-                                <span style={{ color: 'var(--success)', fontWeight: 700 }}>Valid (Hitung)</span>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--surface-border)', paddingTop: '14px' }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Audit ID: <code>{activeAuditModal.groupId}</code>
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button 
-                  onClick={() => {
-                    handleToggleDuplicateRule(activeAuditModal.groupId)
-                    setActiveAuditModal(null)
-                  }}
-                  className="btn-outline" 
-                  style={{ fontSize: '0.8125rem' }}
-                  disabled={closingStatus === 'Closed'}
-                >
-                  Ganti Rule Duplikat ({activeAuditModal.isDuplicatePromo ? 'Ubah ke Unik' : 'Ubah ke Duplikat ÷2'})
-                </button>
-                <button onClick={() => setActiveAuditModal(null)} className="btn-primary" style={{ fontSize: '0.8125rem' }}>
-                  Tutup Rincian Audit
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODAL 2: REVIEW PAKET DISKON                                              */}
-      {/* ========================================================================= */}
-      {activePaketModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(3px)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div className="card fade-in" style={{ width: '100%', maxWidth: '620px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--surface-border)', paddingBottom: '12px' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Package size={20} color="#2563EB" />
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>Review Paket Diskon Marketplace</h3>
-                </div>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
-                  Validasi komponen bundling produk, rasio isi paket, dan harga promo setelah diskon.
-                </p>
+                <span style={{ color: 'var(--text-muted)' }}>Harga & Diskon:</span>
+                <div style={{ fontWeight: 700, color: '#854D0E' }}>Promo: {fmt(activeAuditModal.hargaPromo)}</div>
+                <div style={{ fontSize: '0.75rem', color: '#D97706' }}>Total Diskon: {fmt(activeAuditModal.totalDiskon)}</div>
               </div>
-              <button onClick={() => setActivePaketModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
             </div>
 
-            <div style={{ backgroundColor: '#F8FAFC', padding: '14px', borderRadius: '8px', border: '1px solid var(--surface-border)', fontSize: '0.8125rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div><strong>Nama Promo:</strong> {activePaketModal.promotionName}</div>
-              <div><strong>Marketplace:</strong> {activePaketModal.marketplace} ({activePaketModal.periodLabel})</div>
-              <div><strong>Bundle SKU:</strong> <code style={{ fontWeight: 600 }}>{activePaketModal.sku}</code></div>
-              <div><strong>Harga Normal Paket:</strong> {fmt(activePaketModal.price)}</div>
-              <div><strong>Potongan Diskon Paket:</strong> {fmt(activePaketModal.discountAmount)} ({activePaketModal.discountPercent}%)</div>
-              <div><strong>Harga Promo Net:</strong> <span style={{ fontWeight: 700, color: '#1E40AF' }}>{fmt(activePaketModal.priceAfterDiscount)}</span></div>
-            </div>
-
-            <div>
-              <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '8px' }}>
-                Komponen Produk Dalam Paket (Bundle Items):
+            {/* Formula Breakdown */}
+            <div style={{ backgroundColor: '#FEFCE8', border: '1px solid #FEF08A', borderRadius: '10px', padding: '16px' }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: '#854D0E', marginBottom: '8px' }}>
+                Perhitungan Qty & Biaya Promosi Brand:
               </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {(activePaketModal.bundleComponents && activePaketModal.bundleComponents.length > 0
-                  ? activePaketModal.bundleComponents
-                  : ['FPK00000033 (Theraskin Perfect Glow Serum 20ml)', 'FPK00000078 (Theraskin Sunscreen SPF 50 30g)']
-                ).map((comp, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: '6px', backgroundColor: '#F1F5F9', fontSize: '0.8125rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <CheckCircle2 size={16} color="#16A34A" />
-                      <span style={{ fontWeight: 600 }}>Komponen #{idx + 1}:</span>
-                      <span>{comp}</span>
-                    </div>
-                    <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>Valid SKU</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', fontSize: '0.8125rem' }}>
+                <div style={{ backgroundColor: '#FFFFFF', padding: '12px', borderRadius: '8px', border: '1px solid #FDE68A' }}>
+                  <div style={{ fontWeight: 700, color: '#854D0E', marginBottom: '4px' }}>Periode 1 (1–15 Sep):</div>
+                  <div>Total Order: {activeAuditModal.totalOrdersP1 || 0} (Batal: -{activeAuditModal.cancelledOrdersP1 || 0})</div>
+                  <div>Valid: {activeAuditModal.validOrdersP1 || 0} order</div>
+                  <div style={{ marginTop: '4px', fontWeight: 700, color: '#2563EB' }}>
+                    Qty 1-15: {activeAuditModal.qtyP1} pcs
                   </div>
-                ))}
+                  <div style={{ fontWeight: 700, color: '#DC2626' }}>
+                    Biaya 1-15: {fmt(activeAuditModal.biayaP1)} ({activeAuditModal.qtyP1} × {fmt(activeAuditModal.totalDiskon)})
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#FFFFFF', padding: '12px', borderRadius: '8px', border: '1px solid #FDE68A' }}>
+                  <div style={{ fontWeight: 700, color: '#166534', marginBottom: '4px' }}>Periode 2 (16–30 Sep):</div>
+                  <div>Total Order: {activeAuditModal.totalOrdersP2 || 0} (Batal: -{activeAuditModal.cancelledOrdersP2 || 0})</div>
+                  <div>Valid: {activeAuditModal.validOrdersP2 || 0} order</div>
+                  <div style={{ marginTop: '4px', fontWeight: 700, color: '#166534' }}>
+                    Qty 16-30: {activeAuditModal.qtyP2} pcs
+                  </div>
+                  <div style={{ fontWeight: 700, color: '#DC2626' }}>
+                    Biaya 16-30: {fmt(activeAuditModal.biayaP2)} ({activeAuditModal.qtyP2} × {fmt(activeAuditModal.totalDiskon)})
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed #FDE68A', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                <span>Grand Total Qty: <strong>{activeAuditModal.grandTotalQty} pcs</strong></span>
+                <span style={{ color: '#DC2626', fontWeight: 800 }}>Grand Total Biaya Promosi: {fmt(activeAuditModal.grandTotalBiaya)}</span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
-              <button onClick={() => setActivePaketModal(null)} className="btn-primary" style={{ fontSize: '0.8125rem' }}>
-                Selesai Review
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button onClick={() => setActiveAuditModal(null)} className="btn-primary" style={{ fontSize: '0.8125rem' }}>
+                Tutup Audit
               </button>
             </div>
 
@@ -2216,87 +2032,80 @@ export default function ClosingPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 3: INPUT DATA CLOSING MANUAL                                        */}
+      {/* MODAL: INPUT BARIS PATOKAN MANUAL                                         */}
       {/* ========================================================================= */}
       {showManualModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(3px)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div className="card fade-in" style={{ width: '100%', maxWidth: '580px', padding: '24px' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(3px)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="card fade-in" style={{ width: '100%', maxWidth: '600px', padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>Input Baris Closing Manual</h3>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>Input Baris Patokan Manual</h3>
               <button onClick={() => setShowManualModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
             </div>
 
             <form onSubmit={handleManualSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1.2fr', gap: '10px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Platform / Cabang</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Tab Google Sheet</label>
                   <select 
-                    value={manualForm.platform} 
-                    onChange={e => setManualForm({ ...manualForm, platform: e.target.value as any })}
+                    value={manualForm.sheetTab} 
+                    onChange={e => setManualForm({ ...manualForm, sheetTab: e.target.value as any })}
                     className="filter-select" 
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8125rem' }}
                   >
-                    <optgroup label="Shopee Cabang">
-                      <option value="Shopee Semarang">Shopee Semarang</option>
-                      <option value="Shopee Bali">Shopee Bali</option>
-                      <option value="Shopee Surabaya">Shopee Surabaya</option>
-                      <option value="Shopee Pusat">Shopee Pusat</option>
-                    </optgroup>
-                    <optgroup label="Platform Lain">
-                      <option value="TikTok Shop">TikTok Shop</option>
-                      <option value="Lazada">Lazada</option>
-                    </optgroup>
+                    <option value="September Cabang">September Cabang (Semarang/Bali/Surabaya)</option>
+                    <option value="September">September (Pusat/TikTok/Lazada)</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Tipe Closing</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Marketplace</label>
                   <select 
-                    value={manualForm.closingType} 
-                    onChange={e => setManualForm({ ...manualForm, closingType: e.target.value as any })}
-                    className="filter-select" 
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8125rem', fontWeight: 600 }}
-                  >
-                    <option value="REGULER">🏷️ Reguler</option>
-                    <option value="CAMPAIGN">🚀 Campaign</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Periode</label>
-                  <select 
-                    value={manualForm.period} 
-                    onChange={e => setManualForm({ ...manualForm, period: e.target.value as any })}
+                    value={manualForm.marketplace} 
+                    onChange={e => setManualForm({ ...manualForm, marketplace: e.target.value })}
                     className="filter-select" 
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8125rem' }}
                   >
-                    <option value="PERIOD_1">1–15 (P1)</option>
-                    <option value="PERIOD_2">16–EOM (P2)</option>
+                    <option value="Shopee Semarang">Shopee Semarang</option>
+                    <option value="Shopee Bali">Shopee Bali</option>
+                    <option value="Shopee Surabaya">Shopee Surabaya</option>
+                    <option value="Shopee Pusat">Shopee Pusat</option>
+                    <option value="TikTok Shop">TikTok Shop</option>
+                    <option value="Lazada">Lazada</option>
                   </select>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Kategori Promosi</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Sub Kategori</label>
                   <select 
-                    value={manualForm.kodePromosi} 
-                    onChange={e => setManualForm({ ...manualForm, kodePromosi: e.target.value })}
+                    value={manualForm.subKategori} 
+                    onChange={e => setManualForm({ ...manualForm, subKategori: e.target.value })}
                     className="filter-select" 
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8125rem' }}
                   >
-                    <option value="Voucher Toko">Voucher Toko</option>
-                    <option value="Promo Flash Sale">Promo Flash Sale</option>
-                    <option value="Paket Diskon">Paket Diskon</option>
-                    <option value="Voucher Brand Membership">Voucher Brand Membership</option>
-                    <option value="Voucher Live / Video">Voucher Live / Video</option>
+                    <option value="Flash Sale">Flash Sale</option>
+                    <option value="Voucher">Voucher</option>
+                    <option value="Paket diskon">Paket diskon</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Nama Promosi</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Periode Badge</label>
                   <input 
                     type="text" 
-                    value={manualForm.namaPromosi} 
-                    onChange={e => setManualForm({ ...manualForm, namaPromosi: e.target.value })}
+                    value={manualForm.periodeBadge} 
+                    onChange={e => setManualForm({ ...manualForm, periodeBadge: e.target.value })}
+                    className="filter-select" 
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8125rem' }}
+                    required 
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Tanggal Promo</label>
+                  <input 
+                    type="text" 
+                    value={manualForm.tanggal} 
+                    onChange={e => setManualForm({ ...manualForm, tanggal: e.target.value })}
                     className="filter-select" 
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8125rem' }}
                     required 
@@ -2317,7 +2126,7 @@ export default function ClosingPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Nama Produk</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Product Name</label>
                   <input 
                     type="text" 
                     value={manualForm.productName} 
@@ -2329,65 +2138,57 @@ export default function ClosingPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Harga Normal (Rp)</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>HARGA Bulanan</label>
                   <input 
                     type="number" 
-                    value={manualForm.price} 
-                    onChange={e => setManualForm({ ...manualForm, price: parseFloat(e.target.value) || 0 })}
+                    value={manualForm.hargaBulanan} 
+                    onChange={e => setManualForm({ ...manualForm, hargaBulanan: parseFloat(e.target.value) || 0 })}
                     className="filter-select" 
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8125rem' }}
                     required 
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Nilai Diskon (Rp)</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Total Diskon (Rp)</label>
                   <input 
                     type="number" 
-                    value={manualForm.discountAmount} 
-                    onChange={e => setManualForm({ ...manualForm, discountAmount: parseFloat(e.target.value) || 0 })}
+                    value={manualForm.totalDiskon} 
+                    onChange={e => setManualForm({ ...manualForm, totalDiskon: parseFloat(e.target.value) || 0 })}
                     className="filter-select" 
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8125rem' }}
                     required 
                   />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Harga Promo Net</label>
+                  <div style={{ padding: '6px 10px', fontSize: '0.8125rem', fontWeight: 800, backgroundColor: '#FEF9C3', borderRadius: '6px', color: '#854D0E' }}>
+                    {fmt(Math.max(0, manualForm.hargaBulanan - manualForm.totalDiskon))}
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '10px', backgroundColor: '#F8FAFC', padding: '12px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', backgroundColor: '#F8FAFC', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Total Order</label>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, marginBottom: '2px' }}>Qty 1-15 Sep (Order)</label>
                   <input 
                     type="number" 
-                    value={manualForm.totalOrders} 
-                    onChange={e => setManualForm({ ...manualForm, totalOrders: parseInt(e.target.value) || 0 })}
+                    value={manualForm.ordersP1} 
+                    onChange={e => setManualForm({ ...manualForm, ordersP1: parseInt(e.target.value) || 0 })}
                     className="filter-select" 
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8125rem' }}
-                    required 
+                    style={{ width: '100%', padding: '5px 8px', fontSize: '0.8rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px', color: 'var(--danger)' }}>Batal</label>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, marginBottom: '2px' }}>Qty 16-30 Sep (Order)</label>
                   <input 
                     type="number" 
-                    value={manualForm.cancelledOrders} 
-                    onChange={e => setManualForm({ ...manualForm, cancelledOrders: parseInt(e.target.value) || 0 })}
+                    value={manualForm.ordersP2} 
+                    onChange={e => setManualForm({ ...manualForm, ordersP2: parseInt(e.target.value) || 0 })}
                     className="filter-select" 
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8125rem', borderColor: '#FED7D7' }}
-                    required 
+                    style={{ width: '100%', padding: '5px 8px', fontSize: '0.8rem' }}
                   />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px' }}>Duplikat Promo?</label>
-                  <select 
-                    value={manualForm.isDuplicatePromo ? 'true' : 'false'} 
-                    onChange={e => setManualForm({ ...manualForm, isDuplicatePromo: e.target.value === 'true' })}
-                    className="filter-select" 
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8125rem' }}
-                  >
-                    <option value="true">Ya (Bagi 2)</option>
-                    <option value="false">Tidak (Unik)</option>
-                  </select>
                 </div>
               </div>
 
@@ -2396,7 +2197,7 @@ export default function ClosingPage() {
                   Batal
                 </button>
                 <button type="submit" className="btn-primary" style={{ fontSize: '0.8125rem' }}>
-                  Hitung & Tambahkan
+                  Simpan ke Patokan
                 </button>
               </div>
             </form>

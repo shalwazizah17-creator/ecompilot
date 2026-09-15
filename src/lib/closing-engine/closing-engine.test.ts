@@ -8,6 +8,7 @@ import {
   getDynamicPeriodLabels,
   generateMasterClosingTSV,
   generateStandardMasterClosingTSV,
+  generatePatokanValuesTSV,
   RawOrderTransaction
 } from './index'
 
@@ -130,8 +131,8 @@ describe('Closing Calculation Engine — Business Rules', () => {
       expect(result.validOrders).toBe(80)
       expect(result.appliedRule).toBe('STANDARD_NO_SPLIT')
       expect(result.finalClosingQty).toBe(80)
-      // Finance Formula: Biaya = Final QTY × Harga Setelah Diskon = 80 × (60000 - 10000) = 80 × 50000 = 4,000,000
-      expect(result.biaya).toBe(80 * 50000)
+      // Formula Biaya Promosi Brand (Sesuai Google Sheet Patokan): Biaya = Final QTY × Total Diskon = 80 × 10.000 = 800.000
+      expect(result.biaya).toBe(80 * 10000)
     })
   })
 
@@ -181,8 +182,7 @@ describe('Closing Calculation Engine — Business Rules', () => {
       }))
 
       const group = calculateClosingGroup(txs, undefined, true) // 20 orders / 2 = 10 pcs
-      // Price after discount: 85000 - 5000 = 80000
-      // Biaya: 10 × 80000 = 800,000
+      // Biaya Promosi Brand (Sesuai Google Sheet): 10 × 5000 = 50,000
 
       const tsv = generateMasterClosingTSV([group])
       const parts = tsv.split('\t')
@@ -193,7 +193,22 @@ describe('Closing Calculation Engine — Business Rules', () => {
       expect(parts[2]).toBe('Voucher Diskon 5K')
       expect(parts[3]).toBe('FPK00000033')
       expect(parts[4]).toBe('10')
-      expect(parts[5]).toBe('800000')
+      expect(parts[5]).toBe('50000')
+    })
+
+    it('generates exact Column O to T TSV format for direct paste into Google Sheet cell O2', () => {
+      // Simulate row with P1 and P2
+      const row = {
+        qtyP1: 28,
+        biayaP1: 140000,
+        qtyP2: 0,
+        biayaP2: 0,
+        grandTotalQty: 28,
+        grandTotalBiaya: 140000
+      } as any
+
+      const tsv = generatePatokanValuesTSV([row])
+      expect(tsv).toBe('28\t140000\t0\t0\t28\t140000')
     })
   })
 
@@ -505,6 +520,11 @@ describe('Closing Calculation Engine — Business Rules', () => {
       expect(getClosingPeriod('2026-09-16')).toBe('PERIOD_2')
       expect(getClosingPeriod('2026-09-30')).toBe('PERIOD_2')
       expect(getClosingPeriod('2026-10-31')).toBe('PERIOD_2')
+      // Indonesian marketplace export format (DD/MM/YYYY HH:mm:ss, e.g. 14/09/2026 23:47:20)
+      expect(getClosingPeriod('14/09/2026 23:47:20')).toBe('PERIOD_1')
+      expect(getClosingPeriod('15/09/2026 12:00:00')).toBe('PERIOD_1')
+      expect(getClosingPeriod('16/09/2026 01:30:00')).toBe('PERIOD_2')
+      expect(getClosingPeriod('20/09/2026 18:25:27')).toBe('PERIOD_2')
     })
   })
 
