@@ -508,6 +508,107 @@ describe('Closing Calculation Engine — Business Rules', () => {
     })
   })
 
+  describe('Shopee Multi-Cabang Support', () => {
+    it('segregates transactions for Shopee Pusat, Semarang, Bali, and Surabaya into distinct groups', () => {
+      const branches = ['Shopee Pusat', 'Shopee Semarang', 'Shopee Bali', 'Shopee Surabaya']
+      const txs: RawOrderTransaction[] = branches.map((branch, i) => ({
+        id: `branch-tx-${i}`,
+        orderNumber: `ORD-${branch.slice(7)}-01`,
+        date: '2026-09-05',
+        month: 'September',
+        period: 'PERIOD_1' as const,
+        marketplace: branch,
+        promotionCategory: 'Voucher Toko',
+        promotionName: 'Voucher Cabang 5K',
+        sku: 'FPK00000033',
+        price: 85000,
+        discountAmount: 5000,
+        quantity: 10,
+        orderStatus: 'Selesai'
+      }))
+
+      const batchResult = processClosingTransactions(txs)
+      expect(batchResult.groups.length).toBe(4)
+
+      const semarangGroup = batchResult.groups.find(g => g.marketplace === 'Shopee Semarang')!
+      const baliGroup = batchResult.groups.find(g => g.marketplace === 'Shopee Bali')!
+      const surabayaGroup = batchResult.groups.find(g => g.marketplace === 'Shopee Surabaya')!
+      const pusatGroup = batchResult.groups.find(g => g.marketplace === 'Shopee Pusat')!
+
+      expect(semarangGroup).toBeDefined()
+      expect(semarangGroup.branchCity).toBe('Semarang')
+      expect(baliGroup).toBeDefined()
+      expect(baliGroup.branchCity).toBe('Bali')
+      expect(surabayaGroup).toBeDefined()
+      expect(surabayaGroup.branchCity).toBe('Surabaya')
+      expect(pusatGroup).toBeDefined()
+      expect(pusatGroup.branchCity).toBe('Pusat')
+    })
+  })
+
+  describe('Closingan Reguler vs Closingan Campaign (Beda Harga)', () => {
+    it('separates regular promo and campaign promo on the same SKU with different pricing into distinct groups', () => {
+      // 1 SKU (FPK00000033):
+      // Transaction A: Regular store promo (Voucher Toko 5K, Harga Normal 85K, Net 80K)
+      // Transaction B: Campaign promo (Mega Campaign 9.9, Diskon 17K, Net 68K)
+      const txs: RawOrderTransaction[] = [
+        {
+          id: 'tx-reg-1',
+          orderNumber: 'ORD-REG-01',
+          date: '2026-09-08',
+          month: 'September',
+          period: 'PERIOD_1',
+          marketplace: 'Shopee Pusat',
+          promotionCategory: 'Voucher Toko',
+          promotionName: 'Voucher Toko Reguler 5K',
+          sku: 'FPK00000033',
+          price: 85000,
+          discountAmount: 5000,
+          quantity: 20,
+          orderStatus: 'Selesai'
+        },
+        {
+          id: 'tx-camp-1',
+          orderNumber: 'ORD-CAMP-01',
+          date: '2026-09-09',
+          month: 'September',
+          period: 'PERIOD_1',
+          marketplace: 'Shopee Pusat',
+          promotionCategory: 'Promo Flash Sale',
+          promotionName: 'Mega Campaign 9.9 Flash Sale Glow Serum',
+          sku: 'FPK00000033',
+          price: 85000,
+          discountAmount: 17000, // Harga Campaign Net = 68,000
+          quantity: 50,
+          orderStatus: 'Selesai'
+        }
+      ]
+
+      const batchResult = processClosingTransactions(txs)
+      expect(batchResult.groups.length).toBe(2)
+
+      const regGroup = batchResult.groups.find(g => g.closingType === 'REGULER')!
+      const campGroup = batchResult.groups.find(g => g.closingType === 'CAMPAIGN')!
+
+      expect(regGroup).toBeDefined()
+      expect(campGroup).toBeDefined()
+
+      // Reguler: priceAfterDiscount = 80,000
+      expect(regGroup.priceAfterDiscount).toBe(80000)
+      // Campaign: priceAfterDiscount = 68,000 (Harga Spesial Campaign)
+      expect(campGroup.priceAfterDiscount).toBe(68000)
+
+      // Test TSV copy filtering
+      const tsvRegOnly = generateMasterClosingTSV(batchResult.groups, 'REGULER')
+      expect(tsvRegOnly).toContain('Voucher Toko Reguler 5K')
+      expect(tsvRegOnly).not.toContain('Mega Campaign 9.9')
+
+      const tsvCampOnly = generateMasterClosingTSV(batchResult.groups, 'CAMPAIGN')
+      expect(tsvCampOnly).toContain('Mega Campaign 9.9')
+      expect(tsvCampOnly).not.toContain('Voucher Toko Reguler 5K')
+    })
+  })
+
   describe('Cancelled Status Keyword Matcher', () => {
     it('identifies cancelled, batal, and retur statuses', () => {
       expect(isOrderCancelled('Dibatalkan')).toBe(true)

@@ -6,21 +6,29 @@
  * 1. NOT a replacement for Master Closing. Master Closing remains the final report.
  *    This engine processes raw marketplace order data + reference promo data to produce
  *    precise Quantity + Biaya for Master Closing entry.
- * 2. Period Split:
+ * 2. Shopee Multi-Cabang:
+ *    - Hanya Shopee yang memiliki cabang:
+ *        Shopee Pusat, Shopee Semarang, Shopee Bali, Shopee Surabaya
+ *    - TikTok Shop dan Lazada TIDAK memiliki cabang.
+ * 3. Closingan Reguler vs Closingan Campaign:
+ *    - Produk dengan harga promo campaign dipisahkan ke dalam kelompok CAMPAIGN.
+ *    - Produk dengan promo voucher toko/diskon reguler masuk ke REGULER.
+ *    - Grouping key memisahkan closingType sehingga harga & kuantitas campaign tidak tertukar.
+ * 4. Period Split:
  *    - Periode 1: Tanggal 1 – 15
  *    - Periode 2: Tanggal 16 – akhir bulan (dynamically computed: 28, 29, 30, or 31).
- * 3. Cancelled Orders Excluded:
+ * 5. Cancelled Orders Excluded:
  *    - Pesanan batal/cancelled/retur TIDAK dihitung (COUNT = 0).
  *    - Formula: Valid Orders = Total Orders - Cancelled Orders.
- * 4. Duplicate Discount Rule:
+ * 6. Duplicate Discount Rule:
  *    - JANGAN membagi semua pesanan dengan 2.
  *    - Jika ditemukan diskon/promo yang sama dalam periode closing yang sama:
  *        Final QTY = Valid QTY ÷ 2
  *    - Jika tidak ada diskon yang sama (unik):
  *        Final QTY = Valid QTY
- * 5. Formula Biaya:
- *    - BIAYA = Final QTY × Harga Setelah Diskon (dan mencatat subsidi diskon).
- * 6. Master Closing Copy Format (Tab-Separated):
+ * 7. Formula Biaya:
+ *    - BIAYA = Final QTY × Harga Setelah Diskon.
+ * 8. Master Closing Copy Format (Tab-Separated):
  *    Platform \t Kode Promosi \t Nama Promosi \t SKU \t Quantity \t Biaya
  */
 
@@ -30,6 +38,76 @@ export type ClosingRuleType = 'DIVIDE_VALID_ORDERS_BY_2' | 'STANDARD_NO_SPLIT'
 
 export type ClosingStatus = 'Draft' | 'Data Imported' | 'Under Review' | 'Ready for Finance' | 'Closed'
 
+export type ClosingType = 'REGULER' | 'CAMPAIGN'
+
+export type ShopeeBranch = 'Shopee Pusat' | 'Shopee Semarang' | 'Shopee Bali' | 'Shopee Surabaya'
+
+export type MarketplacePlatform = ShopeeBranch | 'TikTok Shop' | 'Lazada'
+
+export const SHOPEE_BRANCHES: ShopeeBranch[] = [
+  'Shopee Pusat',
+  'Shopee Semarang',
+  'Shopee Bali',
+  'Shopee Surabaya'
+]
+
+export const ALL_PLATFORMS: MarketplacePlatform[] = [
+  'Shopee Pusat',
+  'Shopee Semarang',
+  'Shopee Bali',
+  'Shopee Surabaya',
+  'TikTok Shop',
+  'Lazada'
+]
+
+export function isShopeePlatform(platform: string): boolean {
+  return (platform || '').toLowerCase().includes('shopee')
+}
+
+/**
+ * Classify whether an order/promo belongs to Campaign Closing or Regular Promo Closing.
+ * Campaign typically has campaign keywords (Mega, Flash Sale, 9.9, Payday) or deeper campaign prices.
+ */
+export function classifyClosingType(
+  promoCategory: string,
+  promoName: string,
+  price?: number,
+  discountAmount?: number
+): ClosingType {
+  const text = `${promoCategory || ''} ${promoName || ''}`.toLowerCase()
+  
+  const campaignKeywords = [
+    'campaign',
+    'mega',
+    'flash sale',
+    'payday',
+    'gajian',
+    '9.9',
+    '10.10',
+    '11.11',
+    '12.12',
+    'brand day',
+    'super brand',
+    'tanggal kembar',
+    'promo puncak',
+    'big ramadhan',
+    'shopee live mega'
+  ]
+
+  if (campaignKeywords.some(k => text.includes(k))) {
+    return 'CAMPAIGN'
+  }
+
+  if (price && discountAmount && price > 0) {
+    const discountRate = discountAmount / price
+    if (discountRate >= 0.20 && text.includes('sale')) {
+      return 'CAMPAIGN'
+    }
+  }
+
+  return 'REGULER'
+}
+
 export interface RawOrderTransaction {
   id: string
   orderNumber: string
@@ -37,6 +115,8 @@ export interface RawOrderTransaction {
   month: string
   period?: ClosingPeriodType
   marketplace: string
+  closingType?: ClosingType
+  branchCity?: string
   promotionCategory: string
   promotionName: string
   sku: string
@@ -59,6 +139,9 @@ export interface ClosingGroupAudit {
   periodLabel: string
   periodDateRange?: string
   marketplace: string
+  closingType: ClosingType // 'REGULER' | 'CAMPAIGN'
+  branchCity?: string // 'Pusat' | 'Semarang' | 'Bali' | 'Surabaya'
+  isShopeeBranch?: boolean
   promotionCategory: string
   subCategory?: string
   promotionName: string
@@ -67,7 +150,7 @@ export interface ClosingGroupAudit {
   price: number // Harga Normal / Bulanan
   discountPercent: number
   discountAmount: number // Total Diskon
-  priceAfterDiscount: number // Harga Setelah Diskon / Harga Promo
+  priceAfterDiscount: number // Harga Setelah Diskon / Harga Promo (Beda saat Campaign)
   
   // Mathematical breakdown for Finance audit
   totalOrders: number
@@ -103,6 +186,8 @@ export interface ClosingBatchResult {
     totalFinalClosingQty: number
     totalBiaya: number
     totalBiayaPromo: number
+    totalRegulerBiaya: number
+    totalCampaignBiaya: number
     needsReviewCount: number
   }
 }
@@ -209,30 +294,32 @@ export function normalizeDiscount(val: number | string): number {
 
 /**
  * Generate unique grouping key based on strict Finance rules:
- * Context: Month, Closing Period, Marketplace, Category, Promotion, SKU, Discount
+ * Context: Month, Closing Period, Marketplace, ClosingType (Reguler vs Campaign), Category, Promotion, SKU, Discount
  */
 export function buildGroupKey(
   month: string,
   period: ClosingPeriodType,
   marketplace: string,
-  promoCategory: string,
-  promotionName: string,
-  sku: string,
-  discountAmount: number
+  closingType: ClosingType = 'REGULER',
+  promoCategory: string = '',
+  promotionName: string = '',
+  sku: string = '',
+  discountAmount: number = 0
 ): string {
   const cleanMonth = (month || '').trim().toLowerCase()
   const cleanMarketplace = (marketplace || '').trim().toLowerCase()
+  const cleanType = (closingType || 'REGULER').trim().toLowerCase()
   const cleanCat = (promoCategory || '').trim().toLowerCase()
   const cleanPromo = (promotionName || '').trim().toLowerCase()
   const cleanSku = (sku || '').trim().toLowerCase()
   const cleanDiscount = normalizeDiscount(discountAmount).toFixed(2)
 
-  return `${cleanMonth}::${period}::${cleanMarketplace}::${cleanCat}::${cleanPromo}::${cleanSku}::${cleanDiscount}`
+  return `${cleanMonth}::${period}::${cleanMarketplace}::${cleanType}::${cleanCat}::${cleanPromo}::${cleanSku}::${cleanDiscount}`
 }
 
 /**
  * Core calculation for a single group of transactions sharing identical
- * Month, Period, Marketplace, Category, Promo, SKU, and Discount Amount.
+ * Month, Period, Marketplace, ClosingType, Category, Promo, SKU, and Discount Amount.
  */
 export function calculateClosingGroup(
   transactions: RawOrderTransaction[],
@@ -247,7 +334,7 @@ export function calculateClosingGroup(
   const month = sample.month || 'September'
   const year = 2026
   const closingPeriod = sample.period || (sample.date ? getClosingPeriod(sample.date) : 'PERIOD_1')
-  const marketplace = sample.marketplace || 'Shopee'
+  const marketplace = sample.marketplace || 'Shopee Pusat'
   const promotionCategory = sample.promotionCategory || 'Voucher Toko'
   const promotionName = sample.promotionName || 'Promo Diskon'
   const sku = sample.sku || 'All SKU'
@@ -256,6 +343,19 @@ export function calculateClosingGroup(
   const price = sample.price || 0
   const discountPercent = sample.discountPercent || (price > 0 && discountAmount > 0 ? Math.round((discountAmount / price) * 100) : 0)
   const priceAfterDiscount = Math.max(0, price - discountAmount)
+
+  // Determine Closing Type: Reguler vs Campaign
+  const closingType: ClosingType = sample.closingType || classifyClosingType(promotionCategory, promotionName, price, discountAmount)
+
+  // Branch Info
+  const isShopee = isShopeePlatform(marketplace)
+  let branchCity: string | undefined = undefined
+  if (isShopee) {
+    if (marketplace.includes('Semarang')) branchCity = 'Semarang'
+    else if (marketplace.includes('Bali')) branchCity = 'Bali'
+    else if (marketplace.includes('Surabaya')) branchCity = 'Surabaya'
+    else branchCity = 'Pusat'
+  }
 
   // 1. Calculate Total Orders & Filter Cancelled (COUNT = 0)
   let totalOrdersCount = 0
@@ -289,7 +389,6 @@ export function calculateClosingGroup(
   } else if (transactions.some(tx => tx.isDuplicatePromo === false)) {
     isDuplicate = false
   } else {
-    // Default fallback: if discount exists and divide-by-2 enabled
     isDuplicate = config?.enableDivideBy2ForSameDiscount !== false && discountAmount > 0 && validOrdersCount > 0
   }
 
@@ -301,7 +400,7 @@ export function calculateClosingGroup(
     : validOrdersCount
 
   // 4. Calculate Biaya
-  // Finance Formula: BIAYA = Final QTY × Harga Setelah Diskon
+  // Finance Formula: BIAYA = Final QTY × Harga Setelah Diskon (Harga Promo Net)
   const effectivePriceAfterDiscount = priceAfterDiscount > 0 ? priceAfterDiscount : price
   const biaya = finalClosingQty * effectivePriceAfterDiscount
 
@@ -323,7 +422,7 @@ export function calculateClosingGroup(
 
   const periodLabels = getDynamicPeriodLabels(year, month)
   const periodDateRange = closingPeriod === 'PERIOD_1' ? periodLabels.p1DateRange : periodLabels.p2DateRange
-  const groupId = buildGroupKey(month, closingPeriod, marketplace, promotionCategory, promotionName, sku, discountAmount)
+  const groupId = buildGroupKey(month, closingPeriod, marketplace, closingType, promotionCategory, promotionName, sku, discountAmount)
 
   return {
     groupId,
@@ -333,6 +432,9 @@ export function calculateClosingGroup(
     periodLabel: getClosingPeriodLabel(closingPeriod, month, year),
     periodDateRange,
     marketplace,
+    closingType,
+    branchCity,
+    isShopeeBranch: isShopee,
     promotionCategory,
     subCategory: sample.promotionCategory || 'Promo Reguler',
     promotionName,
@@ -361,7 +463,7 @@ export function calculateClosingGroup(
 
 /**
  * Main batch processor:
- * Takes raw order transactions, groups them strictly by context,
+ * Takes raw order transactions, groups them strictly by context including ClosingType (Reguler vs Campaign),
  * detects duplicate promo occurrences in the same period,
  * and computes closing QTY & Biaya with full audit history.
  */
@@ -369,11 +471,12 @@ export function processClosingTransactions(
   transactions: RawOrderTransaction[],
   config?: ClosingEngineConfig
 ): ClosingBatchResult {
-  // Pass 1: Count occurrences of promo within (marketplace, period, promoName/discount)
+  // Pass 1: Count occurrences of promo within (marketplace, period, closingType, promoName/discount)
   const promoPeriodCount = new Map<string, number>()
   transactions.forEach(tx => {
     const period = tx.period || (tx.date ? getClosingPeriod(tx.date) : 'PERIOD_1')
-    const promoKey = `${tx.marketplace}::${period}::${tx.promotionName}`
+    const closingType = tx.closingType || classifyClosingType(tx.promotionCategory, tx.promotionName, tx.price, tx.discountAmount)
+    const promoKey = `${tx.marketplace}::${period}::${closingType}::${tx.promotionName}`
     promoPeriodCount.set(promoKey, (promoPeriodCount.get(promoKey) || 0) + 1)
   })
 
@@ -381,10 +484,12 @@ export function processClosingTransactions(
   const groupMap = new Map<string, RawOrderTransaction[]>()
   transactions.forEach(tx => {
     const period = tx.period || (tx.date ? getClosingPeriod(tx.date) : 'PERIOD_1')
+    const closingType = tx.closingType || classifyClosingType(tx.promotionCategory, tx.promotionName, tx.price, tx.discountAmount)
     const key = buildGroupKey(
       tx.month,
       period,
       tx.marketplace,
+      closingType,
       tx.promotionCategory,
       tx.promotionName,
       tx.sku,
@@ -394,7 +499,7 @@ export function processClosingTransactions(
     if (!groupMap.has(key)) {
       groupMap.set(key, [])
     }
-    groupMap.get(key)!.push({ ...tx, period })
+    groupMap.get(key)!.push({ ...tx, period, closingType })
   })
 
   const groups: ClosingGroupAudit[] = []
@@ -404,12 +509,15 @@ export function processClosingTransactions(
   let totalFinalQty = 0
   let totalBiaya = 0
   let totalBiayaPromo = 0
+  let totalRegulerBiaya = 0
+  let totalCampaignBiaya = 0
   let needsReviewCount = 0
 
   groupMap.forEach(groupTxList => {
     const sample = groupTxList[0]
     const period = sample.period || 'PERIOD_1'
-    const promoKey = `${sample.marketplace}::${period}::${sample.promotionName}`
+    const closingType = sample.closingType || 'REGULER'
+    const promoKey = `${sample.marketplace}::${period}::${closingType}::${sample.promotionName}`
     const promoCount = promoPeriodCount.get(promoKey) || 1
 
     // If explicit config or duplicate flagged in transactions or promo occurred multiple times
@@ -426,6 +534,13 @@ export function processClosingTransactions(
     totalFinalQty += groupResult.finalClosingQty
     totalBiaya += groupResult.biaya
     totalBiayaPromo += groupResult.totalBiayaPromo
+
+    if (groupResult.closingType === 'CAMPAIGN') {
+      totalCampaignBiaya += groupResult.biaya
+    } else {
+      totalRegulerBiaya += groupResult.biaya
+    }
+
     if (groupResult.needsReview) needsReviewCount++
   })
 
@@ -438,6 +553,8 @@ export function processClosingTransactions(
       totalFinalClosingQty: totalFinalQty,
       totalBiaya,
       totalBiayaPromo,
+      totalRegulerBiaya,
+      totalCampaignBiaya,
       needsReviewCount
     }
   }
@@ -447,9 +564,15 @@ export function processClosingTransactions(
  * 1-Click COPY HASIL CLOSING (6 Columns Format):
  * Format tab-separated agar bisa langsung di-paste ke Master Closing:
  * Platform \t Kode Promosi \t Nama Promosi \t SKU \t Quantity \t Biaya
+ * Optionally filters by closingType ('REGULER' | 'CAMPAIGN').
  */
-export function generateMasterClosingTSV(rows: ClosingGroupAudit[]): string {
-  const lines = rows.map(r => {
+export function generateMasterClosingTSV(
+  rows: ClosingGroupAudit[],
+  closingTypeFilter?: ClosingType
+): string {
+  const filtered = closingTypeFilter ? rows.filter(r => r.closingType === closingTypeFilter) : rows
+
+  const lines = filtered.map(r => {
     const platform = r.marketplace || ''
     const kodePromosi = r.promotionCategory || ''
     const namaPromosi = r.promotionName || ''
@@ -466,10 +589,16 @@ export function generateMasterClosingTSV(rows: ClosingGroupAudit[]): string {
 /**
  * Standard 11-column Master Closing format with headers
  */
-export function generateStandardMasterClosingTSV(rows: ClosingGroupAudit[]): string {
+export function generateStandardMasterClosingTSV(
+  rows: ClosingGroupAudit[],
+  closingTypeFilter?: ClosingType
+): string {
+  const filtered = closingTypeFilter ? rows.filter(r => r.closingType === closingTypeFilter) : rows
+
   const header = [
     'Bulan',
     'Platform',
+    'Tipe',
     'Kode Promosi',
     'Nama Promosi',
     'Kode SKU',
@@ -481,9 +610,10 @@ export function generateStandardMasterClosingTSV(rows: ClosingGroupAudit[]): str
     'Biaya'
   ].join('\t')
 
-  const lines = rows.map(r => [
+  const lines = filtered.map(r => [
     r.month,
     r.marketplace,
+    r.closingType,
     r.promotionCategory,
     r.promotionName,
     r.sku,
@@ -506,19 +636,21 @@ export function generateFullAuditTSV(rows: ClosingGroupAudit[]): string {
     'Bulan',
     'Periode',
     'Platform',
+    'Cabang',
+    'Tipe Closing',
     'Kategori Promosi',
     'Nama Promosi',
     'Kode SKU',
     'Nama Produk',
     'Harga Normal',
     'Diskon',
-    'Harga Setelah Diskon',
+    'Harga Promo Net',
     'Total Orders',
     'Pesanan Batal',
     'Pesanan Valid',
     'Duplicate Rule',
     'Final QTY Closing',
-    'Biaya (Final QTY x Net Price)',
+    'Biaya Closing',
     'Formula Perhitungan'
   ].join('\t')
 
@@ -526,6 +658,8 @@ export function generateFullAuditTSV(rows: ClosingGroupAudit[]): string {
     r.month,
     r.periodLabel,
     r.marketplace,
+    r.branchCity || '-',
+    r.closingType,
     r.promotionCategory,
     r.promotionName,
     r.sku,
@@ -547,12 +681,14 @@ export function generateFullAuditTSV(rows: ClosingGroupAudit[]): string {
 
 /**
  * Initial Rich Seed Data for Theraskin Closing Reconciliation
- * Covers Shopee Pusat, Shopee Semarang, TikTok Shop, and Lazada.
+ * Covers Shopee Pusat, Shopee Semarang, Shopee Bali, Shopee Surabaya, TikTok Shop, and Lazada.
+ * Accurately demonstrates different pricing between Regular Promo and Campaign Closing!
  */
 export function generateTheraskinClosingSeed(month: string = 'September', year: number = 2026): ClosingGroupAudit[] {
   const mockRows: Array<{
     period: ClosingPeriodType
     platform: string
+    closingType: ClosingType
     category: string
     subCategory: string
     promoName: string
@@ -566,38 +702,46 @@ export function generateTheraskinClosingSeed(month: string = 'September', year: 
     isPaketDiskon?: boolean
     bundleComponents?: string[]
   }> = [
-    // Shopee Pusat - Period 1
+    // ==========================================
+    // 1. SHOPEE PUSAT
+    // ==========================================
+    // Shopee Pusat - Period 1 - REGULER
     {
       period: 'PERIOD_1',
       platform: 'Shopee Pusat',
+      closingType: 'REGULER',
       category: 'Voucher Toko',
       subCategory: 'Voucher Pengikut Baru',
       promoName: 'Voucher Toko Diskon 5K',
       sku: 'FPK00000033',
       productName: 'Theraskin Perfect Glow Serum 20ml',
       price: 85000,
-      discountAmount: 5000,
+      discountAmount: 5000, // Net: 80,000
       totalOrders: 100,
       cancelledOrders: 10,
-      isDuplicatePromo: true // Duplicate promo in period -> (100-10)/2 = 45
+      isDuplicatePromo: true // (100-10)/2 = 45
     },
+    // Shopee Pusat - Period 1 - CAMPAIGN (BEDA HARGA!)
     {
       period: 'PERIOD_1',
       platform: 'Shopee Pusat',
+      closingType: 'CAMPAIGN',
       category: 'Promo Flash Sale',
-      subCategory: 'Flash Sale Toko',
-      promoName: 'Flash Sale Brightening 10K',
-      sku: 'FPK00000056',
-      productName: 'Theraskin Brightening Facial Wash 100ml',
-      price: 45000,
-      discountAmount: 10000,
-      totalOrders: 80,
-      cancelledOrders: 8,
-      isDuplicatePromo: false // Unique promo -> (80-8) = 72
+      subCategory: 'Mega Campaign 9.9 Shopee',
+      promoName: 'Mega 9.9 Flash Sale Glow Serum (Campaign Price)',
+      sku: 'FPK00000033',
+      productName: 'Theraskin Perfect Glow Serum 20ml',
+      price: 85000,
+      discountAmount: 17000, // Net Campaign: 68,000 (Harga Spesial Campaign!)
+      totalOrders: 220,
+      cancelledOrders: 20,
+      isDuplicatePromo: false // Unique campaign tier -> (220-20) = 200
     },
+    // Shopee Pusat - Period 1 - Paket Diskon Reguler
     {
       period: 'PERIOD_1',
       platform: 'Shopee Pusat',
+      closingType: 'REGULER',
       category: 'Paket Diskon',
       subCategory: 'Combo Hemat 2pcs',
       promoName: 'Paket Hemat Glowing Day & Night',
@@ -611,135 +755,63 @@ export function generateTheraskinClosingSeed(month: string = 'September', year: 
       isPaketDiskon: true,
       bundleComponents: ['FPK00000033 (Serum)', 'FPK00000078 (Sunscreen)']
     },
+    // Shopee Pusat - Period 2 - CAMPAIGN Payday
+    {
+      period: 'PERIOD_2',
+      platform: 'Shopee Pusat',
+      closingType: 'CAMPAIGN',
+      category: 'Promo Flash Sale',
+      subCategory: 'Shopee Payday Campaign',
+      promoName: 'Payday Flash Sale Sunscreen 15K',
+      sku: 'FPK00000078',
+      productName: 'Theraskin Sunscreen Protector SPF 50 30g',
+      price: 68000,
+      discountAmount: 15000, // Net Campaign: 53,000
+      totalOrders: 140,
+      cancelledOrders: 10,
+      isDuplicatePromo: false // (140-10) = 130
+    },
 
-    // Shopee Semarang - Period 1
+    // ==========================================
+    // 2. SHOPEE SEMARANG
+    // ==========================================
+    // Shopee Semarang - Period 1 - REGULER
     {
       period: 'PERIOD_1',
       platform: 'Shopee Semarang',
+      closingType: 'REGULER',
       category: 'Voucher Toko',
       subCategory: 'Voucher Diskon Reguler',
       promoName: 'Voucher Toko Semarang 5K',
       sku: 'FPK00000012',
       productName: 'Theraskin Oil Control Toner 100ml',
       price: 40000,
-      discountAmount: 5000,
+      discountAmount: 5000, // Net: 35,000
       totalOrders: 60,
       cancelledOrders: 6,
       isDuplicatePromo: true // (60-6)/2 = 27
     },
+    // Shopee Semarang - Period 1 - CAMPAIGN (BEDA HARGA!)
     {
       period: 'PERIOD_1',
       platform: 'Shopee Semarang',
+      closingType: 'CAMPAIGN',
       category: 'Promo Flash Sale',
-      subCategory: 'Flash Sale Mingguan',
-      promoName: 'Flash Sale Acne Spot 7K',
+      subCategory: 'Campaign Shopee Mantul Semarang',
+      promoName: 'Flash Sale Mantul Acne Spot 10K (Campaign Price)',
       sku: 'FPK00000045',
       productName: 'Theraskin Acne Spot Gel 15g',
       price: 52000,
-      discountAmount: 7000,
-      totalOrders: 40,
-      cancelledOrders: 4,
-      isDuplicatePromo: false // Unique -> 36
-    },
-
-    // TikTok Shop - Period 1
-    {
-      period: 'PERIOD_1',
-      platform: 'TikTok Shop',
-      category: 'Voucher Live / Video',
-      subCategory: 'Voucher Live Stream',
-      promoName: 'Voucher Live Stream Glowing 10K',
-      sku: 'FPK00000033',
-      productName: 'Theraskin Perfect Glow Serum 20ml',
-      price: 85000,
-      discountAmount: 10000,
-      totalOrders: 120,
-      cancelledOrders: 12,
-      isDuplicatePromo: true // (120-12)/2 = 54
-    },
-    {
-      period: 'PERIOD_1',
-      platform: 'TikTok Shop',
-      category: 'Paket Diskon',
-      subCategory: 'Bundle Flash Sale',
-      promoName: 'Paket Duo Acne Care TikTok',
-      sku: 'FPK00000045',
-      productName: 'Theraskin Acne Spot Gel + Oil Control Toner',
-      price: 92000,
-      discountAmount: 15000,
-      totalOrders: 70,
-      cancelledOrders: 6,
-      isDuplicatePromo: true, // (70-6)/2 = 32
-      isPaketDiskon: true,
-      bundleComponents: ['FPK00000045 (Acne Spot)', 'FPK00000012 (Toner)']
-    },
-
-    // Lazada - Period 1
-    {
-      period: 'PERIOD_1',
-      platform: 'Lazada',
-      category: 'Voucher Toko',
-      subCategory: 'Voucher Flexi Combo',
-      promoName: 'Voucher LazMall Theraskin 8K',
-      sku: 'FPK00000078',
-      productName: 'Theraskin Sunscreen Protector SPF 50 30g',
-      price: 68000,
-      discountAmount: 8000,
-      totalOrders: 45,
-      cancelledOrders: 5,
-      isDuplicatePromo: false // Unique -> 40
-    },
-
-    // Shopee Pusat - Period 2 (16 - EOM)
-    {
-      period: 'PERIOD_2',
-      platform: 'Shopee Pusat',
-      category: 'Voucher Toko',
-      subCategory: 'Voucher Akhir Bulan (Payday)',
-      promoName: 'Voucher Toko Payday 10K',
-      sku: 'FPK00000033',
-      productName: 'Theraskin Perfect Glow Serum 20ml',
-      price: 85000,
-      discountAmount: 10000,
-      totalOrders: 150,
-      cancelledOrders: 14,
-      isDuplicatePromo: true // (150-14)/2 = 68
-    },
-    {
-      period: 'PERIOD_2',
-      platform: 'Shopee Pusat',
-      category: 'Promo Flash Sale',
-      subCategory: 'Flash Sale Payday',
-      promoName: 'Flash Sale Payday Sunscreen 12K',
-      sku: 'FPK00000078',
-      productName: 'Theraskin Sunscreen Protector SPF 50 30g',
-      price: 68000,
-      discountAmount: 12000,
+      discountAmount: 12000, // Net Campaign: 40,000
       totalOrders: 90,
-      cancelledOrders: 10,
-      isDuplicatePromo: false // Unique -> 80
+      cancelledOrders: 8,
+      isDuplicatePromo: false // (90-8) = 82
     },
-    {
-      period: 'PERIOD_2',
-      platform: 'Shopee Pusat',
-      category: 'Paket Diskon',
-      subCategory: 'Paket Diskon Akhir Bulan',
-      promoName: 'Paket Glowing Complete 3-in-1',
-      sku: 'FPK00000099',
-      productName: 'Paket Glowing Series Theraskin Complete',
-      price: 198000,
-      discountAmount: 30000,
-      totalOrders: 65,
-      cancelledOrders: 5,
-      isDuplicatePromo: true, // (65-5)/2 = 30
-      isPaketDiskon: true,
-      bundleComponents: ['FPK00000033 (Serum)', 'FPK00000078 (Sunscreen)', 'FPK00000056 (Facial Wash)']
-    },
-
-    // Shopee Semarang - Period 2
+    // Shopee Semarang - Period 2 - REGULER Payday
     {
       period: 'PERIOD_2',
       platform: 'Shopee Semarang',
+      closingType: 'REGULER',
       category: 'Voucher Toko',
       subCategory: 'Voucher Payday Semarang',
       promoName: 'Voucher Toko Payday Semarang 5K',
@@ -752,10 +824,152 @@ export function generateTheraskinClosingSeed(month: string = 'September', year: 
       isDuplicatePromo: true // (50-6)/2 = 22
     },
 
-    // TikTok Shop - Period 2
+    // ==========================================
+    // 3. SHOPEE BALI
+    // ==========================================
+    // Shopee Bali - Period 1 - REGULER
+    {
+      period: 'PERIOD_1',
+      platform: 'Shopee Bali',
+      closingType: 'REGULER',
+      category: 'Voucher Toko',
+      subCategory: 'Voucher Diskon Toko Bali',
+      promoName: 'Voucher Diskon Toko Bali 5K',
+      sku: 'FPK00000078',
+      productName: 'Theraskin Sunscreen Protector SPF 50 30g',
+      price: 68000,
+      discountAmount: 5000, // Net: 63,000
+      totalOrders: 40,
+      cancelledOrders: 4,
+      isDuplicatePromo: true // (40-4)/2 = 18
+    },
+    // Shopee Bali - Period 1 - CAMPAIGN (BEDA HARGA!)
+    {
+      period: 'PERIOD_1',
+      platform: 'Shopee Bali',
+      closingType: 'CAMPAIGN',
+      category: 'Promo Flash Sale',
+      subCategory: 'Super Brand Day Bali 9.9',
+      promoName: 'Super Brand Day Bali Glow Serum (Campaign Price)',
+      sku: 'FPK00000033',
+      productName: 'Theraskin Perfect Glow Serum 20ml',
+      price: 85000,
+      discountAmount: 16000, // Net Campaign: 69,000
+      totalOrders: 75,
+      cancelledOrders: 5,
+      isDuplicatePromo: false // (75-5) = 70
+    },
+    // Shopee Bali - Period 2 - CAMPAIGN Payday Bali
+    {
+      period: 'PERIOD_2',
+      platform: 'Shopee Bali',
+      closingType: 'CAMPAIGN',
+      category: 'Promo Flash Sale',
+      subCategory: 'Payday Flash Sale Bali',
+      promoName: 'Payday Flash Sale Bali Sunscreen 12K',
+      sku: 'FPK00000078',
+      productName: 'Theraskin Sunscreen Protector SPF 50 30g',
+      price: 68000,
+      discountAmount: 12000, // Net Campaign: 56,000
+      totalOrders: 65,
+      cancelledOrders: 5,
+      isDuplicatePromo: false // (65-5) = 60
+    },
+
+    // ==========================================
+    // 4. SHOPEE SURABAYA
+    // ==========================================
+    // Shopee Surabaya - Period 1 - REGULER
+    {
+      period: 'PERIOD_1',
+      platform: 'Shopee Surabaya',
+      closingType: 'REGULER',
+      category: 'Voucher Toko',
+      subCategory: 'Voucher Toko Surabaya Reguler',
+      promoName: 'Voucher Toko Surabaya 5K',
+      sku: 'FPK00000056',
+      productName: 'Theraskin Brightening Facial Wash 100ml',
+      price: 45000,
+      discountAmount: 5000, // Net: 40,000
+      totalOrders: 55,
+      cancelledOrders: 5,
+      isDuplicatePromo: true // (55-5)/2 = 25
+    },
+    // Shopee Surabaya - Period 1 - CAMPAIGN (BEDA HARGA!)
+    {
+      period: 'PERIOD_1',
+      platform: 'Shopee Surabaya',
+      closingType: 'CAMPAIGN',
+      category: 'Promo Flash Sale',
+      subCategory: 'Mega 9.9 Surabaya Campaign',
+      promoName: 'Flash Sale Surabaya Toner 9K (Campaign Price)',
+      sku: 'FPK00000012',
+      productName: 'Theraskin Oil Control Toner 100ml',
+      price: 40000,
+      discountAmount: 9000, // Net Campaign: 31,000
+      totalOrders: 85,
+      cancelledOrders: 5,
+      isDuplicatePromo: false // (85-5) = 80
+    },
+    // Shopee Surabaya - Period 2 - REGULER
+    {
+      period: 'PERIOD_2',
+      platform: 'Shopee Surabaya',
+      closingType: 'REGULER',
+      category: 'Paket Diskon',
+      subCategory: 'Bundle Acne Care Surabaya',
+      promoName: 'Paket Duo Acne Care Surabaya',
+      sku: 'FPK00000045',
+      productName: 'Theraskin Acne Spot Gel + Toner',
+      price: 92000,
+      discountAmount: 15000,
+      totalOrders: 48,
+      cancelledOrders: 4,
+      isDuplicatePromo: true, // (48-4)/2 = 22
+      isPaketDiskon: true,
+      bundleComponents: ['FPK00000045 (Acne Spot)', 'FPK00000012 (Toner)']
+    },
+
+    // ==========================================
+    // 5. TIKTOK SHOP (TIDAK ADA CABANG)
+    // ==========================================
+    // TikTok Shop - Period 1 - REGULER
+    {
+      period: 'PERIOD_1',
+      platform: 'TikTok Shop',
+      closingType: 'REGULER',
+      category: 'Voucher Toko',
+      subCategory: 'Voucher Toko TikTok',
+      promoName: 'Voucher Toko TikTok Diskon 5K',
+      sku: 'FPK00000033',
+      productName: 'Theraskin Perfect Glow Serum 20ml',
+      price: 85000,
+      discountAmount: 5000,
+      totalOrders: 80,
+      cancelledOrders: 8,
+      isDuplicatePromo: true // (80-8)/2 = 36
+    },
+    // TikTok Shop - Period 1 - CAMPAIGN
+    {
+      period: 'PERIOD_1',
+      platform: 'TikTok Shop',
+      closingType: 'CAMPAIGN',
+      category: 'Voucher Live / Video',
+      subCategory: 'TikTok Mega 9.9 Live Stream',
+      promoName: 'Mega 9.9 TikTok Live Stream Glow Serum (Campaign)',
+      sku: 'FPK00000033',
+      productName: 'Theraskin Perfect Glow Serum 20ml',
+      price: 85000,
+      discountAmount: 18000, // Net Campaign: 67,000
+      totalOrders: 160,
+      cancelledOrders: 16,
+      isDuplicatePromo: false // (160-16) = 144
+    },
+    // TikTok Shop - Period 2 - CAMPAIGN Payday
     {
       period: 'PERIOD_2',
       platform: 'TikTok Shop',
+      closingType: 'CAMPAIGN',
       category: 'Voucher Live / Video',
       subCategory: 'TikTok Payday Live Mega',
       promoName: 'Voucher Live Mega Payday 15K',
@@ -767,25 +981,47 @@ export function generateTheraskinClosingSeed(month: string = 'September', year: 
       cancelledOrders: 18,
       isDuplicatePromo: true // (180-18)/2 = 81
     },
-    {
-      period: 'PERIOD_2',
-      platform: 'TikTok Shop',
-      category: 'Promo Flash Sale',
-      subCategory: 'Flash Sale Creator',
-      promoName: 'Flash Sale Creator Toner 8K',
-      sku: 'FPK00000012',
-      productName: 'Theraskin Oil Control Toner 100ml',
-      price: 40000,
-      discountAmount: 8000,
-      totalOrders: 75,
-      cancelledOrders: 5,
-      isDuplicatePromo: false // Unique -> 70
-    },
 
-    // Lazada - Period 2
+    // ==========================================
+    // 6. LAZADA (TIDAK ADA CABANG)
+    // ==========================================
+    // Lazada - Period 1 - REGULER
+    {
+      period: 'PERIOD_1',
+      platform: 'Lazada',
+      closingType: 'REGULER',
+      category: 'Voucher Toko',
+      subCategory: 'Voucher Flexi Combo',
+      promoName: 'Voucher LazMall Theraskin 8K',
+      sku: 'FPK00000078',
+      productName: 'Theraskin Sunscreen Protector SPF 50 30g',
+      price: 68000,
+      discountAmount: 8000,
+      totalOrders: 45,
+      cancelledOrders: 5,
+      isDuplicatePromo: false // (45-5) = 40
+    },
+    // Lazada - Period 1 - CAMPAIGN (9.9 Mega Campaign)
+    {
+      period: 'PERIOD_1',
+      platform: 'Lazada',
+      closingType: 'CAMPAIGN',
+      category: 'Promo Flash Sale',
+      subCategory: 'Lazada 9.9 Mega Brand Day',
+      promoName: 'Lazada 9.9 Mega Flash Sale Sunscreen (Campaign Price)',
+      sku: 'FPK00000078',
+      productName: 'Theraskin Sunscreen Protector SPF 50 30g',
+      price: 68000,
+      discountAmount: 14000, // Net Campaign: 54,000
+      totalOrders: 80,
+      cancelledOrders: 6,
+      isDuplicatePromo: false // (80-6) = 74
+    },
+    // Lazada - Period 2 - CAMPAIGN Payday
     {
       period: 'PERIOD_2',
       platform: 'Lazada',
+      closingType: 'CAMPAIGN',
       category: 'Voucher Toko',
       subCategory: 'LazMall Mega Payday',
       promoName: 'Voucher Payday LazMall 10K',
@@ -795,21 +1031,21 @@ export function generateTheraskinClosingSeed(month: string = 'September', year: 
       discountAmount: 10000,
       totalOrders: 55,
       cancelledOrders: 5,
-      isDuplicatePromo: false // Unique -> 50
+      isDuplicatePromo: false // 50
     }
   ]
 
   return mockRows.map((item, idx) => {
     const validOrders = item.totalOrders - item.cancelledOrders
-    // Generate realistic transactions
     const txs: RawOrderTransaction[] = [
       ...Array.from({ length: validOrders }).map((_, i) => ({
         id: `tx-v-${idx}-${i}`,
-        orderNumber: `ORD-${item.platform.slice(0, 3).toUpperCase()}-${item.period === 'PERIOD_1' ? '01' : '02'}-${1000 + i}`,
+        orderNumber: `ORD-${item.platform.replace(/\s+/g, '').slice(0, 5).toUpperCase()}-${item.period === 'PERIOD_1' ? '01' : '02'}-${1000 + i}`,
         date: item.period === 'PERIOD_1' ? `${year}-09-08` : `${year}-09-22`,
         month,
         period: item.period,
         marketplace: item.platform,
+        closingType: item.closingType,
         promotionCategory: item.category,
         promotionName: item.promoName,
         sku: item.sku,
@@ -822,11 +1058,12 @@ export function generateTheraskinClosingSeed(month: string = 'September', year: 
       })),
       ...Array.from({ length: item.cancelledOrders }).map((_, i) => ({
         id: `tx-c-${idx}-${i}`,
-        orderNumber: `ORD-${item.platform.slice(0, 3).toUpperCase()}-C-${1000 + i}`,
+        orderNumber: `ORD-${item.platform.replace(/\s+/g, '').slice(0, 5).toUpperCase()}-C-${1000 + i}`,
         date: item.period === 'PERIOD_1' ? `${year}-09-09` : `${year}-09-23`,
         month,
         period: item.period,
         marketplace: item.platform,
+        closingType: item.closingType,
         promotionCategory: item.category,
         promotionName: item.promoName,
         sku: item.sku,
