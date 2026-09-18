@@ -345,6 +345,323 @@ export function normalizeDiscount(val: number | string): number {
   return isNaN(num) ? 0 : Math.max(0, num)
 }
 
+export type DetectedMarketplace = 'TIKTOK' | 'SHOPEE' | 'LAZADA' | 'UNKNOWN'
+
+export interface PlatformDetectionResult {
+  platform: DetectedMarketplace
+  platformLabel: string
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW'
+  detectedHeaders: string[]
+  suggestedTargetMarketplace: MarketplacePlatform
+  description: string
+}
+
+export interface NormalizedRawOrder {
+  rawId: string
+  orderNumber: string
+  platform: 'Shopee' | 'TikTok Shop' | 'Lazada'
+  branchCity?: string
+  dateRaw: string
+  period: ClosingPeriodType // 'PERIOD_1' (1-15 Sep) vs 'PERIOD_2' (16-30/31 Sep)
+  sku: string
+  productName: string
+  variation?: string
+  quantity: number
+  unitOriginalPrice: number
+  unitDiscount: number
+  netPricePerUnit: number // Harga Setelah Diskon per pcs (to match Kolom L)
+  netPriceTotal: number
+  orderStatus: string
+  isCancelled: boolean
+  rawRow: Record<string, any>
+}
+
+/**
+ * Helper to safely extract numeric values, supporting Indonesian dots/commas and currency formatting
+ */
+export function cleanNumeric(val: any): number {
+  if (val === undefined || val === null || val === '') return 0
+  if (typeof val === 'number') return isNaN(val) ? 0 : val
+  let s = String(val).trim()
+  
+  // Remove currency labels like 'Rp', 'IDR', spaces
+  s = s.replace(/^[^\d-]+/, '').trim()
+  
+  // Detect Indonesian format with '.' as thousands separator: e.g. "151.524" or "1.500.000" or "40.200,00"
+  if (/^\d{1,3}(?:\.\d{3})+(?:,\d+)?$/.test(s)) {
+    s = s.replace(/\./g, '').replace(',', '.')
+  } else if (/^\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(s)) {
+    // US format with comma separator: "151,524" -> "151524"
+    s = s.replace(/,/g, '')
+  } else if (s.includes(',') && !s.includes('.')) {
+    // Single comma decimal: "151524,50" -> "151524.50"
+    s = s.replace(',', '.')
+  }
+  
+  const cleaned = s.replace(/[^0-9.-]/g, '')
+  const num = parseFloat(cleaned)
+  return isNaN(num) ? 0 : num
+}
+
+/**
+ * Automatic Marketplace Signature Detector:
+ * Inspects column headers to distinguish between TikTok Shop, Shopee, and Lazada
+ */
+export function detectMarketplacePlatform(
+  sampleRow: Record<string, any>,
+  filename: string = '',
+  sheetName: string = ''
+): PlatformDetectionResult {
+  const keys = Object.keys(sampleRow || {})
+  const keysLower = keys.map(k => k.toLowerCase())
+  const fn = (filename || '').toLowerCase()
+  const sn = (sheetName || '').toLowerCase()
+
+  // 1. TikTok Shop signatures
+  const tiktokKeys = [
+    'sku subtotal after discount',
+    'sku platform discount',
+    'sku seller discount',
+    'sku quantity returned',
+    'sku unit original price',
+    'order substatus',
+    'orderskulist'
+  ]
+  const matchedTikTokKeys = keys.filter(k => tiktokKeys.includes(k.toLowerCase()))
+  const isTikTok = matchedTikTokKeys.length >= 2 || 
+                   keysLower.includes('sku subtotal after discount') || 
+                   sn.includes('orderskulist') || 
+                   fn.includes('tiktok')
+
+  if (isTikTok) {
+    return {
+      platform: 'TIKTOK',
+      platformLabel: 'TikTok Shop',
+      confidence: matchedTikTokKeys.length >= 2 ? 'HIGH' : 'MEDIUM',
+      detectedHeaders: matchedTikTokKeys,
+      suggestedTargetMarketplace: 'TikTok Shop',
+      description: 'Format terdeteksi: TikTok Shop Seller Center (OrderSKUList). Menggunakan kolom SKU Subtotal After Discount dan Created Time.'
+    }
+  }
+
+  // 2. Shopee signatures
+  const shopeeKeys = [
+    'no. pesanan',
+    'nomor referensi sku',
+    'sku induk',
+    'waktu pesanan dibuat',
+    'harga setelah diskon',
+    'potongan penjual',
+    'diskon dari penjual',
+    'total pembayaran',
+    'perkiraan pendapatan bersih',
+    'opsi pengiriman'
+  ]
+  const matchedShopeeKeys = keys.filter(k => shopeeKeys.includes(k.toLowerCase()))
+  const isShopee = matchedShopeeKeys.length >= 2 || 
+                   keysLower.includes('nomor referensi sku') || 
+                   keysLower.includes('waktu pesanan dibuat') || 
+                   fn.includes('shopee')
+
+  if (isShopee) {
+    let targetBranch: ShopeeBranch = 'Shopee Semarang'
+    if (fn.includes('semarang') || fn.includes('smg')) targetBranch = 'Shopee Semarang'
+    else if (fn.includes('bali') || fn.includes('dps')) targetBranch = 'Shopee Bali'
+    else if (fn.includes('surabaya') || fn.includes('sby')) targetBranch = 'Shopee Surabaya'
+    else if (fn.includes('pusat') || fn.includes('jakarta') || fn.includes('jkt')) targetBranch = 'Shopee Pusat'
+
+    return {
+      platform: 'SHOPEE',
+      platformLabel: 'Shopee',
+      confidence: matchedShopeeKeys.length >= 2 ? 'HIGH' : 'MEDIUM',
+      detectedHeaders: matchedShopeeKeys,
+      suggestedTargetMarketplace: targetBranch,
+      description: `Format terdeteksi: Shopee Seller Centre (${targetBranch}). Menggunakan kolom Nomor Referensi SKU, Harga Setelah Diskon, dan Waktu Pesanan Dibuat.`
+    }
+  }
+
+  // 3. Lazada signatures
+  const lazadaKeys = [
+    'orderitemid',
+    'paidprice',
+    'sellersku',
+    'ordernumber',
+    'unitprice',
+    'createtime',
+    'voucherseller'
+  ]
+  const matchedLazadaKeys = keys.filter(k => lazadaKeys.includes(k.toLowerCase()))
+  const isLazada = matchedLazadaKeys.length >= 2 || 
+                   keysLower.includes('paidprice') || 
+                   keysLower.includes('orderitemid') || 
+                   fn.includes('lazada')
+
+  if (isLazada) {
+    return {
+      platform: 'LAZADA',
+      platformLabel: 'Lazada',
+      confidence: matchedLazadaKeys.length >= 2 ? 'HIGH' : 'MEDIUM',
+      detectedHeaders: matchedLazadaKeys,
+      suggestedTargetMarketplace: 'Lazada',
+      description: 'Format terdeteksi: Lazada Seller Center. Menggunakan kolom sellerSku, paidPrice, dan createTime.'
+    }
+  }
+
+  // Fallback
+  return {
+    platform: 'UNKNOWN',
+    platformLabel: 'Format Belum Dikenali',
+    confidence: 'LOW',
+    detectedHeaders: [],
+    suggestedTargetMarketplace: 'Shopee Semarang',
+    description: 'Header kolom tidak cocok otomatis dengan Shopee, TikTok, atau Lazada. Silakan periksa kolom atau pilih target manual.'
+  }
+}
+
+/**
+ * Specialized Normalizer for Each Marketplace:
+ * Accurately extracts SKU, net price, order date, and cancellation status
+ */
+export function normalizeRawOrder(
+  row: Record<string, any>,
+  platform: DetectedMarketplace,
+  targetMarketplaceOverride?: MarketplacePlatform
+): NormalizedRawOrder {
+  let orderNumber = ''
+  let sku = ''
+  let productName = ''
+  let variation = ''
+  let quantity = 1
+  let unitOriginalPrice = 0
+  let unitDiscount = 0
+  let netPricePerUnit = 0
+  let netPriceTotal = 0
+  let dateRaw = ''
+  let orderStatus = 'Selesai'
+  let isCancelled = false
+  let resolvedPlatform: 'Shopee' | 'TikTok Shop' | 'Lazada' = 'Shopee'
+  let branchCity: string | undefined = undefined
+
+  if (platform === 'TIKTOK') {
+    resolvedPlatform = 'TikTok Shop'
+    orderNumber = String(row['Order ID'] || row['Order id'] || row['order_id'] || '').trim()
+    orderStatus = String(row['Order Status'] || row['order_status'] || 'Dikirim').trim()
+    isCancelled = isOrderCancelled(orderStatus)
+    dateRaw = String(row['Created Time'] || row['Order created time'] || row['Paid Time'] || '').trim()
+    sku = String(row['Seller SKU'] || row['SKU ID'] || row['seller_sku'] || '').trim()
+    productName = String(row['Product Name'] || row['product_name'] || '').trim()
+    variation = String(row['Variation'] || row['variation'] || '').trim()
+    quantity = Math.max(1, parseInt(String(row['Quantity'] || row['quantity'] || '1')) || 1)
+
+    // Net Price in TikTok: SKU Subtotal After Discount
+    const rawSubtotal = cleanNumeric(row['SKU Subtotal After Discount'] || row['sku_subtotal_after_discount'] || row['Subtotal After Discount'])
+    const rawUnitOri = cleanNumeric(row['SKU Unit Original Price'] || row['sku_unit_original_price'])
+    const rawSellerDisc = cleanNumeric(row['SKU Seller Discount'] || row['sku_seller_discount'])
+
+    if (rawSubtotal > 0) {
+      netPriceTotal = rawSubtotal
+      netPricePerUnit = quantity > 0 ? Math.round(rawSubtotal / quantity) : rawSubtotal
+      unitOriginalPrice = rawUnitOri > 0 ? rawUnitOri : netPricePerUnit
+      unitDiscount = rawSellerDisc > 0 ? rawSellerDisc : Math.max(0, unitOriginalPrice - netPricePerUnit)
+    } else {
+      unitOriginalPrice = rawUnitOri
+      unitDiscount = rawSellerDisc
+      netPricePerUnit = Math.max(0, unitOriginalPrice - unitDiscount)
+      netPriceTotal = netPricePerUnit * quantity
+    }
+
+  } else if (platform === 'LAZADA') {
+    resolvedPlatform = 'Lazada'
+    orderNumber = String(row['orderNumber'] || row['Order Number'] || row['orderItemId'] || row['Order Item Id'] || '').trim()
+    orderStatus = String(row['status'] || row['Status'] || 'delivered').trim()
+    isCancelled = isOrderCancelled(orderStatus)
+    dateRaw = String(row['createTime'] || row['Create Time'] || row['updateTime'] || '').trim()
+    sku = String(row['sellerSku'] || row['Seller SKU'] || row['sku'] || '').trim()
+    productName = String(row['itemName'] || row['Item Name'] || row['productName'] || '').trim()
+    variation = String(row['variation'] || row['Variation'] || '').trim()
+    quantity = Math.max(1, parseInt(String(row['quantity'] || row['Quantity'] || '1')) || 1)
+
+    // Net Price in Lazada: paidPrice
+    const rawPaid = cleanNumeric(row['paidPrice'] || row['Paid Price'] || row['itemPrice'])
+    const rawUnit = cleanNumeric(row['unitPrice'] || row['Unit Price'])
+    const rawVoucher = cleanNumeric(row['voucherSeller'] || row['Voucher Seller'])
+
+    if (rawPaid > 0) {
+      netPricePerUnit = rawPaid
+      netPriceTotal = rawPaid * quantity
+      unitOriginalPrice = rawUnit > 0 ? rawUnit : rawPaid
+      unitDiscount = rawVoucher > 0 ? rawVoucher : Math.max(0, unitOriginalPrice - netPricePerUnit)
+    } else {
+      unitOriginalPrice = rawUnit
+      unitDiscount = rawVoucher
+      netPricePerUnit = Math.max(0, unitOriginalPrice - unitDiscount)
+      netPriceTotal = netPricePerUnit * quantity
+    }
+
+  } else {
+    // SHOPEE
+    resolvedPlatform = 'Shopee'
+    orderNumber = String(row['No. Pesanan'] || row['Order ID'] || row['no_pesanan'] || '').trim()
+    orderStatus = String(row['Status Pesanan'] || row['status_pesanan'] || 'Selesai').trim()
+    isCancelled = isOrderCancelled(orderStatus)
+    dateRaw = String(row['Waktu Pesanan Dibuat'] || row['Waktu Pembayaran Dilakukan'] || row['Tanggal'] || '').trim()
+    sku = String(row['Nomor Referensi SKU'] || row['SKU Induk'] || row['SKU'] || '').trim()
+    productName = String(row['Nama Produk'] || row['nama_produk'] || '').trim()
+    variation = String(row['Nama Variasi'] || row['nama_variasi'] || '').trim()
+    quantity = Math.max(1, parseInt(String(row['Jumlah'] || row['Quantity'] || '1')) || 1)
+
+    // Net Price in Shopee: Harga Setelah Diskon or Harga Awal - Potongan Penjual
+    const rawHargaSetelah = cleanNumeric(row['Harga Setelah Diskon'] || row['Harga Kesepakatan'])
+    const rawHargaAwal = cleanNumeric(row['Harga Awal'] || row['Harga Produk'])
+    const rawDiskon = cleanNumeric(row['Potongan Penjual'] || row['Diskon Dari Penjual'] || row['Total Diskon'])
+    const rawTotalProduk = cleanNumeric(row['Total Harga Produk'])
+
+    if (rawHargaSetelah > 0) {
+      netPricePerUnit = rawHargaSetelah
+      netPriceTotal = rawHargaSetelah * quantity
+      unitOriginalPrice = rawHargaAwal > 0 ? rawHargaAwal : rawHargaSetelah
+      unitDiscount = rawDiskon > 0 ? rawDiskon : Math.max(0, unitOriginalPrice - netPricePerUnit)
+    } else if (rawTotalProduk > 0 && rawHargaAwal > 0) {
+      netPricePerUnit = Math.round(rawTotalProduk / quantity)
+      netPriceTotal = rawTotalProduk
+      unitOriginalPrice = rawHargaAwal
+      unitDiscount = Math.max(0, unitOriginalPrice - netPricePerUnit)
+    } else {
+      unitOriginalPrice = rawHargaAwal
+      unitDiscount = rawDiskon
+      netPricePerUnit = Math.max(0, unitOriginalPrice - unitDiscount)
+      netPriceTotal = netPricePerUnit * quantity
+    }
+
+    if (targetMarketplaceOverride && targetMarketplaceOverride.includes('Semarang')) branchCity = 'Semarang'
+    else if (targetMarketplaceOverride && targetMarketplaceOverride.includes('Bali')) branchCity = 'Bali'
+    else if (targetMarketplaceOverride && targetMarketplaceOverride.includes('Surabaya')) branchCity = 'Surabaya'
+    else branchCity = 'Pusat'
+  }
+
+  const period = getClosingPeriod(dateRaw)
+
+  return {
+    rawId: `${resolvedPlatform}-${orderNumber || Math.random().toString(36).slice(2, 8)}`,
+    orderNumber,
+    platform: resolvedPlatform,
+    branchCity,
+    dateRaw,
+    period,
+    sku,
+    productName,
+    variation,
+    quantity,
+    unitOriginalPrice,
+    unitDiscount,
+    netPricePerUnit,
+    netPriceTotal,
+    orderStatus,
+    isCancelled,
+    rawRow: row
+  }
+}
+
 export function buildGroupKey(
   month: string,
   period: ClosingPeriodType,
@@ -1246,6 +1563,7 @@ export function generateTheraskinClosingSeed(month: string = 'September', year: 
 
     // =========================================================================
     // 6. TIKTOK SHOP (Tab 'September')
+    // Sesuai data mentah TikTok Shop OrderSKUList dan patokan Google Sheet
     // =========================================================================
     {
       sheetTab: 'September',
@@ -1253,9 +1571,261 @@ export function generateTheraskinClosingSeed(month: string = 'September', year: 
       kategori: 'Toko',
       subKategori: 'Voucher Live / Video',
       periodeBadge: 'DD & Payday',
+      tanggal: '0-30 September',
+      sku: 'All SKU',
+      productName: 'Voucher Live TikTok Diskon 5K min 100K',
+      hargaBulanan: 100000,
+      diskonPersen: 5,
+      totalDiskon: 5000,
+      targetQty: 100,
+      totalPromosi: 10,
+      ordersP1: 40,
+      cancelP1: 2,
+      ordersP2: 30,
+      cancelP2: 1,
+      isDuplicate: false,
+      closingType: 'REGULER'
+    },
+    {
+      sheetTab: 'September',
+      marketplace: 'TikTok Shop',
+      kategori: 'Toko',
+      subKategori: 'Paket diskon',
+      periodeBadge: 'DD & Payday',
       tanggal: '1-7 Sep & 25-30 Sep',
-      sku: 'FPK037P0010CP0',
-      productName: 'Theraskin Perfect Glow Face Cream (TikTok Live)',
+      sku: 'FPK00000042',
+      productName: 'Theraskin Perfect Glow Basic Skin',
+      hargaBulanan: 231000,
+      diskonPersen: 34,
+      totalDiskon: 79476,
+      targetQty: 50,
+      totalPromosi: 10,
+      ordersP1: 15,
+      cancelP1: 1,
+      ordersP2: 12,
+      cancelP2: 0,
+      isDuplicate: false,
+      closingType: 'CAMPAIGN'
+    },
+    {
+      sheetTab: 'September',
+      marketplace: 'TikTok Shop',
+      kategori: 'Toko',
+      subKategori: 'Flash Sale',
+      periodeBadge: 'DD & Payday',
+      tanggal: '1-7 Sep & 25-30 Sep',
+      sku: 'FAW02L0010CG',
+      productName: 'Theraskin AHA Cleanser 100ml -',
+      hargaBulanan: 39800,
+      diskonPersen: 5,
+      totalDiskon: 1990,
+      targetQty: 60,
+      totalPromosi: 10,
+      ordersP1: 20,
+      cancelP1: 0,
+      ordersP2: 15,
+      cancelP2: 1,
+      isDuplicate: false,
+      closingType: 'CAMPAIGN'
+    },
+    {
+      sheetTab: 'September',
+      marketplace: 'TikTok Shop',
+      kategori: 'Toko',
+      subKategori: 'Flash Sale',
+      periodeBadge: 'DD & Payday',
+      tanggal: '1-7 Sep & 25-30 Sep',
+      sku: 'FNC02P0010CW',
+      productName: 'Theraskin Niacinamide Cream Gel',
+      hargaBulanan: 36700,
+      diskonPersen: 33,
+      totalDiskon: 12000,
+      targetQty: 50,
+      totalPromosi: 10,
+      ordersP1: 18,
+      cancelP1: 0,
+      ordersP2: 10,
+      cancelP2: 0,
+      isDuplicate: false,
+      closingType: 'CAMPAIGN'
+    },
+    {
+      sheetTab: 'September',
+      marketplace: 'TikTok Shop',
+      kategori: 'Toko',
+      subKategori: 'Flash Sale',
+      periodeBadge: 'DD & Payday',
+      tanggal: '1-7 Sep & 25-30 Sep',
+      sku: 'FD02C0010G',
+      productName: 'Theraskin Daily C-Booster Cream 1',
+      hargaBulanan: 71000,
+      diskonPersen: 48,
+      totalDiskon: 33950,
+      targetQty: 50,
+      totalPromosi: 10,
+      ordersP1: 14,
+      cancelP1: 1,
+      ordersP2: 11,
+      cancelP2: 0,
+      isDuplicate: false,
+      closingType: 'CAMPAIGN'
+    },
+    {
+      sheetTab: 'September',
+      marketplace: 'TikTok Shop',
+      kategori: 'Toko',
+      subKategori: 'Flash Sale',
+      periodeBadge: 'DD & Payday',
+      tanggal: '1-7 Sep & 25-30 Sep',
+      sku: 'FFG02B010CS',
+      productName: 'Theraskin Perfect glow toner essence',
+      hargaBulanan: 49500,
+      diskonPersen: 34,
+      totalDiskon: 16830,
+      targetQty: 50,
+      totalPromosi: 10,
+      ordersP1: 16,
+      cancelP1: 0,
+      ordersP2: 12,
+      cancelP2: 0,
+      isDuplicate: false,
+      closingType: 'CAMPAIGN'
+    },
+    {
+      sheetTab: 'September',
+      marketplace: 'TikTok Shop',
+      kategori: 'Toko',
+      subKategori: 'Paket diskon',
+      periodeBadge: 'DD & Payday',
+      tanggal: '1-7 Sep & 25-30 Sep',
+      sku: 'FPK00000043',
+      productName: 'Theraskin Advanced Acne Basic Sk',
+      hargaBulanan: 209000,
+      diskonPersen: 40,
+      totalDiskon: 83100,
+      targetQty: 40,
+      totalPromosi: 10,
+      ordersP1: 12,
+      cancelP1: 0,
+      ordersP2: 9,
+      cancelP2: 1,
+      isDuplicate: false,
+      closingType: 'CAMPAIGN'
+    },
+    {
+      sheetTab: 'September',
+      marketplace: 'TikTok Shop',
+      kategori: 'Toko',
+      subKategori: 'Paket diskon',
+      periodeBadge: 'DD & Payday',
+      tanggal: '1-7 Sep & 25-30 Sep',
+      sku: 'FPK00000032',
+      productName: 'Paket Theraskin AHA Glow White -',
+      hargaBulanan: 147700,
+      diskonPersen: 13,
+      totalDiskon: 19701,
+      targetQty: 40,
+      totalPromosi: 10,
+      ordersP1: 10,
+      cancelP1: 0,
+      ordersP2: 8,
+      cancelP2: 0,
+      isDuplicate: false,
+      closingType: 'CAMPAIGN'
+    },
+    {
+      sheetTab: 'September',
+      marketplace: 'TikTok Shop',
+      kategori: 'Toko',
+      subKategori: 'Paket diskon',
+      periodeBadge: 'DD & Payday',
+      tanggal: '1-7 Sep & 25-30 Sep',
+      sku: 'TWINSUNAGEPROTECTIONDC',
+      productName: 'Twinpack Sun Protector Age Revival Protection Day Cream',
+      hargaBulanan: 145000,
+      diskonPersen: 47,
+      totalDiskon: 67816,
+      targetQty: 50,
+      totalPromosi: 10,
+      ordersP1: 22,
+      cancelP1: 1,
+      ordersP2: 16,
+      cancelP2: 0,
+      isDuplicate: false,
+      closingType: 'CAMPAIGN'
+    },
+    {
+      sheetTab: 'September',
+      marketplace: 'TikTok Shop',
+      kategori: 'Toko',
+      subKategori: 'Flash Sale',
+      periodeBadge: 'DD & Payday',
+      tanggal: '1-7 Sep & 25-30 Sep',
+      sku: 'PAK034POT010CS',
+      productName: 'THERASKIN Age Revival Moisture Lock Night Cream Pot New Mould 10 g Shrink',
+      hargaBulanan: 41500,
+      diskonPersen: 4,
+      totalDiskon: 1660,
+      targetQty: 40,
+      totalPromosi: 10,
+      ordersP1: 14,
+      cancelP1: 0,
+      ordersP2: 12,
+      cancelP2: 0,
+      isDuplicate: false,
+      closingType: 'CAMPAIGN'
+    },
+    {
+      sheetTab: 'September',
+      marketplace: 'TikTok Shop',
+      kategori: 'Toko',
+      subKategori: 'Flash Sale',
+      periodeBadge: 'DD & Payday',
+      tanggal: '1-7 Sep & 25-30 Sep',
+      sku: 'PAK033POT010PCS',
+      productName: 'THERASKIN Age Revival Protection Day Cream Pot New 10 g Shrink',
+      hargaBulanan: 40200,
+      diskonPersen: 4,
+      totalDiskon: 1608,
+      targetQty: 40,
+      totalPromosi: 10,
+      ordersP1: 15,
+      cancelP1: 0,
+      ordersP2: 10,
+      cancelP2: 1,
+      isDuplicate: false,
+      closingType: 'CAMPAIGN'
+    },
+    {
+      sheetTab: 'September',
+      marketplace: 'TikTok Shop',
+      kategori: 'Toko',
+      subKategori: 'Flash Sale',
+      periodeBadge: 'DD & Payday',
+      tanggal: '1-7 Sep & 25-30 Sep',
+      sku: 'PAK032T010C',
+      productName: 'THERASKIN Age Revival Gentle Cleanser Tube 100 ml',
+      hargaBulanan: 41300,
+      diskonPersen: 4,
+      totalDiskon: 1652,
+      targetQty: 40,
+      totalPromosi: 10,
+      ordersP1: 12,
+      cancelP1: 0,
+      ordersP2: 8,
+      cancelP2: 0,
+      isDuplicate: false,
+      closingType: 'CAMPAIGN'
+    },
+    {
+      sheetTab: 'September',
+      marketplace: 'TikTok Shop',
+      kategori: 'Toko',
+      subKategori: 'Flash Sale',
+      periodeBadge: 'DD & Payday',
+      tanggal: '1-7 Sep & 25-30 Sep',
+      sku: 'FTC00000030CS',
+      productName: 'Theraskin Perfect Glow Face Cream',
       hargaBulanan: 51200,
       diskonPersen: 3,
       totalDiskon: 1536,
@@ -1265,6 +1835,27 @@ export function generateTheraskinClosingSeed(month: string = 'September', year: 
       cancelP1: 1, // 24 valid
       ordersP2: 20,
       cancelP2: 0, // 20 valid
+      isDuplicate: false,
+      closingType: 'CAMPAIGN'
+    },
+    {
+      sheetTab: 'September',
+      marketplace: 'TikTok Shop',
+      kategori: 'Toko',
+      subKategori: 'Flash Sale',
+      periodeBadge: 'DD & Payday',
+      tanggal: '1-7 Sep & 25-30 Sep',
+      sku: 'FTC00000015CI',
+      productName: 'Theraskin Perfect Glow Brightening Serum',
+      hargaBulanan: 65400,
+      diskonPersen: 5,
+      totalDiskon: 3480,
+      targetQty: 40,
+      totalPromosi: 10,
+      ordersP1: 18,
+      cancelP1: 0,
+      ordersP2: 14,
+      cancelP2: 0,
       isDuplicate: false,
       closingType: 'CAMPAIGN'
     }

@@ -66,7 +66,12 @@ import {
   generateStandardMasterClosingTSV,
   generatePatokanValuesTSV,
   generateFullPatokanTSV,
-  generateTheraskinClosingSeed
+  generateTheraskinClosingSeed,
+  detectMarketplacePlatform,
+  normalizeRawOrder,
+  PlatformDetectionResult,
+  DetectedMarketplace,
+  cleanNumeric
 } from '@/lib/closing-engine'
 
 export default function ClosingPage() {
@@ -117,6 +122,7 @@ export default function ClosingPage() {
     biayaBrand: number
     keterangan: string
   } | null>(null)
+  const [lastDetectionResult, setLastDetectionResult] = useState<PlatformDetectionResult | null>(null)
   const [auditSearch, setAuditSearch] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -354,93 +360,151 @@ export default function ClosingPage() {
     }
   }
 
-  // Reusable order processor for File Upload, Quick Paste, and Testing
-  const applyRawOrders = (rawData: any[], targetMarketplace: string) => {
+  // Reusable order processor with Auto-Platform Signature Detection & Precision Price-Matching
+  const applyRawOrders = (
+    rawData: any[], 
+    targetMarketplaceOverride?: string, 
+    filename: string = '', 
+    sheetName: string = ''
+  ) => {
+    if (!rawData || rawData.length === 0) return { matchedOrdersCount: 0, unmatchedOrdersCount: 0, detection: null }
+
+    // 1. Detect platform automatically from headers, filename, or sheet
+    const detection = detectMarketplacePlatform(rawData[0] || {}, filename, sheetName)
+    setLastDetectionResult(detection)
+
+    // 2. Resolve target platform & branch
+    let effectivePlatform: DetectedMarketplace = detection.platform
+    let effectiveBranch: MarketplacePlatform = detection.suggestedTargetMarketplace
+
+    if (targetMarketplaceOverride && targetMarketplaceOverride !== 'AUTO') {
+      effectiveBranch = targetMarketplaceOverride as MarketplacePlatform
+      if (effectiveBranch.toLowerCase().includes('shopee')) {
+        effectivePlatform = 'SHOPEE'
+      } else if (effectiveBranch.toLowerCase().includes('tiktok')) {
+        effectivePlatform = 'TIKTOK'
+      } else if (effectiveBranch.toLowerCase().includes('lazada')) {
+        effectivePlatform = 'LAZADA'
+      }
+    }
+
     let matchedOrdersCount = 0
     let unmatchedOrdersCount = 0
     const updatedRows = [...closingRows]
 
     rawData.forEach((row: any) => {
-      // 1. Order created time (Tanggal 1-14 Sep masuk Periode 1)
-      const dateRaw = row['Order created time'] || row['Order Created Time'] || row['Waktu Pesanan Dibuat'] || row['Waktu Pembayaran Dilakukan'] || row['Created Time'] || row['Tanggal'] || row['createTime'] || row['Date'] || new Date().toISOString()
-      const status = (row['Status Pesanan'] || row['Order Status'] || row['Status'] || row['status'] || 'Selesai').toString()
-      const isCancelled = isOrderCancelled(status)
+      const norm = normalizeRawOrder(row, effectivePlatform, effectiveBranch)
       
-      // 2. SKU and Nama Produk (Dilihat nama productnya juga untuk pencocokan)
-      const sku = (row['Nomor Referensi SKU'] || row['Seller SKU'] || row['sellerSku'] || row['SKU'] || '').toString().trim()
-      const productNameRaw = (row['Nama Produk'] || row['Product Name'] || row['Item Name'] || row['itemName'] || '').toString().trim()
-      
-      // 3. Quantity
-      const qty = parseInt(String(row['Jumlah'] || row['Quantity'] || row['qty'] || '1').replace(/[^0-9]/g, '')) || 1
-
-      // 4. SKU Subtotal After Discount (Kolom kuning patokan user: harga setelah diskon riil)
-      const rawNetPrice = row['SKU Subtotal After Discount'] || row['Subtotal After Discount'] || row['Harga Setelah Diskon'] || row['paidPrice'] || row['Paid Price'] || row['Harga Kesepakatan']
-      let hargaNetUnit = 0
-      let hargaNetTotal = 0
-      let totalDiskon = 0
-
-      if (rawNetPrice !== undefined && rawNetPrice !== null && String(rawNetPrice).trim() !== '') {
-        const parsedNet = parseFloat(String(rawNetPrice).replace(/[^0-9.]/g, '')) || 0
-        hargaNetTotal = parsedNet
-        hargaNetUnit = qty > 0 ? parsedNet / qty : parsedNet
-        const hargaAwal = parseFloat(String(row['Harga Awal'] || row['Original Price'] || row['SKU Unit Original Price'] || row['unitPrice'] || row['Harga Produk'] || row['Harga'] || '0').replace(/[^0-9.]/g, '')) || 0
-        totalDiskon = Math.max(0, hargaAwal - hargaNetUnit)
-      } else {
-        const hargaAwal = parseFloat(String(row['Harga Awal'] || row['Original Price'] || row['SKU Unit Original Price'] || row['unitPrice'] || row['Harga Produk'] || row['Harga'] || '0').replace(/[^0-9.]/g, '')) || 0
-        totalDiskon = parseFloat(String(row['Total Diskon'] || row['Diskon Promosi'] || row['Potongan Penjual'] || row['Diskon'] || row['discount'] || '0').replace(/[^0-9.]/g, '')) || 0
-        hargaNetUnit = Math.max(0, hargaAwal - totalDiskon)
-        hargaNetTotal = hargaNetUnit * qty
-      }
-
-      // Period determination: Tanggal 1-15 (misal 1-14 Sep) -> PERIOD_1, 16-30/31 -> PERIOD_2
-      const period = getClosingPeriod(dateRaw)
-
-      // 5. Match against catalog rows (by Platform, SKU / Nama Produk, dan Harga Promo Kolom L)
+      // Match against catalog rows: Platform + (SKU/Name) + Kolom L (Harga Promo)
       const matchedRowIndex = updatedRows.findIndex(r => {
-        const platformKey = targetMarketplace === 'AUTO' ? '' : targetMarketplace.toLowerCase().split(' ')[0]
-        const matchPlatform = !platformKey || r.marketplace.toLowerCase().includes(platformKey)
-        
-        // SKU or Product Name match
-        const p1 = productNameRaw.toLowerCase()
-        const p2 = r.productName.toLowerCase()
-        const matchSkuOrName = (sku && r.sku.toLowerCase() === sku.toLowerCase()) || 
-                               (p1 && p2 && (p1.includes(p2) || p2.includes(p1))) ||
-                               r.sku === 'All SKU'
-        
-        // Match Harga Promo (unit price vs Kolom L, or total price vs Kolom L)
-        const matchPromoPrice = Math.abs(r.hargaPromo - hargaNetUnit) <= 500 || Math.abs(r.hargaPromo - hargaNetTotal) <= 500
-        const matchVoucher = r.sku === 'All SKU' && Math.abs(r.totalDiskon - totalDiskon) <= 100
+        // A. Platform filtering
+        if (norm.platform === 'TikTok Shop') {
+          if (!r.marketplace.toLowerCase().includes('tiktok')) return false
+        } else if (norm.platform === 'Lazada') {
+          if (!r.marketplace.toLowerCase().includes('lazada')) return false
+        } else if (norm.platform === 'Shopee') {
+          if (!r.marketplace.toLowerCase().includes('shopee')) return false
+          if (norm.branchCity && norm.branchCity !== 'Pusat') {
+            if (!r.marketplace.toLowerCase().includes(norm.branchCity.toLowerCase())) return false
+          } else if (norm.branchCity === 'Pusat') {
+            if (r.marketplace.toLowerCase().includes('semarang') || 
+                r.marketplace.toLowerCase().includes('bali') || 
+                r.marketplace.toLowerCase().includes('surabaya')) {
+              return false
+            }
+          }
+        }
 
-        return matchPlatform && (matchVoucher || (matchSkuOrName && matchPromoPrice))
+        // B. SKU / Product Name matching
+        const cleanNormSku = norm.sku.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const cleanRowSku = r.sku.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const skuMatches = cleanNormSku && cleanRowSku && (cleanNormSku === cleanRowSku || cleanNormSku.includes(cleanRowSku) || cleanRowSku.includes(cleanNormSku))
+        
+        const cleanNormName = norm.productName.toLowerCase()
+        const cleanRowName = r.productName.toLowerCase()
+        const nameMatches = cleanNormName && cleanRowName && (
+          cleanNormName.includes(cleanRowName) || cleanRowName.includes(cleanNormName)
+        )
+        
+        const isVoucherRow = r.sku.toLowerCase() === 'all sku' || r.subKategori.toLowerCase().includes('voucher')
+
+        // C. Price matching against Kolom L (Harga Promo): Net Unit or Total
+        const priceMatchesUnit = Math.abs(r.hargaPromo - norm.netPricePerUnit) <= 600
+        const priceMatchesTotal = Math.abs(r.hargaPromo - norm.netPriceTotal) <= 600
+        const discountMatches = Math.abs(r.totalDiskon - norm.unitDiscount) <= 300
+
+        if (isVoucherRow) {
+          return discountMatches || priceMatchesUnit
+        }
+
+        if (skuMatches && (priceMatchesUnit || priceMatchesTotal || discountMatches)) {
+          return true
+        }
+
+        if (nameMatches && (priceMatchesUnit || priceMatchesTotal)) {
+          return true
+        }
+
+        // Fallback exact SKU match with relaxed price tolerance
+        if (skuMatches && Math.abs(r.hargaPromo - norm.netPricePerUnit) <= 1500) {
+          return true
+        }
+
+        return false
       })
 
       if (matchedRowIndex !== -1) {
         matchedOrdersCount++
         const r = updatedRows[matchedRowIndex]
-        
-        if (period === 'PERIOD_1') {
+        const qty = norm.quantity
+
+        if (norm.period === 'PERIOD_1') {
           r.totalOrdersP1 = (r.totalOrdersP1 || 0) + qty
-          if (isCancelled) {
+          if (norm.isCancelled) {
             r.cancelledOrdersP1 = (r.cancelledOrdersP1 || 0) + qty
           } else {
             r.validOrdersP1 = (r.validOrdersP1 || 0) + qty
           }
         } else {
           r.totalOrdersP2 = (r.totalOrdersP2 || 0) + qty
-          if (isCancelled) {
+          if (norm.isCancelled) {
             r.cancelledOrdersP2 = (r.cancelledOrdersP2 || 0) + qty
           } else {
             r.validOrdersP2 = (r.validOrdersP2 || 0) + qty
           }
         }
 
-        // Recompute Qty & Biaya
+        // Recompute Qty & Biaya according to duplicate promo rule
         r.qtyP1 = r.isDuplicateP1 ? Math.max(0, r.validOrdersP1) / 2 : Math.max(0, r.validOrdersP1)
         r.biayaP1 = r.qtyP1 * r.totalDiskon
         r.qtyP2 = r.isDuplicateP2 ? Math.max(0, r.validOrdersP2) / 2 : Math.max(0, r.validOrdersP2)
         r.biayaP2 = r.qtyP2 * r.totalDiskon
         r.grandTotalQty = r.qtyP1 + r.qtyP2
         r.grandTotalBiaya = r.biayaP1 + r.biayaP2
+        r.finalClosingQty = r.grandTotalQty
+        r.biaya = r.grandTotalBiaya
+        r.totalBiayaPromo = r.grandTotalBiaya
+
+        // Keep transaction log for Finance audit drilldown
+        if (!r.transactions) r.transactions = []
+        r.transactions.push({
+          id: norm.rawId,
+          orderNumber: norm.orderNumber || `ORD-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+          date: norm.dateRaw,
+          month: selectedBulan,
+          period: norm.period,
+          marketplace: r.marketplace,
+          closingType: r.closingType,
+          promotionCategory: r.subKategori,
+          promotionName: r.productName,
+          sku: r.sku,
+          productName: r.productName,
+          price: r.hargaBulanan,
+          discountAmount: r.totalDiskon,
+          quantity: norm.quantity,
+          orderStatus: norm.orderStatus,
+          isDuplicatePromo: norm.period === 'PERIOD_1' ? r.isDuplicateP1 : r.isDuplicateP2
+        })
       } else {
         unmatchedOrdersCount++
       }
@@ -448,7 +512,7 @@ export default function ClosingPage() {
 
     setClosingRows(updatedRows)
     setClosingStatus('Data Imported')
-    return { matchedOrdersCount, unmatchedOrdersCount }
+    return { matchedOrdersCount, unmatchedOrdersCount, detection }
   }
 
   // Handle Upload Raw Order Excel / CSV with Automated Smart Price-Matching
@@ -459,6 +523,7 @@ export default function ClosingPage() {
     setIsProcessing(true)
     try {
       let rawData: any[] = []
+      let sheetName = ''
 
       if (file.name.endsWith('.csv')) {
         const text = await file.text()
@@ -467,7 +532,8 @@ export default function ClosingPage() {
       } else {
         const buffer = await file.arrayBuffer()
         const workbook = xlsx.read(buffer)
-        const sheet = workbook.Sheets[workbook.SheetNames[0]]
+        sheetName = workbook.SheetNames[0] || ''
+        const sheet = workbook.Sheets[sheetName]
         rawData = xlsx.utils.sheet_to_json(sheet)
       }
 
@@ -475,24 +541,11 @@ export default function ClosingPage() {
         throw new Error('File tidak memiliki baris data.')
       }
 
-      // Auto-detect branch / platform
-      let targetMarketplace = 'Shopee Semarang'
-      if (uploadTargetBranch !== 'AUTO') {
-        targetMarketplace = uploadTargetBranch
-      } else {
-        const filenameLow = file.name.toLowerCase()
-        if (filenameLow.includes('semarang')) targetMarketplace = 'Shopee Semarang'
-        else if (filenameLow.includes('bali')) targetMarketplace = 'Shopee Bali'
-        else if (filenameLow.includes('surabaya')) targetMarketplace = 'Shopee Surabaya'
-        else if (filenameLow.includes('pusat')) targetMarketplace = 'Shopee Pusat'
-        else if (filenameLow.includes('tiktok')) targetMarketplace = 'TikTok Shop'
-        else if (filenameLow.includes('lazada')) targetMarketplace = 'Lazada'
-        else if (selectedPlatform !== 'ALL') targetMarketplace = selectedPlatform
-      }
-
-      const res = applyRawOrders(rawData, targetMarketplace)
+      const res = applyRawOrders(rawData, uploadTargetBranch, file.name, sheetName)
       setShowUploadModal(false)
-      showToast(`Sukses! ${rawData.length} pesanan diproses, ${res.matchedOrdersCount} pesanan otomatis cocok dengan Harga Promo katalog.`)
+      
+      const pName = res.detection?.platformLabel || 'Marketplace'
+      showToast(`Sukses! ${rawData.length} pesanan (${pName}) diproses: ${res.matchedOrdersCount} cocok otomatis dengan Harga Promo katalog.`)
 
     } catch (err) {
       console.error('Failed to parse order file:', err)
@@ -517,11 +570,12 @@ export default function ClosingPage() {
         return
       }
 
-      let targetMarketplace = uploadTargetBranch === 'AUTO' ? 'Shopee Semarang' : uploadTargetBranch
-      const res = applyRawOrders(parsed, targetMarketplace)
+      const res = applyRawOrders(parsed, uploadTargetBranch, 'QuickPaste.tsv', 'OrderSKUList')
       setShowUploadModal(false)
       setQuickPasteText('')
-      showToast(`Sukses Quick Paste! ${parsed.length} pesanan diproses: ${res.matchedOrdersCount} berhasil dicocokkan ke Harga Promo katalog.`)
+      
+      const pName = res.detection?.platformLabel || 'Marketplace'
+      showToast(`Sukses Quick Paste (${pName})! ${parsed.length} pesanan diproses: ${res.matchedOrdersCount} berhasil dicocokkan ke Harga Promo katalog.`)
     } catch (err) {
       console.error(err)
       alert('Gagal memproses data Quick Paste. Pastikan format kolom sesuai.')
@@ -1692,43 +1746,181 @@ export default function ClosingPage() {
               </div>
             )}
 
+            {/* Live Detection Banner */}
+            {lastDetectionResult && (
+              <div style={{
+                backgroundColor: lastDetectionResult.platform === 'TIKTOK' ? '#FFF1F2' : lastDetectionResult.platform === 'SHOPEE' ? '#FFF7ED' : lastDetectionResult.platform === 'LAZADA' ? '#EFF6FF' : '#F8FAFC',
+                border: `1px solid ${lastDetectionResult.platform === 'TIKTOK' ? '#FECDD3' : lastDetectionResult.platform === 'SHOPEE' ? '#FED7AA' : lastDetectionResult.platform === 'LAZADA' ? '#BFDBFE' : '#E2E8F0'}`,
+                borderRadius: '8px',
+                padding: '10px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '1.4rem' }}>
+                    {lastDetectionResult.platform === 'TIKTOK' ? '🎵' : lastDetectionResult.platform === 'SHOPEE' ? '🟠' : lastDetectionResult.platform === 'LAZADA' ? '🔵' : '📋'}
+                  </span>
+                  <div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0F172A' }}>
+                      Format Terdeteksi: <span style={{ color: lastDetectionResult.platform === 'TIKTOK' ? '#E11D48' : lastDetectionResult.platform === 'SHOPEE' ? '#EA580C' : lastDetectionResult.platform === 'LAZADA' ? '#2563EB' : '#334155' }}>{lastDetectionResult.platformLabel}</span>
+                      <span style={{ marginLeft: '6px', fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#E2E8F0', fontWeight: 600 }}>{lastDetectionResult.confidence} CONFIDENCE</span>
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#475569', marginTop: '2px' }}>
+                      {lastDetectionResult.description}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#64748B', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  Target: <strong>{lastDetectionResult.suggestedTargetMarketplace}</strong>
+                </div>
+              </div>
+            )}
+
             {/* TAB 2: QUICK PASTE */}
             {uploadModalTab === 'QUICK_PASTE' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
-                    Paste Baris Tabel OrderSKUList dari Excel / Google Sheet:
+                    Pilih Contoh Data Mentah atau Paste Langsung dari Excel / Google Sheet:
                   </label>
-                  <button
-                    onClick={() => {
-                      setQuickPasteText(`Order ID\tSeller SKU\tProduct Name\tQuantity\tSKU Subtotal After Discount\tCreated Time\tOrder Status
-586072309974861411\tTWINSUNAGEPROTECTIONDC\tTwinpack Sun Protector Age Revival Protection Day Cream\t1\t77184\t14/09/2026 19:25:27\tDikirim
-586072309974861412\tPAK033POT010PCS\tTHERASKIN Age Revival Protection Day Cream Pot New 10 g Shrink\t1\t38592\t14/09/2026 20:10:00\tDikirim
-586072309974861413\tPAK032T010C\tTHERASKIN Age Revival Gentle Cleanser Tube 100 ml\t1\t39648\t14/09/2026 18:30:00\tDikirim
-586072309974861414\tPAK034POT010CS\tTHERASKIN Age Revival Moisture Lock Night Cream Pot New Mould 10 g Shrink\t2\t79680\t14/09/2026 21:40:52\tDikirim
-586072309974861415\tFTC00000030CS\tTheraskin Perfect Glow Face Cream\t1\t49664\t14/09/2026 21:30:22\tDikirim
-586072309974861416\tFTC00000015CI\tTheraskin Perfect Glow Brightening Serum\t1\t61920\t14/09/2026 22:57:25\tDikirim`)
-                    }}
-                    style={{
-                      fontSize: '0.72rem',
-                      padding: '3px 8px',
-                      borderRadius: '5px',
-                      backgroundColor: '#FEF3C7',
-                      color: '#92400E',
-                      border: '1px solid #FDE68A',
-                      cursor: 'pointer',
-                      fontWeight: 600
-                    }}
-                  >
-                    📋 Isi Contoh Data dari Screenshot (1–14 Sep)
-                  </button>
+                  
+                  {/* Preset Buttons per Marketplace */}
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {/* Preset 1: TikTok Shop from real screenshot */}
+                    <button
+                      onClick={() => {
+                        const tsv = `Order ID\tOrder Status\tOrder Substatus\tNormal or Pre-order\tSKU ID\tSeller SKU\tProduct Name\tVariation\tQuantity\tSku Quantity Returned\tSKU Unit Original Price\tSKU Subtotal Before Discount\tSKU Platform Discount\tSKU Seller Discount\tSKU Subtotal After Discount\tCreated Time
+586072309974861411\tDikirim\tSedang transit\tNormal\t17296653610505\tFPK00000042\tTheraskin Perfect Glow Basic Skin\tDefault\t1\t0\t231000\t231000\t7975\t71501\t151524\t14/09/2026 23:47:20
+586072294970481411\tDikirim\tSedang transit\tNormal\t17311751476101\tFAW02L0010CG\tTheraskin AHA Cleanser 100ml -\tDefault\t1\t0\t39800\t39800\t1390\t0\t37810\t14/09/2026 23:36:30
+5860722646704687\tDikirim\tSedang transit\tNormal\t175524619167\tFNC02P0010CW\tTheraskin Niacinamide Cream Gel\tDefault\t1\t0\t36700\t36700\t1300\t10700\t24700\t14/09/2026 23:30:50
+5860722646704688\tDikirim\tSedang transit\tNormal\t1731718546089\tFD02C0010G\tTheraskin Daily C-Booster Cream 1\tDaily C-Booster Cream 1 pcs\t1\t0\t71000\t71000\t1950\t32000\t37050\t14/09/2026 23:30:50
+5860722646704689\tDikirim\tSedang transit\tNormal\t1729482550384\tFFG02B010CS\tTheraskin Perfect glow toner essence\tperfect glow toner essence\t1\t0\t49500\t49500\t3550\t13300\t32670\t14/09/2026 23:30:50
+586071971284420062\tDikirim\tSedang transit\tNormal\t17296653587540\tFPK00000043\tTheraskin Advanced Acne Basic Sk\tDefault\t1\t0\t209000\t209000\t14000\t69100\t125900\t14/09/2026 23:17:25
+58607176288282104\tDikirim\tSedang transit\tNormal\t17254281545962\tFPK00000032\tPaket Theraskin AHA Glow White -\tDefault\t1\t0\t147700\t147700\t10000\t9701\t127999\t14/09/2026 23:01:14
+58607124814350325\tDikirim\tSedang transit\tNormal\t1729482258087\tPAK034POT010CS\tTHERASKIN Age Revival Moisture Lock Night Cream Pot New Mould 10 g Shrink\t2\t0\t78000\t156000\t0\t77680\t78320\t14/09/2026 21:40:52
+58607142908495\tDikirim\tSedang transit\tNormal\t173142054959\tTWINSUNAGEPROTECTIONDC\tTwinpack Sun Protector Age Revival Protection Day Cream\tDefault\t1\t0\t145000\t145000\t0\t67816\t77184\t14/09/2026 19:25:27`
+                        setQuickPasteText(tsv)
+                        setUploadTargetBranch('TikTok Shop')
+                        setLastDetectionResult({
+                          platform: 'TIKTOK',
+                          platformLabel: 'TikTok Shop',
+                          confidence: 'HIGH',
+                          detectedHeaders: ['SKU Subtotal After Discount', 'Created Time', 'Seller SKU', 'Product Name'],
+                          suggestedTargetMarketplace: 'TikTok Shop',
+                          description: 'Format terdeteksi: TikTok Shop OrderSKUList (Data Asli Screenshot 1–14 Sep). Kolom kunci: SKU Subtotal After Discount, Created Time.'
+                        })
+                      }}
+                      style={{
+                        fontSize: '0.72rem',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        backgroundColor: '#FFF1F2',
+                        color: '#BE123C',
+                        border: '1px solid #FECDD3',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      🎵 1. Data Mentah TikTok Shop (1–14 Sep)
+                    </button>
+
+                    {/* Preset 2: Shopee Semarang */}
+                    <button
+                      onClick={() => {
+                        const tsv = `No. Pesanan\tStatus Pesanan\tWaktu Pesanan Dibuat\tNomor Referensi SKU\tNama Produk\tJumlah\tHarga Awal\tPotongan Penjual\tHarga Setelah Diskon
+260914SMG001\tSelesai\t14/09/2026 10:15:00\tPAK033POT010PCS\tTHERASKIN Age Revival Protection Day Cream 10g (Semarang)\t1\t40200\t1608\t38592
+260914SMG002\tSelesai\t14/09/2026 11:20:00\tBUNDLEPERFECTGLOW\tTheraskin Perfect Glow Complete Series Bundle\t1\t138800\t8328\t130472
+260914SMG003\tSelesai\t14/09/2026 14:05:00\tAll SKU\tVoucher Toko Semarang Diskon 5K min 100K\t1\t100000\t5000\t95000`
+                        setQuickPasteText(tsv)
+                        setUploadTargetBranch('Shopee Semarang')
+                        setLastDetectionResult({
+                          platform: 'SHOPEE',
+                          platformLabel: 'Shopee',
+                          confidence: 'HIGH',
+                          detectedHeaders: ['Nomor Referensi SKU', 'Harga Setelah Diskon', 'Waktu Pesanan Dibuat', 'No. Pesanan'],
+                          suggestedTargetMarketplace: 'Shopee Semarang',
+                          description: 'Format terdeteksi: Shopee Seller Centre (Cabang Semarang). Kolom kunci: Nomor Referensi SKU, Harga Setelah Diskon, Waktu Pesanan Dibuat.'
+                        })
+                      }}
+                      style={{
+                        fontSize: '0.72rem',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        backgroundColor: '#FFF7ED',
+                        color: '#C2410C',
+                        border: '1px solid #FED7AA',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      🟠 2. Data Mentah Shopee Semarang (1–14 Sep)
+                    </button>
+
+                    {/* Preset 3: Lazada */}
+                    <button
+                      onClick={() => {
+                        const tsv = `orderItemId\torderNumber\tcreateTime\tstatus\tsellerSku\titemName\tunitPrice\tpaidPrice\tvoucherSeller
+78912345671\tORD-LAZ-101\t14/09/2026 11:00:00\tdelivered\tPAK033POT010PCS\tTHERASKIN Age Revival Protection Day Cream Pot New Mould 10 g Shrink\t40200\t38592\t1608
+78912345672\tORD-LAZ-102\t14/09/2026 12:30:00\tdelivered\tPAK032T010C\tTHERASKIN Age Revival Gentle Cleanser Tube 100 ml\t41300\t39648\t1652
+78912345673\tORD-LAZ-103\t14/09/2026 14:15:00\tdelivered\tPAK034POT010CS\tTHERASKIN Age Revival Moisture Lock Night Cream Pot New Mould 10 g Shrink\t41500\t39840\t1660`
+                        setQuickPasteText(tsv)
+                        setUploadTargetBranch('Lazada')
+                        setLastDetectionResult({
+                          platform: 'LAZADA',
+                          platformLabel: 'Lazada',
+                          confidence: 'HIGH',
+                          detectedHeaders: ['sellerSku', 'paidPrice', 'createTime', 'orderItemId'],
+                          suggestedTargetMarketplace: 'Lazada',
+                          description: 'Format terdeteksi: Lazada Seller Center. Kolom kunci: sellerSku, paidPrice, createTime.'
+                        })
+                      }}
+                      style={{
+                        fontSize: '0.72rem',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        backgroundColor: '#EFF6FF',
+                        color: '#1D4ED8',
+                        border: '1px solid #BFDBFE',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      🔵 3. Data Mentah Lazada (1–14 Sep)
+                    </button>
+                  </div>
                 </div>
 
                 <textarea
-                  rows={7}
+                  rows={8}
                   value={quickPasteText}
-                  onChange={e => setQuickPasteText(e.target.value)}
-                  placeholder="Contoh format TSV/CSV:&#10;Seller SKU&#9;Product Name&#9;Quantity&#9;SKU Subtotal After Discount&#9;Created Time&#9;Order Status&#10;TWINSUNAGEPROTECTIONDC&#9;Twinpack Sun Protector&#9;1&#9;77184&#9;14/09/2026 19:25:27&#9;Dikirim"
+                  onChange={e => {
+                    const val = e.target.value
+                    setQuickPasteText(val)
+                    if (val.trim()) {
+                      try {
+                        let p = Papa.parse(val, { delimiter: '\t', header: true, skipEmptyLines: true }).data
+                        if (!p || p.length === 0 || Object.keys(p[0] || {}).length <= 1) {
+                          p = Papa.parse(val, { header: true, skipEmptyLines: true }).data
+                        }
+                        if (p && p.length > 0) {
+                          const det = detectMarketplacePlatform(p[0] as any, 'PastedData.tsv', 'OrderSKUList')
+                          setLastDetectionResult(det)
+                        }
+                      } catch {}
+                    }
+                  }}
+                  placeholder="Paste langsung tabel TSV/CSV dari Excel atau Google Sheet di sini..."
                   style={{
                     width: '100%',
                     fontFamily: 'monospace',

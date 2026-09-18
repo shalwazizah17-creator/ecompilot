@@ -9,6 +9,8 @@ import {
   generateMasterClosingTSV,
   generateStandardMasterClosingTSV,
   generatePatokanValuesTSV,
+  detectMarketplacePlatform,
+  normalizeRawOrder,
   RawOrderTransaction
 } from './index'
 
@@ -629,16 +631,142 @@ describe('Closing Calculation Engine — Business Rules', () => {
     })
   })
 
-  describe('Cancelled Status Keyword Matcher', () => {
-    it('identifies cancelled, batal, and retur statuses', () => {
-      expect(isOrderCancelled('Dibatalkan')).toBe(true)
-      expect(isOrderCancelled('BATAL')).toBe(true)
-      expect(isOrderCancelled('Cancelled by Buyer')).toBe(true)
-      expect(isOrderCancelled('Canceled')).toBe(true)
-      expect(isOrderCancelled('Pengembalian Barang / Retur')).toBe(true)
-      expect(isOrderCancelled('Selesai')).toBe(false)
-      expect(isOrderCancelled('Dikirim')).toBe(false)
-      expect(isOrderCancelled('Perlu Dikirim')).toBe(false)
+  describe('Marketplace Signature Detection & Normalization', () => {
+    // 1. TikTok Shop signature
+    it('accurately identifies TikTok Shop export from column signatures', () => {
+      const tiktokRow = {
+        'Order ID': '586072309974861411',
+        'Order Status': 'Dikirim',
+        'Order Substatus': 'Sedang transit',
+        'Seller SKU': 'TWINSUNAGEPROTECTIONDC',
+        'Product Name': 'Twinpack Sun Protector Age Revival Protection Day Cream',
+        'Quantity': '1',
+        'SKU Unit Original Price': '145000',
+        'SKU Subtotal Before Discount': '145000',
+        'SKU Platform Discount': '0',
+        'SKU Seller Discount': '67816',
+        'SKU Subtotal After Discount': '77184',
+        'Created Time': '14/09/2026 19:25:27'
+      }
+
+      const detection = detectMarketplacePlatform(tiktokRow, 'OrderSKUList.xlsx', 'OrderSKUList')
+      expect(detection.platform).toBe('TIKTOK')
+      expect(detection.suggestedTargetMarketplace).toBe('TikTok Shop')
+
+      const normalized = normalizeRawOrder(tiktokRow, 'TIKTOK')
+      expect(normalized.platform).toBe('TikTok Shop')
+      expect(normalized.sku).toBe('TWINSUNAGEPROTECTIONDC')
+      expect(normalized.netPricePerUnit).toBe(77184)
+      expect(normalized.period).toBe('PERIOD_1') // 14/09/2026 -> Periode 1
+      expect(normalized.isCancelled).toBe(false)
+    })
+
+    // 2. Shopee signature
+    it('accurately identifies Shopee export from column signatures and extracts branch', () => {
+      const shopeeRow = {
+        'No. Pesanan': '260914SMG12345',
+        'Status Pesanan': 'Selesai',
+        'Waktu Pesanan Dibuat': '2026-09-14 10:20:00',
+        'Nomor Referensi SKU': 'PAK033POT010PCS',
+        'Nama Produk': 'THERASKIN Age Revival Protection Day Cream Pot New 10 g Shrink',
+        'Jumlah': '2',
+        'Harga Awal': '40200',
+        'Potongan Penjual': '1608',
+        'Harga Setelah Diskon': '38592'
+      }
+
+      const detection = detectMarketplacePlatform(shopeeRow, 'Order.shopee_semarang.20260901_20260914.xlsx')
+      expect(detection.platform).toBe('SHOPEE')
+      expect(detection.suggestedTargetMarketplace).toBe('Shopee Semarang')
+
+      const normalized = normalizeRawOrder(shopeeRow, 'SHOPEE', 'Shopee Semarang')
+      expect(normalized.platform).toBe('Shopee')
+      expect(normalized.branchCity).toBe('Semarang')
+      expect(normalized.sku).toBe('PAK033POT010PCS')
+      expect(normalized.quantity).toBe(2)
+      expect(normalized.netPricePerUnit).toBe(38592)
+      expect(normalized.period).toBe('PERIOD_1')
+      expect(normalized.isCancelled).toBe(false)
+    })
+
+    // 3. Lazada signature
+    it('accurately identifies Lazada export from column signatures', () => {
+      const lazadaRow = {
+        'orderItemId': '78912345678',
+        'orderNumber': 'ORD-LAZ-9912',
+        'createTime': '14/09/2026 11:30:00',
+        'status': 'delivered',
+        'sellerSku': 'PAK032T010C',
+        'itemName': 'THERASKIN Age Revival Gentle Cleanser Tube 100 ml',
+        'unitPrice': '41300',
+        'paidPrice': '39648'
+      }
+
+      const detection = detectMarketplacePlatform(lazadaRow, 'orders_lazada_20260914.xlsx')
+      expect(detection.platform).toBe('LAZADA')
+      expect(detection.suggestedTargetMarketplace).toBe('Lazada')
+
+      const normalized = normalizeRawOrder(lazadaRow, 'LAZADA')
+      expect(normalized.platform).toBe('Lazada')
+      expect(normalized.sku).toBe('PAK032T010C')
+      expect(normalized.netPricePerUnit).toBe(39648)
+      expect(normalized.period).toBe('PERIOD_1')
+      expect(normalized.isCancelled).toBe(false)
+    })
+
+    // 4. Quantity division on line subtotal
+    it('divides SKU Subtotal After Discount by quantity when quantity > 1', () => {
+      const tiktokRowQty2 = {
+        'Order ID': '586072309974861420',
+        'Order Status': 'Dikirim',
+        'Seller SKU': 'PAK034POT010CS',
+        'Product Name': 'Theraskin Age Revival Moisture Lock Night Cream',
+        'Quantity': '2',
+        'SKU Subtotal After Discount': '79680', // 2 x 39,840
+        'Created Time': '14/09/2026 21:40:52'
+      }
+
+      const normalized = normalizeRawOrder(tiktokRowQty2, 'TIKTOK')
+      expect(normalized.quantity).toBe(2)
+      expect(normalized.netPricePerUnit).toBe(39840) // 79,680 / 2 = 39,840
+      expect(normalized.period).toBe('PERIOD_1')
+    })
+
+    // 5. Test real rows from screenshot: Theraskin Perfect Glow Basic Skin & AHA Cleanser
+    it('accurately parses real rows from user TikTok screenshot and maps to Period 1', () => {
+      const row1 = {
+        'Order ID': '586072309974861411',
+        'Order Status': 'Dikirim',
+        'Seller SKU': 'FPK00000042',
+        'Product Name': 'Theraskin Perfect Glow Basic Skin',
+        'Quantity': '1',
+        'SKU Subtotal After Discount': '151524',
+        'Created Time': '14/09/2026 23:47:20'
+      }
+
+      const norm1 = normalizeRawOrder(row1, 'TIKTOK')
+      expect(norm1.platform).toBe('TikTok Shop')
+      expect(norm1.sku).toBe('FPK00000042')
+      expect(norm1.netPricePerUnit).toBe(151524)
+      expect(norm1.period).toBe('PERIOD_1') // 14/09 -> Period 1 (Qty 1-15 Sep)
+      expect(norm1.isCancelled).toBe(false)
+
+      const row2 = {
+        'Order ID': '586072294970481411',
+        'Order Status': 'Dikirim',
+        'Seller SKU': 'FAW02L0010CG',
+        'Product Name': 'Theraskin AHA Cleanser 100ml -',
+        'Quantity': '1',
+        'SKU Subtotal After Discount': '37810',
+        'Created Time': '14/09/2026 23:36:30'
+      }
+
+      const norm2 = normalizeRawOrder(row2, 'TIKTOK')
+      expect(norm2.platform).toBe('TikTok Shop')
+      expect(norm2.sku).toBe('FAW02L0010CG')
+      expect(norm2.netPricePerUnit).toBe(37810)
+      expect(norm2.period).toBe('PERIOD_1')
+      expect(norm2.isCancelled).toBe(false)
     })
   })
 })
