@@ -465,11 +465,20 @@ export default function ClosingPage() {
 
         const cleanNormName = norm.productName.toLowerCase().trim()
         const cleanRowName = r.productName.toLowerCase().trim()
-        const nameMatches = cleanNormName && cleanRowName && cleanNormName === cleanRowName
+        
+        const isGenericRow = cleanRowSku === 'allsku' || cleanRowName.includes('all sku') || cleanRowName.includes('voucher')
+        let isNameCompatible = false
+        if (cleanNormName === cleanRowName || isGenericRow) {
+          isNameCompatible = true
+        } else if (cleanNormName && cleanRowName) {
+          if (cleanNormName.includes(cleanRowName) || cleanRowName.includes(cleanNormName)) {
+            isNameCompatible = true
+          }
+        }
 
         const priceMatches = Math.abs(r.hargaPromo - norm.netPricePerUnit) <= 200
 
-        return (skuMatches || (!cleanNormSku && nameMatches)) && priceMatches
+        return (skuMatches || (!cleanNormSku && isNameCompatible)) && priceMatches && isNameCompatible
       })
 
       // Dynamically create row if not yet in table!
@@ -2403,6 +2412,60 @@ export default function ClosingPage() {
               <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed #FDE68A', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
                 <span>Grand Total Qty: <strong>{activeAuditModal.grandTotalQty} pcs</strong></span>
                 <span style={{ color: '#DC2626', fontWeight: 800 }}>Grand Total Biaya Promosi: {fmt(activeAuditModal.grandTotalBiaya)}</span>
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: '#F8FAFC', border: '1px solid var(--surface-border)', borderRadius: '10px', padding: '16px', flex: 1, minHeight: '300px', display: 'flex', flexDirection: 'column' }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
+                Rincian Pesanan Mentah ({activeAuditModal.transactions?.length || 0} Baris)
+              </h4>
+              <div style={{ overflowX: 'auto', flex: 1 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--surface-border)', backgroundColor: '#F1F5F9' }}>
+                      <th style={{ padding: '8px', textAlign: 'left', fontWeight: 700, color: 'var(--text-secondary)' }}>Waktu Pesanan</th>
+                      <th style={{ padding: '8px', textAlign: 'left', fontWeight: 700, color: 'var(--text-secondary)' }}>No. Pesanan</th>
+                      <th style={{ padding: '8px', textAlign: 'left', fontWeight: 700, color: 'var(--text-secondary)' }}>Status</th>
+                      <th style={{ padding: '8px', textAlign: 'left', fontWeight: 700, color: 'var(--text-secondary)' }}>SKU & Produk</th>
+                      <th style={{ padding: '8px', textAlign: 'right', fontWeight: 700, color: 'var(--text-secondary)' }}>Harga Net</th>
+                      <th style={{ padding: '8px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)' }}>Qty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeAuditModal.transactions?.length > 0 ? (
+                      activeAuditModal.transactions.map((tx, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid var(--surface-border)' }}>
+                          <td style={{ padding: '8px', whiteSpace: 'nowrap' }}>
+                            {String(tx.date)}
+                            <div style={{ fontSize: '0.65rem', color: tx.period === 'PERIOD_1' ? '#B45309' : '#15803D', fontWeight: 600 }}>
+                              {tx.period === 'PERIOD_1' ? 'Periode 1' : 'Periode 2'}
+                            </div>
+                          </td>
+                          <td style={{ padding: '8px', fontFamily: 'monospace' }}>{tx.orderNumber}</td>
+                          <td style={{ padding: '8px' }}>
+                            <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700, backgroundColor: isOrderCancelled(tx.orderStatus) ? '#FEF2F2' : '#F0FDF4', color: isOrderCancelled(tx.orderStatus) ? '#DC2626' : '#166534' }}>
+                              {tx.orderStatus}
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px', maxWidth: '200px', whiteSpace: 'normal' }}>
+                            {tx.sku && <div style={{ fontWeight: 700 }}>{tx.sku}</div>}
+                            <div style={{ color: 'var(--text-secondary)' }}>{tx.promotionName || tx.productName}</div>
+                          </td>
+                          <td style={{ padding: '8px', textAlign: 'right', fontWeight: 600, color: '#1E40AF' }}>
+                            {fmt(tx.price - tx.discountAmount)}
+                          </td>
+                          <td style={{ padding: '8px', textAlign: 'center', fontWeight: 700 }}>{tx.quantity}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          Tidak ada data pesanan mentah yang terikat pada baris ini. (Input Manual/Template)
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
