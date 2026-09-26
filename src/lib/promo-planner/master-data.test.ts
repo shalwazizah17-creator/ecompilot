@@ -95,7 +95,7 @@ describe('Promo Planner Master Data & Validation Engine', () => {
     expect(oktPlan.length).toBeGreaterThan(0)
     expect(oktPlan.every(i => i.diskonPercent <= 5 && i.statusMargin === 'AMAN')).toBe(true)
 
-    const novDuplicated = duplicateMonthlyPromoPlan(oktPlan, 'November', 2026, 0)
+    const novDuplicated = duplicateMonthlyPromoPlan(oktPlan, 'November', 2026)
     expect(novDuplicated.length).toBe(oktPlan.length)
     expect(novDuplicated.every(i => i.bulan === 'November' && i.tanggal.includes('November'))).toBe(true)
     expect(novDuplicated.every(i => i.diskonPercent <= 5 && i.statusMargin === 'AMAN')).toBe(true)

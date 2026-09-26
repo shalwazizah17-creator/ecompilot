@@ -4272,9 +4272,9 @@ export default function PromoPlannerPage() {
               inlineEditMode={inlineEditMode}
               customSubCategories={customSubCategories}
               onSelectCampaign={(item) => setSelectedCampaign(item)}
-              onUpdateItem={handleInlineUpdate}
+              onInlineUpdate={handleInlineUpdate}
               onDeleteItem={handleDeleteItem}
-              MarketplaceBadge={MarketplaceBadge}
+              renderMarketplaceBadge={(platform) => <MarketplaceBadge platform={platform} />}
             />
           )}
         </div>
@@ -5525,7 +5525,7 @@ export default function PromoPlannerPage() {
       <DuplicateMonthModal
         isOpen={showDuplicateModal}
         onClose={() => setShowDuplicateModal(false)}
-        existingItems={promoList}
+        promoList={promoList}
         onDuplicate={(items, targetMonth) => {
           setPromoList(prev => [...items, ...prev])
           setFilterBulan(targetMonth)
@@ -5536,7 +5536,7 @@ export default function PromoPlannerPage() {
       <ImportPromoModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
-        defaultMonth={filterBulan === 'ALL' ? 'Oktober' : (filterBulan as PromoPlanItem['bulan'])}
+        defaultBulan={filterBulan === 'ALL' ? 'Oktober' : (filterBulan as PromoPlanItem['bulan'])}
         onImport={(items) => {
           setPromoList(prev => [...items, ...prev])
           showToast(`Berhasil mengimpor ${items.length} baris promo ke Promo Planner.`)
@@ -5546,9 +5546,13 @@ export default function PromoPlannerPage() {
       <AiPromoAdvisorModal
         isOpen={showAiAdvisorModal}
         onClose={() => setShowAiAdvisorModal(false)}
-        currentMonth={filterBulan}
-        items={filteredList}
+        activeBulan={filterBulan}
+        promoList={filteredList}
         onFixAllInvalid={handleFixAllInvalid}
+        onAddRecommendedItem={(newItem) => {
+          setPromoList(prev => [newItem, ...prev])
+          showToast(`Berhasil menambahkan rekomendasi ${newItem.productName}`)
+        }}
       />
 
     </div>

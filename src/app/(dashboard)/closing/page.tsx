@@ -86,6 +86,7 @@ export default function ClosingPage() {
   const [selectedPlatform, setSelectedPlatform] = useState<string>('ALL')
   const [selectedSubKategori, setSelectedSubKategori] = useState<string>('ALL')
   const [selectedClosingType, setSelectedClosingType] = useState<'ALL' | ClosingType>('ALL')
+  const [selectedClosingPeriod, setSelectedClosingPeriod] = useState<'ALL' | 'PERIOD_1' | 'PERIOD_2'>('ALL')
   const [closingStatus, setClosingStatus] = useState<ClosingStatus>('Draft')
   const [activeViewTab, setActiveViewTab] = useState<'PATOKAN_TABLE' | 'RAW_ORDERS'>('PATOKAN_TABLE')
   
@@ -1178,6 +1179,27 @@ export default function ClosingPage() {
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              Periode:
+            </span>
+            <select
+              value={selectedClosingPeriod}
+              onChange={e => setSelectedClosingPeriod(e.target.value as any)}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                border: '1px solid var(--surface-border-strong)',
+                backgroundColor: 'var(--surface)',
+                marginRight: '8px'
+              }}
+            >
+              <option value="ALL">Semua Periode</option>
+              <option value="PERIOD_1">Periode 1 (1-15)</option>
+              <option value="PERIOD_2">Periode 2 (16-31)</option>
+            </select>
+
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginLeft: '4px' }}>
               Marketplace:
             </span>
             <button
@@ -1454,24 +1476,32 @@ export default function ClosingPage() {
                 </th>
 
                 {/* KOLOM O & P: PERIODE 1 (KUNING) */}
-                <th style={{ textAlign: 'center', minWidth: '85px', backgroundColor: '#FEF08A', color: '#854D0E', fontWeight: 800 }}>
-                  <div style={{ fontSize: '0.65rem', color: '#854D0E', fontWeight: 900 }}>[O] QTY 1-15</div>
-                  Qty 1-15 Sep
-                </th>
-                <th style={{ textAlign: 'right', minWidth: '105px', backgroundColor: '#FEFCE8', color: '#B45309', fontWeight: 700 }}>
-                  <div style={{ fontSize: '0.65rem', color: '#B45309', fontWeight: 800 }}>[P] BIAYA</div>
-                  Biaya 1-15 Sep
-                </th>
+                {selectedClosingPeriod !== 'PERIOD_2' && (
+                  <>
+                    <th style={{ textAlign: 'center', minWidth: '85px', backgroundColor: '#FEF08A', color: '#854D0E', fontWeight: 800 }}>
+                      <div style={{ fontSize: '0.65rem', color: '#854D0E', fontWeight: 900 }}>[O] QTY 1-15</div>
+                      Qty 1-15 Sep
+                    </th>
+                    <th style={{ textAlign: 'right', minWidth: '105px', backgroundColor: '#FEFCE8', color: '#B45309', fontWeight: 700 }}>
+                      <div style={{ fontSize: '0.65rem', color: '#B45309', fontWeight: 800 }}>[P] BIAYA</div>
+                      Biaya 1-15 Sep
+                    </th>
+                  </>
+                )}
 
                 {/* KOLOM Q & R: PERIODE 2 (HIJAU) */}
-                <th style={{ textAlign: 'center', minWidth: '85px', backgroundColor: '#DCFCE7', color: '#166534', fontWeight: 800 }}>
-                  <div style={{ fontSize: '0.65rem', color: '#166534', fontWeight: 900 }}>[Q] QTY 16-30</div>
-                  Qty 16-30 Sep
-                </th>
-                <th style={{ textAlign: 'right', minWidth: '105px', backgroundColor: '#F0FDF4', color: '#15803D', fontWeight: 700 }}>
-                  <div style={{ fontSize: '0.65rem', color: '#15803D', fontWeight: 800 }}>[R] BIAYA</div>
-                  Biaya 16-30 Sep
-                </th>
+                {selectedClosingPeriod !== 'PERIOD_1' && (
+                  <>
+                    <th style={{ textAlign: 'center', minWidth: '85px', backgroundColor: '#DCFCE7', color: '#166534', fontWeight: 800 }}>
+                      <div style={{ fontSize: '0.65rem', color: '#166534', fontWeight: 900 }}>[Q] QTY 16-30</div>
+                      Qty 16-30 Sep
+                    </th>
+                    <th style={{ textAlign: 'right', minWidth: '105px', backgroundColor: '#F0FDF4', color: '#15803D', fontWeight: 700 }}>
+                      <div style={{ fontSize: '0.65rem', color: '#15803D', fontWeight: 800 }}>[R] BIAYA</div>
+                      Biaya 16-30 Sep
+                    </th>
+                  </>
+                )}
 
                 {/* KOLOM S & T: GRAND TOTAL */}
                 <th style={{ textAlign: 'center', minWidth: '95px', backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: 800 }}>
@@ -1600,36 +1630,44 @@ export default function ClosingPage() {
                       </td>
 
                       {/* O: Qty 1-15 Sep (KUNING: Diisi dari closing data mentah) */}
-                      <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontWeight: 800, backgroundColor: '#FEF08A', color: '#854D0E' }}>
-                        <button
-                          onClick={() => setActiveAuditModal(r)}
-                          style={{ background: 'none', border: 'none', fontWeight: 800, color: '#854D0E', cursor: 'pointer', textDecoration: r.qtyP1 > 0 ? 'underline' : 'none' }}
-                          title="Klik untuk rincian transaksi"
-                        >
-                          {r.qtyP1 || 0}
-                        </button>
-                      </td>
+                      {selectedClosingPeriod !== 'PERIOD_2' && (
+                        <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontWeight: 800, backgroundColor: '#FEF08A', color: '#854D0E' }}>
+                          <button
+                            onClick={() => setActiveAuditModal(r)}
+                            style={{ background: 'none', border: 'none', fontWeight: 800, color: '#854D0E', cursor: 'pointer', textDecoration: r.qtyP1 > 0 ? 'underline' : 'none' }}
+                            title="Klik untuk rincian transaksi"
+                          >
+                            {r.qtyP1 || 0}
+                          </button>
+                        </td>
+                      )}
 
                       {/* P: Biaya 1-15 Sep (= Qty 1-15 × Total Diskon) */}
-                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, backgroundColor: '#FEFCE8', color: r.biayaP1 > 0 ? '#B45309' : 'var(--text-muted)' }}>
-                        {r.biayaP1 > 0 ? fmt(r.biayaP1) : '0'}
-                      </td>
+                      {selectedClosingPeriod !== 'PERIOD_2' && (
+                        <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, backgroundColor: '#FEFCE8', color: r.biayaP1 > 0 ? '#B45309' : 'var(--text-muted)' }}>
+                          {r.biayaP1 > 0 ? fmt(r.biayaP1) : '0'}
+                        </td>
+                      )}
 
                       {/* Q: Qty 16-30 Sep */}
-                      <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontWeight: 800, backgroundColor: '#DCFCE7', color: '#166534' }}>
-                        <button
-                          onClick={() => setActiveAuditModal(r)}
-                          style={{ background: 'none', border: 'none', fontWeight: 800, color: '#166534', cursor: 'pointer', textDecoration: r.qtyP2 > 0 ? 'underline' : 'none' }}
-                          title="Klik untuk rincian transaksi"
-                        >
-                          {r.qtyP2 || 0}
-                        </button>
-                      </td>
+                      {selectedClosingPeriod !== 'PERIOD_1' && (
+                        <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontWeight: 800, backgroundColor: '#DCFCE7', color: '#166534' }}>
+                          <button
+                            onClick={() => setActiveAuditModal(r)}
+                            style={{ background: 'none', border: 'none', fontWeight: 800, color: '#166534', cursor: 'pointer', textDecoration: r.qtyP2 > 0 ? 'underline' : 'none' }}
+                            title="Klik untuk rincian transaksi"
+                          >
+                            {r.qtyP2 || 0}
+                          </button>
+                        </td>
+                      )}
 
                       {/* R: Biaya 16-30 Sep (= Qty 16-30 × Total Diskon) */}
-                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, backgroundColor: '#F0FDF4', color: r.biayaP2 > 0 ? '#15803D' : 'var(--text-muted)' }}>
-                        {r.biayaP2 > 0 ? fmt(r.biayaP2) : '0'}
-                      </td>
+                      {selectedClosingPeriod !== 'PERIOD_1' && (
+                        <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, backgroundColor: '#F0FDF4', color: r.biayaP2 > 0 ? '#15803D' : 'var(--text-muted)' }}>
+                          {r.biayaP2 > 0 ? fmt(r.biayaP2) : '0'}
+                        </td>
+                      )}
 
                       {/* S: GRAND TOTAL QTY TERJUAL (= Qty 1-15 + Qty 16-30) */}
                       <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontWeight: 800, backgroundColor: '#EFF6FF', color: '#1D4ED8' }}>
@@ -1679,24 +1717,32 @@ export default function ClosingPage() {
                   </td>
                   
                   {/* Kolom O: Total Qty 1-15 */}
-                  <td style={{ textAlign: 'center', padding: '14px 8px', color: '#FEF08A', backgroundColor: '#1E293B', fontSize: '0.95rem' }}>
-                    {summaryMetrics.totalQtyP1.toLocaleString()}
-                  </td>
+                  {selectedClosingPeriod !== 'PERIOD_2' && (
+                    <td style={{ textAlign: 'center', padding: '14px 8px', color: '#FEF08A', backgroundColor: '#1E293B', fontSize: '0.95rem' }}>
+                      {summaryMetrics.totalQtyP1.toLocaleString()}
+                    </td>
+                  )}
                   
                   {/* Kolom P: Total Biaya 1-15 */}
-                  <td style={{ textAlign: 'right', padding: '14px 10px', color: '#FCD34D', backgroundColor: '#1E293B', fontSize: '0.9rem' }}>
-                    {fmt(summaryMetrics.totalBiayaP1)}
-                  </td>
+                  {selectedClosingPeriod !== 'PERIOD_2' && (
+                    <td style={{ textAlign: 'right', padding: '14px 10px', color: '#FCD34D', backgroundColor: '#1E293B', fontSize: '0.9rem' }}>
+                      {fmt(summaryMetrics.totalBiayaP1)}
+                    </td>
+                  )}
 
                   {/* Kolom Q: Total Qty 16-30 */}
-                  <td style={{ textAlign: 'center', padding: '14px 8px', color: '#86EFAC', backgroundColor: '#1E293B', fontSize: '0.95rem' }}>
-                    {summaryMetrics.totalQtyP2.toLocaleString()}
-                  </td>
+                  {selectedClosingPeriod !== 'PERIOD_1' && (
+                    <td style={{ textAlign: 'center', padding: '14px 8px', color: '#86EFAC', backgroundColor: '#1E293B', fontSize: '0.95rem' }}>
+                      {summaryMetrics.totalQtyP2.toLocaleString()}
+                    </td>
+                  )}
 
                   {/* Kolom R: Total Biaya 16-30 */}
-                  <td style={{ textAlign: 'right', padding: '14px 10px', color: '#86EFAC', backgroundColor: '#1E293B', fontSize: '0.9rem' }}>
-                    {fmt(summaryMetrics.totalBiayaP2)}
-                  </td>
+                  {selectedClosingPeriod !== 'PERIOD_1' && (
+                    <td style={{ textAlign: 'right', padding: '14px 10px', color: '#86EFAC', backgroundColor: '#1E293B', fontSize: '0.9rem' }}>
+                      {fmt(summaryMetrics.totalBiayaP2)}
+                    </td>
+                  )}
 
                   {/* Kolom S: Grand Total Qty */}
                   <td style={{ textAlign: 'center', padding: '14px 8px', color: '#93C5FD', backgroundColor: '#0B1120', fontSize: '1.05rem' }}>
