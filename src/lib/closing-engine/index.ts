@@ -288,14 +288,26 @@ export function getDynamicPeriodLabels(year: number, monthName: string) {
 }
 
 /**
- * Parse date strings flexibly supporting DD/MM/YYYY, DD-MM-YYYY, and ISO formats
+ * Parse date strings flexibly supporting Excel serial numbers, DD/MM/YYYY, YYYY-MM-DD, DD MMM YYYY, and ISO formats
  */
-export function parseDateFlexible(dateInput: Date | string): Date | null {
-  if (!dateInput) return null
+export function parseDateFlexible(dateInput: Date | string | number): Date | null {
+  if (dateInput === undefined || dateInput === null || dateInput === '') return null
   if (dateInput instanceof Date) return isNaN(dateInput.getTime()) ? null : dateInput
+
+  // 1. Excel serial date number (e.g. 46266 or "46266.0006944")
+  if (typeof dateInput === 'number' || /^\d{5}(?:\.\d+)?$/.test(String(dateInput).trim())) {
+    const serial = typeof dateInput === 'number' ? dateInput : parseFloat(String(dateInput).trim())
+    if (serial > 35000 && serial < 70000) {
+      const utcDays = Math.floor(serial - 25569)
+      const utcValue = utcDays * 86400 * 1000
+      const d = new Date(utcValue)
+      if (!isNaN(d.getTime())) return d
+    }
+  }
+
   const str = String(dateInput).trim()
   
-  // Format DD/MM/YYYY or DD-MM-YYYY (e.g. 14/09/2026 or 14/09/2026 23:47:20)
+  // 2. Format DD/MM/YYYY or DD-MM-YYYY (e.g. 14/09/2026 or 14/09/2026 23:47:20)
   const ddmmyyyyMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/)
   if (ddmmyyyyMatch) {
     const day = parseInt(ddmmyyyyMatch[1], 10)
@@ -304,6 +316,37 @@ export function parseDateFlexible(dateInput: Date | string): Date | null {
     const hour = ddmmyyyyMatch[4] ? parseInt(ddmmyyyyMatch[4], 10) : 0
     const minute = ddmmyyyyMatch[5] ? parseInt(ddmmyyyyMatch[5], 10) : 0
     const second = ddmmyyyyMatch[6] ? parseInt(ddmmyyyyMatch[6], 10) : 0
+    const parsed = new Date(year, month, day, hour, minute, second)
+    if (!isNaN(parsed.getTime())) return parsed
+  }
+
+  // 3. Format YYYY-MM-DD or YYYY/MM/DD (e.g. 2026-09-01 00:01)
+  const yyyymmddMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/)
+  if (yyyymmddMatch) {
+    const year = parseInt(yyyymmddMatch[1], 10)
+    const month = parseInt(yyyymmddMatch[2], 10) - 1
+    const day = parseInt(yyyymmddMatch[3], 10)
+    const hour = yyyymmddMatch[4] ? parseInt(yyyymmddMatch[4], 10) : 0
+    const minute = yyyymmddMatch[5] ? parseInt(yyyymmddMatch[5], 10) : 0
+    const second = yyyymmddMatch[6] ? parseInt(yyyymmddMatch[6], 10) : 0
+    const parsed = new Date(year, month, day, hour, minute, second)
+    if (!isNaN(parsed.getTime())) return parsed
+  }
+
+  // 4. Format DD MMM YYYY (e.g. Lazada "15 Sep 2026 18:20" or "14 Agu 2026")
+  const ddmmmyyyyMatch = str.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/)
+  if (ddmmmyyyyMatch) {
+    const day = parseInt(ddmmmyyyyMatch[1], 10)
+    const monStr = ddmmmyyyyMatch[2].toLowerCase().slice(0, 3)
+    const monMap: Record<string, number> = {
+      jan: 0, feb: 1, mar: 2, apr: 3, mei: 4, may: 4, jun: 5,
+      jul: 6, agu: 7, aug: 7, sep: 8, okt: 9, oct: 9, nov: 10, des: 11, dec: 11
+    }
+    const month = monMap[monStr] ?? 8
+    const year = parseInt(ddmmmyyyyMatch[3], 10)
+    const hour = ddmmmyyyyMatch[4] ? parseInt(ddmmmyyyyMatch[4], 10) : 0
+    const minute = ddmmmyyyyMatch[5] ? parseInt(ddmmmyyyyMatch[5], 10) : 0
+    const second = ddmmmyyyyMatch[6] ? parseInt(ddmmmyyyyMatch[6], 10) : 0
     const parsed = new Date(year, month, day, hour, minute, second)
     if (!isNaN(parsed.getTime())) return parsed
   }
@@ -336,6 +379,20 @@ export function getClosingPeriodLabel(period: ClosingPeriodType, monthName: stri
 export function isOrderCancelled(status: string, customKeywords?: string[]): boolean {
   if (!status) return false
   const s = status.toString().trim().toLowerCase()
+  // Valid delivered/completed/shipped statuses (e.g. Shopee: "Pesanan diterima, namun Pembeli masih dapat mengajukan pengembalian...")
+  if (
+    s.startsWith('pesanan diterima') ||
+    s.startsWith('selesai') ||
+    s.startsWith('telah dikirim') ||
+    s.startsWith('sedang dikirim') ||
+    s.startsWith('perlu dikirim') ||
+    s.startsWith('dikirim') ||
+    s.startsWith('delivered') ||
+    s.startsWith('completed') ||
+    s.startsWith('shipped')
+  ) {
+    return false
+  }
   const keywords = customKeywords || DEFAULT_CANCELLED_KEYWORDS
   return keywords.some(k => s.includes(k.toLowerCase()))
 }
@@ -377,6 +434,29 @@ export interface NormalizedRawOrder {
 }
 
 /**
+ * Helper to normalize header keys (collapsing newlines/tabs/spaces) and extract cell values
+ */
+export function normalizeHeaderKey(key: string): string {
+  return String(key || '').replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase()
+}
+
+export function getRowVal(row: Record<string, any>, candidates: string[]): any {
+  if (!row) return undefined
+  for (const c of candidates) {
+    if (row[c] !== undefined && row[c] !== null && row[c] !== '') return row[c]
+  }
+  const normalizedMap = new Map<string, any>()
+  for (const k of Object.keys(row)) {
+    normalizedMap.set(normalizeHeaderKey(k), row[k])
+  }
+  for (const c of candidates) {
+    const val = normalizedMap.get(normalizeHeaderKey(c))
+    if (val !== undefined && val !== null && val !== '') return val
+  }
+  return undefined
+}
+
+/**
  * Helper to safely extract numeric values, supporting Indonesian dots/commas and currency formatting
  */
 export function cleanNumeric(val: any): number {
@@ -387,7 +467,7 @@ export function cleanNumeric(val: any): number {
   // Remove currency labels like 'Rp', 'IDR', spaces
   s = s.replace(/^[^\d-]+/, '').trim()
   
-  // Detect Indonesian format with '.' as thousands separator: e.g. "151.524" or "1.500.000" or "40.200,00"
+  // Detect Indonesian format with '.' as thousands separator: e.g. "151.524" or "36.700" or "1.500.000" or "40.200,00"
   if (/^\d{1,3}(?:\.\d{3})+(?:,\d+)?$/.test(s)) {
     s = s.replace(/\./g, '').replace(',', '.')
   } else if (/^\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(s)) {
@@ -405,7 +485,7 @@ export function cleanNumeric(val: any): number {
 
 /**
  * Automatic Marketplace Signature Detector:
- * Inspects column headers to distinguish between TikTok Shop, Shopee, and Lazada
+ * Inspects column headers to distinguish between TikTok Shop, Shopee (Pusat & Cabang), and Lazada
  */
 export function detectMarketplacePlatform(
   sampleRow: Record<string, any>,
@@ -413,21 +493,72 @@ export function detectMarketplacePlatform(
   sheetName: string = ''
 ): PlatformDetectionResult {
   const keys = Object.keys(sampleRow || {})
-  const keysLower = keys.map(k => k.toLowerCase())
+  const keysLower = keys.map(k => normalizeHeaderKey(k))
   const fn = (filename || '').toLowerCase()
   const sn = (sheetName || '').toLowerCase()
 
-  // 1. TikTok Shop signatures
+  // 1. Shopee signatures (checked first if filename or headers clearly match Shopee)
+  const shopeeKeys = [
+    'no. pesanan',
+    'status pesanan',
+    'nomor referensi sku',
+    'sku induk',
+    'waktu pesanan dibuat',
+    'harga awal',
+    'harga setelah diskon',
+    'potongan penjual',
+    'diskon dari penjual',
+    'diskon dari shopee',
+    'subtotal pesanan',
+    'nama gudang',
+    'total pembayaran',
+    'perkiraan pendapatan bersih',
+    'opsi pengiriman'
+  ]
+  const matchedShopeeKeys = keys.filter(k => shopeeKeys.includes(normalizeHeaderKey(k)))
+  const isShopee = matchedShopeeKeys.length >= 2 || 
+                   keysLower.includes('no. pesanan') ||
+                   keysLower.includes('nomor referensi sku') || 
+                   keysLower.includes('waktu pesanan dibuat') || 
+                   keysLower.includes('harga setelah diskon') ||
+                   fn.includes('shopee')
+
+  if (isShopee) {
+    const gudangVal = String(getRowVal(sampleRow, ['Nama Gudang', 'Gudang', 'Kota Toko']) || '').toLowerCase()
+    // Default Shopee MUST be Shopee Pusat (e.g. BSD Tangsel) unless Semarang/Bali/Surabaya is explicitly present
+    let targetBranch: ShopeeBranch = 'Shopee Pusat'
+    if (fn.includes('semarang') || fn.includes('smg') || gudangVal.includes('semarang')) {
+      targetBranch = 'Shopee Semarang'
+    } else if (fn.includes('bali') || fn.includes('dps') || gudangVal.includes('bali') || gudangVal.includes('denpasar')) {
+      targetBranch = 'Shopee Bali'
+    } else if (fn.includes('surabaya') || fn.includes('sby') || gudangVal.includes('surabaya')) {
+      targetBranch = 'Shopee Surabaya'
+    } else {
+      targetBranch = 'Shopee Pusat'
+    }
+
+    return {
+      platform: 'SHOPEE',
+      platformLabel: targetBranch,
+      confidence: matchedShopeeKeys.length >= 2 ? 'HIGH' : 'MEDIUM',
+      detectedHeaders: matchedShopeeKeys,
+      suggestedTargetMarketplace: targetBranch,
+      description: `Format terdeteksi: ${targetBranch}${gudangVal ? ` (Gudang: ${getRowVal(sampleRow, ['Nama Gudang'])})` : ''}. Membaca SKU Induk/Referensi, Harga Setelah Diskon, dan Waktu Pesanan Dibuat.`
+    }
+  }
+
+  // 2. TikTok Shop signatures
   const tiktokKeys = [
     'sku subtotal after discount',
     'sku platform discount',
     'sku seller discount',
     'sku quantity returned',
     'sku unit original price',
+    'sku subtotal before discount',
     'order substatus',
     'orderskulist'
   ]
-  const matchedTikTokKeys = keys.filter(k => tiktokKeys.includes(k.toLowerCase()))
+  const matchedTikTokKeys = keys.filter(k => tiktokKeys.includes(normalizeHeaderKey(k)))
   const isTikTok = matchedTikTokKeys.length >= 2 || 
                    keysLower.includes('sku subtotal after discount') || 
                    sn.includes('orderskulist') || 
@@ -444,56 +575,26 @@ export function detectMarketplacePlatform(
     }
   }
 
-  // 2. Shopee signatures
-  const shopeeKeys = [
-    'no. pesanan',
-    'nomor referensi sku',
-    'sku induk',
-    'waktu pesanan dibuat',
-    'harga setelah diskon',
-    'potongan penjual',
-    'diskon dari penjual',
-    'total pembayaran',
-    'perkiraan pendapatan bersih',
-    'opsi pengiriman'
-  ]
-  const matchedShopeeKeys = keys.filter(k => shopeeKeys.includes(k.toLowerCase()))
-  const isShopee = matchedShopeeKeys.length >= 2 || 
-                   keysLower.includes('nomor referensi sku') || 
-                   keysLower.includes('waktu pesanan dibuat') || 
-                   fn.includes('shopee')
-
-  if (isShopee) {
-    let targetBranch: ShopeeBranch = 'Shopee Semarang'
-    if (fn.includes('semarang') || fn.includes('smg')) targetBranch = 'Shopee Semarang'
-    else if (fn.includes('bali') || fn.includes('dps')) targetBranch = 'Shopee Bali'
-    else if (fn.includes('surabaya') || fn.includes('sby')) targetBranch = 'Shopee Surabaya'
-    else if (fn.includes('pusat') || fn.includes('jakarta') || fn.includes('jkt')) targetBranch = 'Shopee Pusat'
-
-    return {
-      platform: 'SHOPEE',
-      platformLabel: 'Shopee',
-      confidence: matchedShopeeKeys.length >= 2 ? 'HIGH' : 'MEDIUM',
-      detectedHeaders: matchedShopeeKeys,
-      suggestedTargetMarketplace: targetBranch,
-      description: `Format terdeteksi: Shopee Seller Centre (${targetBranch}). Menggunakan kolom Nomor Referensi SKU, Harga Setelah Diskon, dan Waktu Pesanan Dibuat.`
-    }
-  }
-
   // 3. Lazada signatures
   const lazadaKeys = [
     'orderitemid',
     'paidprice',
     'sellersku',
+    'lazadasku',
+    'lazadaid',
+    'ordertype',
     'ordernumber',
     'unitprice',
     'createtime',
-    'voucherseller'
+    'voucherseller',
+    'rtssla',
+    'ttnsla'
   ]
-  const matchedLazadaKeys = keys.filter(k => lazadaKeys.includes(k.toLowerCase()))
+  const matchedLazadaKeys = keys.filter(k => lazadaKeys.includes(normalizeHeaderKey(k)))
   const isLazada = matchedLazadaKeys.length >= 2 || 
                    keysLower.includes('paidprice') || 
                    keysLower.includes('orderitemid') || 
+                   keysLower.includes('lazadaid') ||
                    fn.includes('lazada')
 
   if (isLazada) {
@@ -507,20 +608,20 @@ export function detectMarketplacePlatform(
     }
   }
 
-  // Fallback
+  // Fallback defaults to Shopee Pusat
   return {
-    platform: 'UNKNOWN',
-    platformLabel: 'Format Belum Dikenali',
-    confidence: 'LOW',
-    detectedHeaders: [],
-    suggestedTargetMarketplace: 'Shopee Semarang',
-    description: 'Header kolom tidak cocok otomatis dengan Shopee, TikTok, atau Lazada. Silakan periksa kolom atau pilih target manual.'
+    platform: 'SHOPEE',
+    platformLabel: 'Shopee Pusat',
+    confidence: 'MEDIUM',
+    detectedHeaders: keys.slice(0, 5),
+    suggestedTargetMarketplace: 'Shopee Pusat',
+    description: 'Default target: Shopee Pusat. Membaca kolom SKU, Harga Setelah Diskon, dan Waktu Pesanan.'
   }
 }
 
 /**
  * Specialized Normalizer for Each Marketplace:
- * Accurately extracts SKU, net price, order date, and cancellation status
+ * Accurately extracts SKU, net price, order date, returned quantity, and cancellation status
  */
 export function normalizeRawOrder(
   row: Record<string, any>,
@@ -544,53 +645,62 @@ export function normalizeRawOrder(
 
   if (platform === 'TIKTOK') {
     resolvedPlatform = 'TikTok Shop'
-    orderNumber = String(row['Order ID'] || row['Order id'] || row['order_id'] || '').trim()
-    orderStatus = String(row['Order Status'] || row['order_status'] || 'Dikirim').trim()
+    orderNumber = String(getRowVal(row, ['Order ID', 'Order id', 'order_id']) || '').trim()
+    orderStatus = String(getRowVal(row, ['Order Status', 'order_status']) || 'Dikirim').trim()
     isCancelled = isOrderCancelled(orderStatus)
-    dateRaw = String(row['Created Time'] || row['Order created time'] || row['Paid Time'] || '').trim()
-    sku = String(row['Seller SKU'] || row['SKU ID'] || row['seller_sku'] || '').trim()
-    productName = String(row['Product Name'] || row['product_name'] || '').trim()
-    variation = String(row['Variation'] || row['variation'] || '').trim()
-    quantity = Math.max(1, parseInt(String(row['Quantity'] || row['quantity'] || '1')) || 1)
+    dateRaw = String(getRowVal(row, ['Created Time', 'Order created time', 'Paid Time']) || '').trim()
+    sku = String(getRowVal(row, ['Seller SKU', 'SKU ID', 'seller_sku']) || '').trim()
+    productName = String(getRowVal(row, ['Product Name', 'product_name']) || '').trim()
+    variation = String(getRowVal(row, ['Variation', 'variation']) || '').trim()
+    const rawQty = Math.max(1, parseInt(String(getRowVal(row, ['Quantity', 'quantity']) || '1').replace(/[^0-9]/g, ''), 10) || 1)
+    const returnedQty = Math.max(0, parseInt(String(getRowVal(row, ['Sku Quantity Returned', 'sku_quantity_returned', 'Returned quantity']) || '0').replace(/[^0-9]/g, ''), 10) || 0)
+    quantity = Math.max(0, rawQty - returnedQty)
+    if (quantity === 0) {
+      isCancelled = true
+      quantity = rawQty
+    }
 
-    // Net Price in TikTok: SKU Subtotal After Discount
-    const rawSubtotal = cleanNumeric(row['SKU Subtotal After Discount'] || row['sku_subtotal_after_discount'] || row['Subtotal After Discount'])
-    const rawUnitOri = cleanNumeric(row['SKU Unit Original Price'] || row['sku_unit_original_price'])
-    const rawSellerDisc = cleanNumeric(row['SKU Seller Discount'] || row['sku_seller_discount'])
+    // Net Price in TikTok: SKU Subtotal After Discount (divided by rawQty if rawQty > 1)
+    const rawSubtotal = cleanNumeric(getRowVal(row, ['SKU Subtotal After Discount', 'sku_subtotal_after_discount', 'Subtotal After Discount']))
+    const rawUnitOri = cleanNumeric(getRowVal(row, ['SKU Unit Original Price', 'sku_unit_original_price']))
+    const rawSellerDisc = cleanNumeric(getRowVal(row, ['SKU Seller Discount', 'sku_seller_discount']))
+    const rawPlatDisc = cleanNumeric(getRowVal(row, ['SKU Platform Discount', 'sku_platform_discount']))
 
     if (rawSubtotal > 0) {
       netPriceTotal = rawSubtotal
-      netPricePerUnit = quantity > 0 ? Math.round(rawSubtotal / quantity) : rawSubtotal
+      netPricePerUnit = rawQty > 0 ? Math.round(rawSubtotal / rawQty) : rawSubtotal
       unitOriginalPrice = rawUnitOri > 0 ? rawUnitOri : netPricePerUnit
-      unitDiscount = rawSellerDisc > 0 ? rawSellerDisc : Math.max(0, unitOriginalPrice - netPricePerUnit)
+      unitDiscount = unitOriginalPrice > netPricePerUnit
+        ? (unitOriginalPrice - netPricePerUnit)
+        : (rawQty > 0 ? Math.round((rawSellerDisc + rawPlatDisc) / rawQty) : (rawSellerDisc + rawPlatDisc))
     } else {
       unitOriginalPrice = rawUnitOri
-      unitDiscount = rawSellerDisc
+      unitDiscount = rawQty > 0 ? Math.round((rawSellerDisc + rawPlatDisc) / rawQty) : (rawSellerDisc + rawPlatDisc)
       netPricePerUnit = Math.max(0, unitOriginalPrice - unitDiscount)
       netPriceTotal = netPricePerUnit * quantity
     }
 
   } else if (platform === 'LAZADA') {
     resolvedPlatform = 'Lazada'
-    orderNumber = String(row['orderNumber'] || row['Order Number'] || row['orderItemId'] || row['Order Item Id'] || '').trim()
-    orderStatus = String(row['status'] || row['Status'] || 'delivered').trim()
+    orderNumber = String(getRowVal(row, ['orderNumber', 'Order Number', 'orderItemId', 'Order Item Id', 'lazadaId']) || '').trim()
+    orderStatus = String(getRowVal(row, ['status', 'Status']) || 'delivered').trim()
     isCancelled = isOrderCancelled(orderStatus)
-    dateRaw = String(row['createTime'] || row['Create Time'] || row['updateTime'] || '').trim()
-    sku = String(row['sellerSku'] || row['Seller SKU'] || row['sku'] || '').trim()
-    productName = String(row['itemName'] || row['Item Name'] || row['productName'] || '').trim()
-    variation = String(row['variation'] || row['Variation'] || '').trim()
-    quantity = Math.max(1, parseInt(String(row['quantity'] || row['Quantity'] || '1')) || 1)
+    dateRaw = String(getRowVal(row, ['createTime', 'Create Time', 'updateTime']) || '').trim()
+    sku = String(getRowVal(row, ['sellerSku', 'Seller SKU', 'sku', 'lazadaSku']) || '').trim()
+    productName = String(getRowVal(row, ['itemName', 'Item Name', 'productName', 'Product Name']) || sku).trim()
+    variation = String(getRowVal(row, ['variation', 'Variation']) || '').trim()
+    quantity = Math.max(1, parseInt(String(getRowVal(row, ['quantity', 'Quantity']) || '1').replace(/[^0-9]/g, ''), 10) || 1)
 
     // Net Price in Lazada: paidPrice
-    const rawPaid = cleanNumeric(row['paidPrice'] || row['Paid Price'] || row['itemPrice'])
-    const rawUnit = cleanNumeric(row['unitPrice'] || row['Unit Price'])
-    const rawVoucher = cleanNumeric(row['voucherSeller'] || row['Voucher Seller'])
+    const rawPaid = cleanNumeric(getRowVal(row, ['paidPrice', 'Paid Price', 'itemPrice']))
+    const rawUnit = cleanNumeric(getRowVal(row, ['unitPrice', 'Unit Price']))
+    const rawVoucher = cleanNumeric(getRowVal(row, ['voucherSeller', 'Voucher Seller', 'sellerDiscountTotal']))
 
     if (rawPaid > 0) {
       netPricePerUnit = rawPaid
       netPriceTotal = rawPaid * quantity
       unitOriginalPrice = rawUnit > 0 ? rawUnit : rawPaid
-      unitDiscount = rawVoucher > 0 ? rawVoucher : Math.max(0, unitOriginalPrice - netPricePerUnit)
+      unitDiscount = unitOriginalPrice > netPricePerUnit ? (unitOriginalPrice - netPricePerUnit) : rawVoucher
     } else {
       unitOriginalPrice = rawUnit
       unitDiscount = rawVoucher
@@ -599,44 +709,59 @@ export function normalizeRawOrder(
     }
 
   } else {
-    // SHOPEE
+    // SHOPEE (Pusat & Cabang)
     resolvedPlatform = 'Shopee'
-    orderNumber = String(row['No. Pesanan'] || row['Order ID'] || row['no_pesanan'] || '').trim()
-    orderStatus = String(row['Status Pesanan'] || row['status_pesanan'] || 'Selesai').trim()
+    orderNumber = String(getRowVal(row, ['No. Pesanan', 'Order ID', 'no_pesanan']) || '').trim()
+    orderStatus = String(getRowVal(row, ['Status Pesanan', 'status_pesanan']) || 'Selesai').trim()
     isCancelled = isOrderCancelled(orderStatus)
-    dateRaw = String(row['Waktu Pesanan Dibuat'] || row['Waktu Pembayaran Dilakukan'] || row['Tanggal'] || '').trim()
-    sku = String(row['Nomor Referensi SKU'] || row['SKU Induk'] || row['SKU'] || '').trim()
-    productName = String(row['Nama Produk'] || row['nama_produk'] || '').trim()
-    variation = String(row['Nama Variasi'] || row['nama_variasi'] || '').trim()
-    quantity = Math.max(1, parseInt(String(row['Jumlah'] || row['Quantity'] || '1')) || 1)
+    dateRaw = String(getRowVal(row, ['Waktu Pesanan Dibuat', 'Waktu Pembayaran Dilakukan', 'Tanggal']) || '').trim()
+    sku = String(getRowVal(row, ['SKU Induk', 'Nomor Referensi SKU', 'SKU', 'Seller SKU']) || '').trim()
+    productName = String(getRowVal(row, ['Nama Produk', 'nama_produk', 'Product Name']) || '').trim()
+    variation = String(getRowVal(row, ['Nama Variasi', 'nama_variasi', 'Variation']) || '').trim()
 
-    // Net Price in Shopee: Harga Setelah Diskon or Harga Awal - Potongan Penjual
-    const rawHargaSetelah = cleanNumeric(row['Harga Setelah Diskon'] || row['Harga Kesepakatan'])
-    const rawHargaAwal = cleanNumeric(row['Harga Awal'] || row['Harga Produk'])
-    const rawDiskon = cleanNumeric(row['Potongan Penjual'] || row['Diskon Dari Penjual'] || row['Total Diskon'])
-    const rawTotalProduk = cleanNumeric(row['Total Harga Produk'])
+    const rawQty = Math.max(1, parseInt(String(getRowVal(row, ['Jumlah', 'Quantity', 'qty']) || '1').replace(/[^0-9]/g, ''), 10) || 1)
+    const returnedQty = Math.max(0, parseInt(String(getRowVal(row, ['Returned quantity', 'returned_quantity', 'Jumlah Pengembalian']) || '0').replace(/[^0-9]/g, ''), 10) || 0)
+    quantity = Math.max(0, rawQty - returnedQty)
+    if (quantity === 0) {
+      isCancelled = true
+      quantity = rawQty
+    }
+
+    // Net Price in Shopee: Harga Setelah Diskon (per unit) or Subtotal Pesanan / Jumlah
+    const rawHargaSetelah = cleanNumeric(getRowVal(row, ['Harga Setelah Diskon', 'Harga Kesepakatan']))
+    const rawHargaAwal = cleanNumeric(getRowVal(row, ['Harga Awal', 'Harga Produk']))
+    const rawDiskonLine = cleanNumeric(getRowVal(row, ['Total Diskon', 'Diskon Dari Penjual', 'Potongan Penjual']))
+    const rawSubtotalPesanan = cleanNumeric(getRowVal(row, ['Subtotal Pesanan', 'Total Harga Produk']))
 
     if (rawHargaSetelah > 0) {
       netPricePerUnit = rawHargaSetelah
       netPriceTotal = rawHargaSetelah * quantity
       unitOriginalPrice = rawHargaAwal > 0 ? rawHargaAwal : rawHargaSetelah
-      unitDiscount = rawDiskon > 0 ? rawDiskon : Math.max(0, unitOriginalPrice - netPricePerUnit)
-    } else if (rawTotalProduk > 0 && rawHargaAwal > 0) {
-      netPricePerUnit = Math.round(rawTotalProduk / quantity)
-      netPriceTotal = rawTotalProduk
-      unitOriginalPrice = rawHargaAwal
+      unitDiscount = unitOriginalPrice > netPricePerUnit
+        ? (unitOriginalPrice - netPricePerUnit)
+        : (rawQty > 0 ? Math.round(rawDiskonLine / rawQty) : rawDiskonLine)
+    } else if (rawSubtotalPesanan > 0) {
+      netPricePerUnit = Math.round(rawSubtotalPesanan / rawQty)
+      netPriceTotal = rawSubtotalPesanan
+      unitOriginalPrice = rawHargaAwal > 0 ? rawHargaAwal : netPricePerUnit
       unitDiscount = Math.max(0, unitOriginalPrice - netPricePerUnit)
     } else {
       unitOriginalPrice = rawHargaAwal
-      unitDiscount = rawDiskon
+      unitDiscount = rawQty > 0 ? Math.round(rawDiskonLine / rawQty) : rawDiskonLine
       netPricePerUnit = Math.max(0, unitOriginalPrice - unitDiscount)
       netPriceTotal = netPricePerUnit * quantity
     }
 
-    if (targetMarketplaceOverride && targetMarketplaceOverride.includes('Semarang')) branchCity = 'Semarang'
-    else if (targetMarketplaceOverride && targetMarketplaceOverride.includes('Bali')) branchCity = 'Bali'
-    else if (targetMarketplaceOverride && targetMarketplaceOverride.includes('Surabaya')) branchCity = 'Surabaya'
-    else branchCity = 'Pusat'
+    const gudangVal = String(getRowVal(row, ['Nama Gudang', 'Gudang', 'Kota Toko']) || '').toLowerCase()
+    if ((targetMarketplaceOverride && targetMarketplaceOverride.includes('Semarang')) || gudangVal.includes('semarang')) {
+      branchCity = 'Semarang'
+    } else if ((targetMarketplaceOverride && targetMarketplaceOverride.includes('Bali')) || gudangVal.includes('bali') || gudangVal.includes('denpasar')) {
+      branchCity = 'Bali'
+    } else if ((targetMarketplaceOverride && targetMarketplaceOverride.includes('Surabaya')) || gudangVal.includes('surabaya')) {
+      branchCity = 'Surabaya'
+    } else {
+      branchCity = 'Pusat'
+    }
   }
 
   const period = getClosingPeriod(dateRaw)

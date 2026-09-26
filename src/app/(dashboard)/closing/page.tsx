@@ -75,19 +75,18 @@ import {
 } from '@/lib/closing-engine'
 
 export default function ClosingPage() {
-  // Main Data States (Synchronized with Google Sheet Patokan '2026_Promo Theraskin')
+  // Main Data States — Start clean (empty) without dummy Lazada/Semarang data
   const [selectedBulan, setSelectedBulan] = useState('September')
   const [selectedTahun, setSelectedTahun] = useState(2026)
   const [activeSheetTab, setActiveSheetTab] = useState<'ALL' | 'September' | 'September Cabang'>('ALL')
-  const [closingRows, setClosingRows] = useState<PatokanClosingRow[]>(() => 
-    generateTheraskinClosingSeed('September', 2026)
-  )
+  const [closingRows, setClosingRows] = useState<PatokanClosingRow[]>([])
+  const [replaceOnUpload, setReplaceOnUpload] = useState<boolean>(true)
 
   // Filters
   const [selectedPlatform, setSelectedPlatform] = useState<string>('ALL')
   const [selectedSubKategori, setSelectedSubKategori] = useState<string>('ALL')
   const [selectedClosingType, setSelectedClosingType] = useState<'ALL' | ClosingType>('ALL')
-  const [closingStatus, setClosingStatus] = useState<ClosingStatus>('Ready for Finance')
+  const [closingStatus, setClosingStatus] = useState<ClosingStatus>('Draft')
   const [activeViewTab, setActiveViewTab] = useState<'PATOKAN_TABLE' | 'RAW_ORDERS'>('PATOKAN_TABLE')
   
   // Search & Filter
@@ -103,15 +102,15 @@ export default function ClosingPage() {
   const [activeAuditModal, setActiveAuditModal] = useState<PatokanClosingRow | null>(null)
   const [showManualModal, setShowManualModal] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
-  const [uploadTargetBranch, setUploadTargetBranch] = useState<string>('AUTO')
+  const [uploadTargetBranch, setUploadTargetBranch] = useState<string>('Shopee Pusat')
   const [uploadModalTab, setUploadModalTab] = useState<'FILE' | 'QUICK_PASTE' | 'SIMULATOR'>('FILE')
   const [quickPasteText, setQuickPasteText] = useState('')
   const [simForm, setSimForm] = useState({
-    marketplace: 'Lazada',
-    sku: 'PAK033POT010PCS',
-    date: '2026-09-05',
-    hargaAwal: 40200,
-    totalDiskon: 1608,
+    marketplace: 'Shopee Pusat',
+    sku: 'FSB01P0010GND',
+    date: '2026-09-01',
+    hargaAwal: 36700,
+    totalDiskon: 1700,
     qty: 1
   })
   const [simResult, setSimResult] = useState<{
@@ -128,25 +127,25 @@ export default function ClosingPage() {
 
   // Manual Add Form State
   const [manualForm, setManualForm] = useState({
-    sheetTab: 'September Cabang' as 'September' | 'September Cabang',
-    marketplace: 'Shopee Semarang',
+    sheetTab: 'September' as 'September' | 'September Cabang',
+    marketplace: 'Shopee Pusat',
     kategori: 'Toko',
-    subKategori: 'Flash Sale',
+    subKategori: 'Promo Toko',
     periodeBadge: 'DD & Payday',
-    tanggal: '1-7 Sep & 25-30 Sep',
-    sku: 'PAK033POT010PCS',
-    productName: 'THERASKIN Age Revival Protection Day Cream 10g',
-    hargaBulanan: 40200,
-    diskonPersen: 4,
-    totalDiskon: 1608,
-    targetQty: 20,
+    tanggal: '1-30 September',
+    sku: 'FSB01P0010GND',
+    productName: 'Theraskin Suncare with Brightener 10g',
+    hargaBulanan: 36700,
+    diskonPersen: 5,
+    totalDiskon: 1700,
+    targetQty: 50,
     totalPromosi: 10,
-    ordersP1: 15,
-    cancelP1: 1,
-    ordersP2: 10,
+    ordersP1: 1,
+    cancelP1: 0,
+    ordersP2: 0,
     cancelP2: 0,
     isDuplicate: false,
-    closingType: 'CAMPAIGN' as ClosingType
+    closingType: 'REGULER' as ClosingType
   })
 
   // Format IDR currency
@@ -360,7 +359,7 @@ export default function ClosingPage() {
     }
   }
 
-  // Reusable order processor with Auto-Platform Signature Detection & Precision Price-Matching
+  // Reusable order processor with Auto-Platform Signature Detection, Merged-Cell Carry-Forward & Dynamic Row Creation
   const applyRawOrders = (
     rawData: any[], 
     targetMarketplaceOverride?: string, 
@@ -373,9 +372,9 @@ export default function ClosingPage() {
     const detection = detectMarketplacePlatform(rawData[0] || {}, filename, sheetName)
     setLastDetectionResult(detection)
 
-    // 2. Resolve target platform & branch
+    // 2. Resolve target platform & branch (Default Shopee = Shopee Pusat)
     let effectivePlatform: DetectedMarketplace = detection.platform
-    let effectiveBranch: MarketplacePlatform = detection.suggestedTargetMarketplace
+    let effectiveBranch: MarketplacePlatform = detection.suggestedTargetMarketplace || 'Shopee Pusat'
 
     if (targetMarketplaceOverride && targetMarketplaceOverride !== 'AUTO') {
       effectiveBranch = targetMarketplaceOverride as MarketplacePlatform
@@ -390,68 +389,159 @@ export default function ClosingPage() {
 
     let matchedOrdersCount = 0
     let unmatchedOrdersCount = 0
-    const updatedRows = [...closingRows]
+    // Start from empty if replaceOnUpload is true, otherwise append to existing rows
+    const updatedRows: PatokanClosingRow[] = replaceOnUpload ? [] : [...closingRows]
 
-    rawData.forEach((row: any) => {
+    // Carry-forward state for merged cells in Shopee Excel (multi-item orders)
+    let lastOrderNo = ''
+    let lastDateRaw = ''
+    let lastOrderStatus = 'Selesai'
+    let lastWarehouse = ''
+
+    rawData.forEach((rawRow: any, idx: number) => {
+      const row = { ...rawRow }
+
+      // Skip TikTok description row 2 ("Platform unique order ID.")
+      const firstVal = String(Object.values(row)[0] || '').toLowerCase()
+      if (firstVal.includes('platform unique order id') || firstVal.includes('current order status')) {
+        return
+      }
+
+      // Carry-forward merged order-level cells if blank on multi-SKU order lines
+      const curOrderNo = row['No. Pesanan'] || row['Order ID'] || row['orderNumber'] || row['orderItemId']
+      const curDate = row['Waktu Pesanan Dibuat'] || row['Created Time'] || row['Order created time'] || row['createTime']
+      const curStatus = row['Status Pesanan'] || row['Order Status'] || row['status']
+      const curWarehouse = row['Nama Gudang'] || row['wareHouse']
+
+      if (curOrderNo) lastOrderNo = String(curOrderNo).trim()
+      else if (lastOrderNo) row['No. Pesanan'] = lastOrderNo
+
+      if (curDate) lastDateRaw = String(curDate).trim()
+      else if (lastDateRaw) {
+        row['Waktu Pesanan Dibuat'] = lastDateRaw
+        row['Created Time'] = lastDateRaw
+        row['createTime'] = lastDateRaw
+      }
+
+      if (curStatus) lastOrderStatus = String(curStatus).trim()
+      else if (lastOrderStatus) row['Status Pesanan'] = lastOrderStatus
+
+      if (curWarehouse) lastWarehouse = String(curWarehouse).trim()
+      else if (lastWarehouse) row['Nama Gudang'] = lastWarehouse
+
       const norm = normalizeRawOrder(row, effectivePlatform, effectiveBranch)
-      
-      // Match against catalog rows: Platform + (SKU/Name) + Kolom L (Harga Promo)
-      const matchedRowIndex = updatedRows.findIndex(r => {
-        // A. Platform filtering
-        if (norm.platform === 'TikTok Shop') {
-          if (!r.marketplace.toLowerCase().includes('tiktok')) return false
-        } else if (norm.platform === 'Lazada') {
-          if (!r.marketplace.toLowerCase().includes('lazada')) return false
-        } else if (norm.platform === 'Shopee') {
-          if (!r.marketplace.toLowerCase().includes('shopee')) return false
-          if (norm.branchCity && norm.branchCity !== 'Pusat') {
-            if (!r.marketplace.toLowerCase().includes(norm.branchCity.toLowerCase())) return false
-          } else if (norm.branchCity === 'Pusat') {
-            if (r.marketplace.toLowerCase().includes('semarang') || 
-                r.marketplace.toLowerCase().includes('bali') || 
-                r.marketplace.toLowerCase().includes('surabaya')) {
-              return false
-            }
-          }
-        }
 
-        // B. SKU / Product Name matching
+      // Skip empty/invalid rows that have neither SKU nor Product Name, or 0 prices
+      if ((!norm.sku && !norm.productName) || (norm.netPricePerUnit <= 0 && norm.unitOriginalPrice <= 0)) {
+        return
+      }
+
+      const targetMarketLabel: string =
+        norm.platform === 'TikTok Shop'
+          ? 'TikTok Shop'
+          : norm.platform === 'Lazada'
+          ? 'Lazada'
+          : norm.branchCity === 'Semarang'
+          ? 'Shopee Semarang'
+          : norm.branchCity === 'Bali'
+          ? 'Shopee Bali'
+          : norm.branchCity === 'Surabaya'
+          ? 'Shopee Surabaya'
+          : 'Shopee Pusat'
+
+      const isBranchSheet =
+        targetMarketLabel === 'Shopee Semarang' ||
+        targetMarketLabel === 'Shopee Bali' ||
+        targetMarketLabel === 'Shopee Surabaya'
+
+      // Match against existing rows: Marketplace + (SKU or Product Name) + Harga Promo (within Rp 200)
+      let matchedRowIndex = updatedRows.findIndex(r => {
+        if (r.marketplace.toLowerCase() !== targetMarketLabel.toLowerCase()) return false
+
         const cleanNormSku = norm.sku.toLowerCase().replace(/[^a-z0-9]/g, '')
         const cleanRowSku = r.sku.toLowerCase().replace(/[^a-z0-9]/g, '')
-        const skuMatches = cleanNormSku && cleanRowSku && (cleanNormSku === cleanRowSku || cleanNormSku.includes(cleanRowSku) || cleanRowSku.includes(cleanNormSku))
-        
-        const cleanNormName = norm.productName.toLowerCase()
-        const cleanRowName = r.productName.toLowerCase()
-        const nameMatches = cleanNormName && cleanRowName && (
-          cleanNormName.includes(cleanRowName) || cleanRowName.includes(cleanNormName)
-        )
-        
-        const isVoucherRow = r.sku.toLowerCase() === 'all sku' || r.subKategori.toLowerCase().includes('voucher')
+        const skuMatches = cleanNormSku && cleanRowSku && cleanNormSku === cleanRowSku
 
-        // C. Price matching against Kolom L (Harga Promo): Net Unit or Total
-        const priceMatchesUnit = Math.abs(r.hargaPromo - norm.netPricePerUnit) <= 600
-        const priceMatchesTotal = Math.abs(r.hargaPromo - norm.netPriceTotal) <= 600
-        const discountMatches = Math.abs(r.totalDiskon - norm.unitDiscount) <= 300
+        const cleanNormName = norm.productName.toLowerCase().trim()
+        const cleanRowName = r.productName.toLowerCase().trim()
+        const nameMatches = cleanNormName && cleanRowName && cleanNormName === cleanRowName
 
-        if (isVoucherRow) {
-          return discountMatches || priceMatchesUnit
-        }
+        const priceMatches = Math.abs(r.hargaPromo - norm.netPricePerUnit) <= 200
 
-        if (skuMatches && (priceMatchesUnit || priceMatchesTotal || discountMatches)) {
-          return true
-        }
-
-        if (nameMatches && (priceMatchesUnit || priceMatchesTotal)) {
-          return true
-        }
-
-        // Fallback exact SKU match with relaxed price tolerance
-        if (skuMatches && Math.abs(r.hargaPromo - norm.netPricePerUnit) <= 1500) {
-          return true
-        }
-
-        return false
+        return (skuMatches || (!cleanNormSku && nameMatches)) && priceMatches
       })
+
+      // Dynamically create row if not yet in table!
+      if (matchedRowIndex === -1) {
+        const hargaBulanan = norm.unitOriginalPrice > 0 ? norm.unitOriginalPrice : norm.netPricePerUnit
+        const hargaPromo = norm.netPricePerUnit
+        const totalDiskon = Math.max(0, hargaBulanan - hargaPromo)
+        const diskonPersen = hargaBulanan > 0 ? Math.round((totalDiskon / hargaBulanan) * 100) : 0
+        const displaySku = norm.sku || '-'
+        const displayName = norm.productName || norm.sku || 'Produk Marketplace'
+        const isBundle = displayName.toLowerCase().includes('bundle') || displayName.toLowerCase().includes('paket') || displayName.toLowerCase().includes('twinpack')
+
+        const newRow: PatokanClosingRow = {
+          id: `row-auto-${idx}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          groupId: `${targetMarketLabel}::${displaySku}::${hargaPromo}`,
+          sheetTab: isBranchSheet ? 'September Cabang' : 'September',
+          marketplace: targetMarketLabel,
+          kategori: 'Toko',
+          subKategori: isBundle ? 'Paket diskon' : (totalDiskon > 0 ? 'Flash Sale / Promo' : 'Harga Normal'),
+          periodeBadge: 'DD & Payday',
+          tanggal: `1-${periodLabels.lastDay} ${selectedBulan}`,
+          sku: displaySku,
+          productName: displayName,
+          hargaBulanan,
+          diskonPersen,
+          totalDiskon,
+          hargaPromo,
+          targetQty: 0,
+          totalPromosi: 0,
+          qtyP1: 0,
+          biayaP1: 0,
+          qtyP2: 0,
+          biayaP2: 0,
+          grandTotalQty: 0,
+          grandTotalBiaya: 0,
+          month: selectedBulan,
+          year: selectedTahun,
+          closingType: diskonPersen >= 10 ? 'CAMPAIGN' : 'REGULER',
+          branchCity: norm.branchCity || 'Pusat',
+          isShopeeBranch: norm.platform === 'Shopee',
+          isPaketDiskon: isBundle,
+          isDuplicateP1: false,
+          isDuplicateP2: false,
+          totalOrdersP1: 0,
+          cancelledOrdersP1: 0,
+          validOrdersP1: 0,
+          totalOrdersP2: 0,
+          cancelledOrdersP2: 0,
+          validOrdersP2: 0,
+          finalClosingQty: 0,
+          biaya: 0,
+          totalBiayaPromo: 0,
+          price: hargaBulanan,
+          discountAmount: totalDiskon,
+          priceAfterDiscount: hargaPromo,
+          discountPercent: diskonPersen,
+          promotionCategory: isBundle ? 'Paket diskon' : 'Promo Toko',
+          promotionName: displayName,
+          closingPeriod: norm.period,
+          periodLabel: norm.period === 'PERIOD_1' ? periodLabels.p1Label : periodLabels.p2Label,
+          totalOrders: 0,
+          cancelledOrders: 0,
+          validOrders: 0,
+          appliedRule: 'STANDARD_NO_SPLIT',
+          formulaDescription: '',
+          hasSameDiscountInPeriod: false,
+          isDuplicatePromo: false,
+          transactions: []
+        }
+
+        updatedRows.push(newRow)
+        matchedRowIndex = updatedRows.length - 1
+      }
 
       if (matchedRowIndex !== -1) {
         matchedOrdersCount++
@@ -484,6 +574,9 @@ export default function ClosingPage() {
         r.finalClosingQty = r.grandTotalQty
         r.biaya = r.grandTotalBiaya
         r.totalBiayaPromo = r.grandTotalBiaya
+        r.totalOrders = (r.totalOrdersP1 || 0) + (r.totalOrdersP2 || 0)
+        r.cancelledOrders = (r.cancelledOrdersP1 || 0) + (r.cancelledOrdersP2 || 0)
+        r.validOrders = (r.validOrdersP1 || 0) + (r.validOrdersP2 || 0)
 
         // Keep transaction log for Finance audit drilldown
         if (!r.transactions) r.transactions = []
@@ -510,9 +603,14 @@ export default function ClosingPage() {
       }
     })
 
+    // Sort rows so items with highest promo cost / quantity appear first
+    updatedRows.sort((a, b) => (b.grandTotalBiaya - a.grandTotalBiaya) || (b.grandTotalQty - a.grandTotalQty))
+
     setClosingRows(updatedRows)
     setClosingStatus('Data Imported')
-    return { matchedOrdersCount, unmatchedOrdersCount, detection }
+    setActiveSheetTab('ALL')
+    setSelectedPlatform('ALL')
+    return { matchedOrdersCount, unmatchedOrdersCount, totalCreatedRows: updatedRows.length, detection }
   }
 
   // Handle Upload Raw Order Excel / CSV with Automated Smart Price-Matching
@@ -534,7 +632,7 @@ export default function ClosingPage() {
         const workbook = xlsx.read(buffer)
         sheetName = workbook.SheetNames[0] || ''
         const sheet = workbook.Sheets[sheetName]
-        rawData = xlsx.utils.sheet_to_json(sheet)
+        rawData = xlsx.utils.sheet_to_json(sheet, { raw: false, defval: '' })
       }
 
       if (!rawData || rawData.length === 0) {
@@ -544,8 +642,8 @@ export default function ClosingPage() {
       const res = applyRawOrders(rawData, uploadTargetBranch, file.name, sheetName)
       setShowUploadModal(false)
       
-      const pName = res.detection?.platformLabel || 'Marketplace'
-      showToast(`Sukses! ${rawData.length} pesanan (${pName}) diproses: ${res.matchedOrdersCount} cocok otomatis dengan Harga Promo katalog.`)
+      const pName = res.detection?.platformLabel || uploadTargetBranch || 'Shopee Pusat'
+      showToast(`Sukses! ${res.matchedOrdersCount} pesanan (${pName}) berhasil direkap menjadi ${res.totalCreatedRows || 0} baris SKU & Harga Promo.`)
 
     } catch (err) {
       console.error('Failed to parse order file:', err)
@@ -574,8 +672,8 @@ export default function ClosingPage() {
       setShowUploadModal(false)
       setQuickPasteText('')
       
-      const pName = res.detection?.platformLabel || 'Marketplace'
-      showToast(`Sukses Quick Paste (${pName})! ${parsed.length} pesanan diproses: ${res.matchedOrdersCount} berhasil dicocokkan ke Harga Promo katalog.`)
+      const pName = res.detection?.platformLabel || uploadTargetBranch || 'Shopee Pusat'
+      showToast(`Sukses Quick Paste (${pName})! ${res.matchedOrdersCount} pesanan direkap menjadi ${res.totalCreatedRows || 0} baris promo.`)
     } catch (err) {
       console.error(err)
       alert('Gagal memproses data Quick Paste. Pastikan format kolom sesuai.')
@@ -764,14 +862,49 @@ export default function ClosingPage() {
     }
   }
 
+  const handleClearAllData = () => {
+    if (closingStatus === 'Closed') {
+      alert('Closing berstatus CLOSED (Terkunci). Silakan reopen closing terlebih dahulu.')
+      return
+    }
+    setClosingRows([])
+    setActiveSheetTab('ALL')
+    setSelectedPlatform('ALL')
+    setSelectedSubKategori('ALL')
+    setSearchQuery('')
+    showToast('Semua data telah dihapus. Silakan upload file data mentah Shopee Pusat / Cabang / TikTok / Lazada.')
+  }
+
   const handleResetSeedData = () => {
-    if (confirm('Muat ulang data patokan Theraskin (Tab September & September Cabang)?')) {
-      setClosingRows(generateTheraskinClosingSeed(selectedBulan, selectedTahun))
+    if (confirm('Muat ulang template patokan Theraskin (kosongkan angka transaksi)?')) {
+      const cleanSeed = generateTheraskinClosingSeed(selectedBulan, selectedTahun).map(r => ({
+        ...r,
+        qtyP1: 0,
+        biayaP1: 0,
+        qtyP2: 0,
+        biayaP2: 0,
+        grandTotalQty: 0,
+        grandTotalBiaya: 0,
+        totalOrdersP1: 0,
+        cancelledOrdersP1: 0,
+        validOrdersP1: 0,
+        totalOrdersP2: 0,
+        cancelledOrdersP2: 0,
+        validOrdersP2: 0,
+        finalClosingQty: 0,
+        biaya: 0,
+        totalBiayaPromo: 0,
+        totalOrders: 0,
+        cancelledOrders: 0,
+        validOrders: 0,
+        transactions: []
+      }))
+      setClosingRows(cleanSeed)
       setActiveSheetTab('ALL')
       setSelectedPlatform('ALL')
       setSelectedSubKategori('ALL')
       setSearchQuery('')
-      showToast('Data patokan Theraskin berhasil dimuat ulang.')
+      showToast('Template patokan Theraskin (0 qty) berhasil dimuat.')
     }
   }
 
@@ -1182,7 +1315,16 @@ export default function ClosingPage() {
               )}
             </div>
 
-            <button onClick={handleResetSeedData} className="btn-ghost" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Reset data patokan">
+            <button
+              onClick={handleClearAllData}
+              className="btn-outline"
+              style={{ fontSize: '0.75rem', padding: '5px 10px', color: '#DC2626', borderColor: '#FECACA', backgroundColor: '#FEF2F2', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}
+              title="Hapus semua data di tabel"
+            >
+              <Trash2 size={12} /> Hapus Semua Data
+            </button>
+
+            <button onClick={handleResetSeedData} className="btn-ghost" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Muat template patokan kosong (0 qty)">
               <RefreshCw size={12} />
             </button>
           </div>
@@ -1350,14 +1492,19 @@ export default function ClosingPage() {
                 <tr>
                   <td colSpan={20} style={{ textAlign: 'center', padding: '60px 24px', backgroundColor: 'var(--surface)' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                      <FileSpreadsheet size={32} color="#2563EB" />
-                      <div style={{ fontWeight: 700, fontSize: '1rem' }}>Tidak Ada Baris Promo Yang Sesuai</div>
-                      <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
-                        Silakan pilih tab 'September' atau 'September Cabang', atau klik tombol reset.
+                      <UploadCloud size={36} color="#2563EB" />
+                      <div style={{ fontWeight: 700, fontSize: '1rem' }}>Tabel Bersih — Siap Upload Data Mentah Pesanan</div>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0, maxWidth: '520px' }}>
+                        Silakan klik <strong>Upload Pesanan</strong> untuk memasukkan file Excel/CSV data mentah <strong>Shopee Pusat</strong>, Shopee Cabang (Semarang/Bali/Surabaya), TikTok Shop, atau Lazada.
                       </p>
-                      <button onClick={handleResetSeedData} className="btn-primary" style={{ fontSize: '0.8125rem', padding: '6px 14px', marginTop: '6px' }}>
-                        Muat Data Patokan
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                        <button onClick={() => setShowUploadModal(true)} className="btn-primary" style={{ fontSize: '0.8125rem', padding: '7px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <UploadCloud size={15} /> Upload Pesanan (Shopee Pusat / TikTok / Lazada)
+                        </button>
+                        <button onClick={handleResetSeedData} className="btn-outline" style={{ fontSize: '0.8125rem', padding: '7px 14px' }}>
+                          Muat Template Patokan (0 Qty)
+                        </button>
+                      </div>
                     </div>
                   </td>
                 </tr>
