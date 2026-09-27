@@ -13,7 +13,8 @@ import {
   Bot,
   Sparkles,
   FileSpreadsheet,
-  Download
+  Download,
+  Flame
 } from 'lucide-react'
 import * as xlsx from 'xlsx'
 import {
@@ -713,6 +714,55 @@ export function AiPromoAdvisorModal({
               Perbaiki Otomatis ({invalidItems.length} Baris)
             </button>
           )}
+        </div>
+
+        {/* Kalkulator Target 1 Miliar & RoAS Iklan */}
+        <div style={{
+          padding: '16px',
+          borderRadius: '10px',
+          background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
+          color: '#FFFFFF',
+          marginBottom: '20px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+        }}>
+          <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', fontWeight: 800, color: '#FCD34D', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Flame size={18} /> Kalkulator Target GMV 1 Miliar & Alokasi Iklan
+          </h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+            {(() => {
+              const currentGmv = monthItems.reduce((acc, i) => acc + (i.estimasiGmv || 0), 0)
+              const targetGmv = 1000000000
+              const gapGmv = Math.max(0, targetGmv - currentGmv)
+              const adBudget = 1500000
+              const requiredRoas = gapGmv > 0 ? (gapGmv / adBudget).toFixed(1) : '0'
+
+              return (
+                <>
+                  <div style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#94A3B8', fontWeight: 600, marginBottom: '4px' }}>Estimasi GMV Saat Ini</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#FFFFFF' }}>Rp {(currentGmv/1000000).toFixed(1)} Jt</div>
+                  </div>
+                  <div style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#94A3B8', fontWeight: 600, marginBottom: '4px' }}>Target GMV Bulan Ini</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#60A5FA' }}>Rp 1.000 Jt (1 Miliar)</div>
+                  </div>
+                  <div style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(252, 211, 77, 0.4)' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#FCD34D', fontWeight: 600, marginBottom: '4px' }}>Kekurangan GMV (Gap)</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#FCD34D' }}>Rp {(gapGmv/1000000).toFixed(1)} Jt</div>
+                  </div>
+                  <div style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(248, 113, 113, 0.4)' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#FCA5A5', fontWeight: 600, marginBottom: '4px' }}>Target ROAS (Budget 1,5 Jt)</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#FCA5A5' }}>{requiredRoas}x ROAS</div>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#CBD5E1', lineHeight: 1.5 }}>
+            <strong>Saran AI Advisor:</strong> Dengan budget harian Rp 25rb - 100rb, target ROAS ini sangat tinggi jika hanya mengandalkan iklan berbayar (Paid Ads). 
+            Kamu wajib menggunakan budget iklan ini sebagai <strong>pemancing traffic organik (Katalis)</strong>. Fokuskan tembakan iklan 50rb/hari pada saat <strong>Flash Sale Live</strong> atau ke SKU <strong>Twinpack/Triplepack (AOV Tinggi)</strong> agar 1 klik konversi menghasilkan GMV besar.
+          </div>
         </div>
 
         <h3 style={{ fontSize: '0.9rem', fontWeight: 800, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
