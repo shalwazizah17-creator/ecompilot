@@ -65,23 +65,79 @@ export default function DashboardPage() {
   const metrics = overview?.metrics
   const health = overview?.healthScore
 
+  // RoAS & 1 Miliar Calculator Widget (Always visible)
+  const renderRoasWidget = () => {
+    const currentGmv = metrics?.gmv?.value || 0
+    const targetGmv = 1000000000
+    const gapGmv = Math.max(0, targetGmv - currentGmv)
+    const adBudget = 1500000
+    const requiredRoas = gapGmv > 0 ? (gapGmv / adBudget).toFixed(1) : '0'
+
+    return (
+      <div style={{
+        padding: '16px 20px',
+        borderRadius: '12px',
+        background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
+        color: '#FFFFFF',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
+          <div>
+            <h3 style={{ margin: '0 0 4px 0', fontSize: '1.1rem', fontWeight: 800, color: '#FCD34D', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Target size={18} /> Kalkulator Target GMV 1 Miliar & Alokasi Iklan
+            </h3>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#94A3B8' }}>Monitor progress pencapaian target dengan budget iklan harian Rp 25rb - 100rb.</p>
+          </div>
+        </div>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: '14px', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600, marginBottom: '6px' }}>Estimasi GMV Saat Ini</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF' }}>Rp {(currentGmv/1000000).toFixed(1)} Jt</div>
+          </div>
+          <div style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: '14px', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600, marginBottom: '6px' }}>Target GMV Bulan Ini</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#60A5FA' }}>Rp 1.000 Jt (1 Miliar)</div>
+          </div>
+          <div style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(252, 211, 77, 0.4)' }}>
+            <div style={{ fontSize: '0.75rem', color: '#FCD34D', fontWeight: 600, marginBottom: '6px' }}>Kekurangan GMV (Gap)</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FCD34D' }}>Rp {(gapGmv/1000000).toFixed(1)} Jt</div>
+          </div>
+          <div style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(248, 113, 113, 0.4)' }}>
+            <div style={{ fontSize: '0.75rem', color: '#FCA5A5', fontWeight: 600, marginBottom: '6px' }}>Target ROAS (Budget 1,5 Jt)</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FCA5A5' }}>{requiredRoas}x ROAS</div>
+          </div>
+        </div>
+        
+        <div style={{ fontSize: '0.8rem', color: '#CBD5E1', lineHeight: 1.6, padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px', borderLeft: '4px solid #FCD34D' }}>
+          <strong>Saran Strategi Iklan:</strong> Dengan budget iklan Rp 25rb - 100rb per hari, ROAS {requiredRoas}x mustahil dicapai jika hanya mengandalkan klik murni. 
+          Jadikan iklan ini sebagai <strong>"Pemancing" (Katalis)</strong>. Fokuskan tembakan iklan pada jam <strong>Flash Sale Live (19:00 - 21:00)</strong> atau ke produk <strong>Bundle / Paket Lengkap</strong> (seperti <i>Theraskin Perfect Glow Paket Lengkap</i>) agar 1 klik konversi langsung menyumbang GMV besar (AOV tinggi).
+        </div>
+      </div>
+    )
+  }
+
   // Empty state
   if (!metrics || metrics.gmv.value === 0) {
     return (
-      <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '0' }}>
-        <div style={{ maxWidth: '440px', textAlign: 'center' }}>
-          <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)', border: '1px solid #DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-            <Upload size={24} style={{ color: 'var(--primary)' }} />
+      <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {renderRoasWidget()}
+        
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '40vh', gap: '0', backgroundColor: '#fff', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+          <div style={{ maxWidth: '440px', textAlign: 'center', padding: '40px 20px' }}>
+            <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)', border: '1px solid #DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <Upload size={24} style={{ color: 'var(--primary)' }} />
+            </div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', letterSpacing: '-0.02em' }}>
+              Belum ada data marketplace nih
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '28px' }}>
+              Upload laporan dari Shopee, TikTok Shop, Tokopedia, atau Lazada buat mulai analisis performa bisnis kamu.
+            </p>
+            <Link href="/data-sources" className="btn-primary">
+              Upload data marketplace
+            </Link>
           </div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', letterSpacing: '-0.02em' }}>
-            Belum ada data marketplace nih
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '28px' }}>
-            Upload laporan dari Shopee, TikTok Shop, Tokopedia, atau Lazada buat mulai analisis performa bisnis kamu.
-          </p>
-          <Link href="/data-sources" className="btn-primary">
-            Upload data marketplace
-          </Link>
         </div>
       </div>
     )
@@ -143,6 +199,8 @@ export default function DashboardPage() {
           </button>
         )}
       </div>
+
+      {renderRoasWidget()}
 
       {/* HEALTH DETAIL */}
       {showHealthDetail && health && (

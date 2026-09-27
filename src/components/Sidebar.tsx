@@ -44,7 +44,6 @@ const navTree: NavItem[] = [
     children: [
       { name: 'Jaga Margin', href: '/margin-protection', icon: ShieldCheck },
       { name: 'Kepoin Kompetitor', href: '/competitors', icon: BarChart3 },
-      { name: 'Pantau Stok', href: '/inventory-intelligence', icon: BookOpen },
       { name: 'Insight Pelanggan', href: '/customer-intelligence', icon: Users },
     ],
   },
