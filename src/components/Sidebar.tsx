@@ -56,8 +56,6 @@ const navTree: NavItem[] = [
       { name: 'Campaign Opportunity', href: '/campaign-opportunity', icon: Sparkles },
       { name: 'To-Do List Staff', href: '/staff-tasks', icon: CheckSquare },
       { name: 'Atur Budget', href: '/budget', icon: Wallet },
-      { name: 'Intel Affiliate', href: '/affiliate', icon: Users },
-      { name: 'Cari Affiliate', href: '/affiliate/discovery', icon: Search },
       { name: 'AI Advisor', href: '/marketing-advisor', icon: Bot },
     ],
   },

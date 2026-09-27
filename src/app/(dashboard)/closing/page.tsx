@@ -613,6 +613,28 @@ export default function ClosingPage() {
       }
     })
 
+    // Update r.tanggal with actual raw dates
+    updatedRows.forEach(r => {
+      if (r.transactions && r.transactions.length > 0) {
+        const dateSet = new Set<string>();
+        r.transactions.forEach(tx => {
+           const dString = String(tx.date).trim();
+           if (dString) {
+             const parts = dString.split(' ')[0]; // Take only the date part
+             dateSet.add(parts);
+           }
+        });
+        if (dateSet.size > 0) {
+           const sortedDates = Array.from(dateSet).sort();
+           if (sortedDates.length <= 3) {
+             r.tanggal = sortedDates.join(', ');
+           } else {
+             r.tanggal = `${sortedDates[0]} s/d ${sortedDates[sortedDates.length - 1]}`;
+           }
+        }
+      }
+    });
+
     // Sort rows so items with highest promo cost / quantity appear first
     updatedRows.sort((a, b) => (b.grandTotalBiaya - a.grandTotalBiaya) || (b.grandTotalQty - a.grandTotalQty))
 
@@ -952,94 +974,7 @@ export default function ClosingPage() {
         </div>
       )}
 
-      {/* 2. SMART PRICE-MATCHING & WORKFLOW BANNER */}
-      <div style={{
-        background: 'linear-gradient(135deg, #1E3A8A 0%, #0F172A 100%)',
-        color: '#FFFFFF',
-        borderRadius: '12px',
-        padding: '16px 22px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-        boxShadow: '0 4px 14px rgba(15, 23, 42, 0.18)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', maxWidth: '850px' }}>
-          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: 'rgba(255, 255, 255, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FCD34D', flexShrink: 0 }}>
-            <Sparkles size={24} />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.01em', color: '#FFFFFF' }}>
-                Format Resmi Spreadsheet: '2026_Promo Theraskin'
-              </span>
-              <span className="badge" style={{ backgroundColor: '#FCD34D', color: '#78350F', fontSize: '0.68rem', padding: '2px 8px', fontWeight: 700 }}>
-                100% Identik Kolom B s/d T
-              </span>
-              <a
-                href="https://docs.google.com/spreadsheets/d/1kPM6fmb81EzXoBybPbGSl1NSE2TL3SgdzJbQ88XZLNw/edit?usp=sharing"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  fontSize: '0.72rem',
-                  padding: '3px 9px',
-                  borderRadius: '6px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                  color: '#FDE68A',
-                  border: '1px solid rgba(253, 230, 138, 0.4)',
-                  textDecoration: 'none',
-                  fontWeight: 700
-                }}
-              >
-                <ExternalLink size={12} />
-                Buka Google Sheet
-              </a>
-            </div>
-            <div style={{ fontSize: '0.8125rem', color: '#CBD5E1', marginTop: '3px', lineHeight: 1.45 }}>
-              Data mentah Shopee/TikTok/Lazada otomatis dihitung <strong>Harga Setelah Diskon ➔ Dicocokkan ke Harga Promo (Kuning)</strong>. Nilai closing langsung masuk ke <strong>Qty 1–15 & Biaya 1–15</strong> dan <strong>Qty 16–30 & Biaya 1–30</strong> dengan formula resmi: <code style={{ backgroundColor: 'rgba(255,255,255,0.12)', padding: '1px 5px', borderRadius: '4px' }}>Biaya = Qty × Total Diskon</code>.
-            </div>
-          </div>
-        </div>
-
-        {/* Primary 1-Click Copy O-T Button */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button
-            onClick={handleCopyColsOT}
-            className="btn-primary"
-            style={{ 
-              fontSize: '0.8125rem', 
-              padding: '8px 16px', 
-              height: '38px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              backgroundColor: copiedMode === 'COLS_O_T' ? '#16A34A' : '#F59E0B', 
-              color: '#0F172A',
-              fontWeight: 800,
-              boxShadow: '0 2px 10px rgba(245, 158, 11, 0.35)'
-            }}
-            disabled={filteredRows.length === 0}
-            title="Salin Kolom O s/d T tab-separated. Klik cell O2 di Google Sheet lalu Ctrl+V!"
-          >
-            {copiedMode === 'COLS_O_T' ? <Check size={16} /> : <Copy size={16} />}
-            {copiedMode === 'COLS_O_T' ? 'Tercopy! Tinggal Paste di Cell O2' : 'COPY KOLOM O–T (Qty & Biaya)'}
-          </button>
-          
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="btn-outline"
-            style={{ fontSize: '0.8125rem', padding: '8px 14px', height: '38px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(255,255,255,0.1)', color: '#FFFFFF', borderColor: 'rgba(255,255,255,0.25)' }}
-          >
-            <UploadCloud size={15} /> Upload Pesanan
-          </button>
-        </div>
-      </div>
-
-      {/* 3. PAGE HEADER & SECONDARY ACTIONS */}
+      {/* 2. PAGE HEADER & ACTIONS */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1063,6 +998,35 @@ export default function ClosingPage() {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            onClick={handleCopyColsOT}
+            className="btn-primary"
+            style={{ 
+              fontSize: '0.75rem', 
+              padding: '0 14px', 
+              height: '34px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              backgroundColor: copiedMode === 'COLS_O_T' ? '#16A34A' : '#F59E0B', 
+              color: '#0F172A',
+              fontWeight: 800
+            }}
+            disabled={filteredRows.length === 0}
+            title="Salin Kolom O s/d T tab-separated. Klik cell O2 di Google Sheet lalu Ctrl+V!"
+          >
+            {copiedMode === 'COLS_O_T' ? <Check size={14} /> : <Copy size={14} />}
+            {copiedMode === 'COLS_O_T' ? 'Tercopy! Tinggal Paste' : 'COPY KOLOM O–T'}
+          </button>
+          
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="btn-primary"
+            style={{ fontSize: '0.75rem', height: '34px', padding: '0 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <UploadCloud size={14} /> Upload Pesanan
+          </button>
+
           <button 
             onClick={handleCopyFullPatokan} 
             className="btn-outline" 
