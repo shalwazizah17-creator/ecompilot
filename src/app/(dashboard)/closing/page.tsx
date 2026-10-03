@@ -441,6 +441,10 @@ export default function ClosingPage() {
       }
 
       const norm = normalizeRawOrder(row, effectivePlatform, effectiveBranch)
+      
+      if (!norm.sku && !norm.productName) {
+        return
+      }
 
       const targetMarketLabel: string =
         norm.platform === 'TikTok Shop'
@@ -660,24 +664,11 @@ export default function ClosingPage() {
       let rawData: any[] = []
       let sheetName = ''
 
-      if (file.name.endsWith('.csv')) {
-        const text = await file.text()
-        let parsed = Papa.parse(text, { header: true, skipEmptyLines: true })
-        // Fallback for semicolon separated CSV if auto-detect fails
-        if (parsed.data.length > 0 && Object.keys((parsed.data as any)[0] || {}).length === 1) {
-          const firstKey = Object.keys((parsed.data as any)[0])[0]
-          if (firstKey && firstKey.includes(';')) {
-            parsed = Papa.parse(text, { header: true, skipEmptyLines: true, delimiter: ';' })
-          }
-        }
-        rawData = parsed.data
-      } else {
-        const buffer = await file.arrayBuffer()
-        const workbook = xlsx.read(buffer)
-        sheetName = workbook.SheetNames[0] || ''
-        const sheet = workbook.Sheets[sheetName]
-        rawData = xlsx.utils.sheet_to_json(sheet, { raw: false, defval: '' })
-      }
+      const buffer = await file.arrayBuffer()
+      const workbook = xlsx.read(buffer, { type: 'array' })
+      sheetName = workbook.SheetNames[0] || ''
+      const sheet = workbook.Sheets[sheetName]
+      rawData = xlsx.utils.sheet_to_json(sheet, { raw: false, defval: '' })
 
       if (!rawData || rawData.length === 0) {
         throw new Error('File tidak memiliki baris data.')

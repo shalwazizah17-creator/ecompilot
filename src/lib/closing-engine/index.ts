@@ -603,6 +603,8 @@ export function detectMarketplacePlatform(
                    keysLower.includes('orderitemid') || 
                    keysLower.includes('nomoritempesanan') ||
                    keysLower.includes('lazadaid') ||
+                   keysLower.includes('namaitem') ||
+                   (keysLower.includes('nomorpesanan') && keysLower.includes('skupenjual')) ||
                    fn.includes('lazada')
 
   if (isLazada) {
@@ -690,19 +692,19 @@ export function normalizeRawOrder(
 
   } else if (platform === 'LAZADA') {
     resolvedPlatform = 'Lazada'
-    orderNumber = String(getRowVal(row, ['orderNumber', 'Order Number', 'orderItemId', 'Order Item Id', 'lazadaId', 'Nomor Pesanan', 'Nomor Item Pesanan']) || '').trim()
-    orderStatus = String(getRowVal(row, ['status', 'Status']) || 'delivered').trim()
+    orderNumber = String(getRowVal(row, ['orderNumber', 'Order Number', 'orderItemId', 'Order Item Id', 'lazadaId', 'Nomor Pesanan', 'Nomor Item Pesanan', 'ID Pesanan']) || '').trim()
+    orderStatus = String(getRowVal(row, ['status', 'Status', 'Status Pesanan']) || 'delivered').trim()
     isCancelled = isOrderCancelled(orderStatus)
-    dateRaw = String(getRowVal(row, ['createTime', 'Create Time', 'updateTime', 'Waktu Pembuatan', 'Waktu Pembaharuan', 'Waktu Dibuat']) || '').trim()
-    sku = String(getRowVal(row, ['sellerSku', 'Seller SKU', 'sku', 'lazadaSku', 'SKU Penjual', 'Referensi SKU']) || '').trim()
+    dateRaw = String(getRowVal(row, ['createTime', 'Create Time', 'updateTime', 'Waktu Pembuatan', 'Waktu Pembaharuan', 'Waktu Dibuat', 'Tanggal Pesanan', 'Tanggal']) || '').trim()
+    sku = String(getRowVal(row, ['sellerSku', 'Seller SKU', 'sku', 'lazadaSku', 'SKU Penjual', 'Referensi SKU', 'SKU Induk']) || '').trim()
     productName = String(getRowVal(row, ['itemName', 'Item Name', 'productName', 'Product Name', 'Nama Item', 'Nama Produk']) || sku).trim()
-    variation = String(getRowVal(row, ['variation', 'Variation', 'Variasi']) || '').trim()
-    quantity = Math.max(1, parseInt(String(getRowVal(row, ['quantity', 'Quantity']) || '1').replace(/[^0-9]/g, ''), 10) || 1)
+    variation = String(getRowVal(row, ['variation', 'Variation', 'Variasi', 'Nama Variasi']) || '').trim()
+    quantity = Math.max(1, parseInt(String(getRowVal(row, ['quantity', 'Quantity', 'Kuantitas', 'Jumlah']) || '1').replace(/[^0-9]/g, ''), 10) || 1)
 
     // Net Price in Lazada: paidPrice or Harga Dibayar
-    const rawPaid = cleanNumeric(getRowVal(row, ['paidPrice', 'Paid Price', 'itemPrice', 'Harga Dibayar']))
-    const rawUnit = cleanNumeric(getRowVal(row, ['unitPrice', 'Unit Price', 'Harga Satuan']))
-    const rawVoucher = cleanNumeric(getRowVal(row, ['voucherSeller', 'Voucher Seller', 'sellerDiscountTotal', 'Voucher Penjual']))
+    const rawPaid = cleanNumeric(getRowVal(row, ['paidPrice', 'Paid Price', 'itemPrice', 'Harga Dibayar', 'Total Pembayaran', 'Harga Setelah Diskon']))
+    const rawUnit = cleanNumeric(getRowVal(row, ['unitPrice', 'Unit Price', 'Harga Satuan', 'Harga Awal', 'Harga Produk']))
+    const rawVoucher = cleanNumeric(getRowVal(row, ['voucherSeller', 'Voucher Seller', 'sellerDiscountTotal', 'Voucher Penjual', 'Total Diskon']))
 
     if (rawPaid > 0) {
       netPricePerUnit = rawPaid
