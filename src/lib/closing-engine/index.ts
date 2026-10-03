@@ -490,12 +490,14 @@ export function cleanNumeric(val: any): number {
 export function detectMarketplacePlatform(
   sampleRow: Record<string, any>,
   filename: string = '',
-  sheetName: string = ''
+  sheetName: string = '',
+  contextStr: string = ''
 ): PlatformDetectionResult {
   const keys = Object.keys(sampleRow || {})
   const keysLower = keys.map(k => normalizeHeaderKey(k))
   const fn = (filename || '').toLowerCase()
   const sn = (sheetName || '').toLowerCase()
+  const ctx = (contextStr || '').toLowerCase()
 
   // 1. Shopee signatures (checked first if filename or headers clearly match Shopee)
   const shopeeKeys = [
@@ -597,6 +599,8 @@ export function detectMarketplacePlatform(
     'voucherpenjual'
   ]
   const matchedLazadaKeys = keys.filter(k => lazadaKeys.includes(normalizeHeaderKey(k)))
+  const valsLower = Object.values(sampleRow).map(v => String(v).trim().toLowerCase())
+  const hasLazadaValue = valsLower.some(v => v.includes('lazada'))
   const isLazada = matchedLazadaKeys.length >= 2 || 
                    keysLower.includes('paidprice') || 
                    keysLower.includes('hargadibayar') ||
@@ -605,7 +609,9 @@ export function detectMarketplacePlatform(
                    keysLower.includes('lazadaid') ||
                    keysLower.includes('namaitem') ||
                    (keysLower.includes('nomorpesanan') && keysLower.includes('skupenjual')) ||
-                   fn.includes('lazada')
+                   fn.includes('lazada') ||
+                   hasLazadaValue ||
+                   ctx.includes('lazada')
 
   if (isLazada) {
     return {

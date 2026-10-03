@@ -365,12 +365,13 @@ export default function ClosingPage() {
     rawData: any[], 
     targetMarketplaceOverride?: string, 
     filename: string = '', 
-    sheetName: string = ''
+    sheetName: string = '',
+    contextStr: string = ''
   ) => {
     if (!rawData || rawData.length === 0) return { matchedOrdersCount: 0, unmatchedOrdersCount: 0, detection: null }
 
     // 1. Detect platform automatically from headers, filename, or sheet
-    const detection = detectMarketplacePlatform(rawData[0] || {}, filename, sheetName)
+    const detection = detectMarketplacePlatform(rawData[0] || {}, filename, sheetName, contextStr)
     setLastDetectionResult(detection)
 
     // 2. Resolve target platform & branch (Default Shopee = Shopee Pusat)
@@ -668,13 +669,57 @@ export default function ClosingPage() {
       const workbook = xlsx.read(buffer, { type: 'array' })
       sheetName = workbook.SheetNames[0] || ''
       const sheet = workbook.Sheets[sheetName]
-      rawData = xlsx.utils.sheet_to_json(sheet, { raw: false, defval: '' })
+      
+      // Read as 2D array to find the true header row
+      const matrix: any[][] = xlsx.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' })
+      
+      let headerRowIndex = 0
+      let maxScore = -1
+      
+      // Scan first 15 rows to find the best header row
+      for (let i = 0; i < Math.min(15, matrix.length); i++) {
+        const rowArr = matrix[i] || []
+        const rowStr = rowArr.join(' ').toLowerCase()
+        let score = 0
+        if (rowStr.includes('pesanan') || rowStr.includes('order')) score++
+        if (rowStr.includes('sku')) score++
+        if (rowStr.includes('harga') || rowStr.includes('price')) score++
+        if (rowStr.includes('status')) score++
+        if (rowStr.includes('waktu') || rowStr.includes('tanggal') || rowStr.includes('time')) score++
+        
+        if (score > maxScore) {
+          maxScore = score
+          headerRowIndex = i
+        }
+      }
+      
+      // Only skip if we found a very strong header match deep in the file (score >= 2).
+      // Otherwise, assume row 0 is the header.
+      if (maxScore < 2) headerRowIndex = 0
+      
+      const headers = matrix[headerRowIndex] || []
+      
+      // Map the rest of the rows into objects
+      rawData = []
+      for (let i = headerRowIndex + 1; i < matrix.length; i++) {
+        const rowArr = matrix[i] || []
+        const obj: any = {}
+        let isEmpty = true
+        for (let j = 0; j < headers.length; j++) {
+          const key = String(headers[j] || `__EMPTY_${j}`).trim()
+          const val = rowArr[j]
+          obj[key] = val
+          if (val !== undefined && val !== null && val !== '') isEmpty = false
+        }
+        if (!isEmpty) rawData.push(obj)
+      }
 
       if (!rawData || rawData.length === 0) {
         throw new Error('File tidak memiliki baris data.')
       }
 
-      const res = applyRawOrders(rawData, uploadTargetBranch, file.name, sheetName)
+      const contextStr = matrix.slice(0, 15).map(r => r.join(' ')).join(' ').toLowerCase()
+      const res = applyRawOrders(rawData, uploadTargetBranch, file.name, sheetName, contextStr)
       setShowUploadModal(false)
       
       const pName = res.detection?.platformLabel || uploadTargetBranch || 'Shopee Pusat'
