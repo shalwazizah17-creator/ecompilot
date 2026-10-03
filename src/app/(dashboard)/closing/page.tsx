@@ -444,7 +444,12 @@ export default function ClosingPage() {
       const norm = normalizeRawOrder(row, effectivePlatform, effectiveBranch)
       
       if (!norm.sku && !norm.productName) {
-        return
+        if (effectivePlatform === 'LAZADA') {
+          norm.sku = 'DEBUG-SKU'
+          norm.productName = JSON.stringify(row).substring(0, 100)
+        } else {
+          return
+        }
       }
 
       const targetMarketLabel: string =
