@@ -405,9 +405,7 @@ export default function ClosingPage() {
 
       // Skip TikTok description row 2 ("Platform unique order ID.")
       const firstVal = String(Object.values(row)[0] || '').toLowerCase()
-      if (firstVal.includes('platform unique order id') || firstVal.includes('current order status')) {
-        return
-      }
+      // REMOVED TikTok skip for debugging
 
       // Carry-forward merged order-level cells if blank on multi-SKU order lines
       const curOrderNo = row['No. Pesanan'] || row['Order ID'] || row['orderNumber'] || row['orderItemId'] || row['Nomor Pesanan'] || row['Nomor Item Pesanan'] || row['lazadaId']
@@ -443,13 +441,10 @@ export default function ClosingPage() {
 
       const norm = normalizeRawOrder(row, effectivePlatform, effectiveBranch)
       
+      // FORCED DEBUGGING: Never skip any row
       if (!norm.sku && !norm.productName) {
-        if (effectivePlatform === 'LAZADA') {
-          norm.sku = 'DEBUG-SKU'
-          norm.productName = JSON.stringify(row).substring(0, 100)
-        } else {
-          return
-        }
+        norm.sku = 'FORCED-SKU'
+        norm.productName = JSON.stringify(row).substring(0, 150)
       }
 
       const targetMarketLabel: string =
@@ -471,30 +466,7 @@ export default function ClosingPage() {
         targetMarketLabel === 'Shopee Surabaya'
 
       // Match against existing rows: Marketplace + (SKU or Product Name) + Harga Promo (within Rp 200)
-      let matchedRowIndex = updatedRows.findIndex(r => {
-        if (r.marketplace.toLowerCase() !== targetMarketLabel.toLowerCase()) return false
-
-        const cleanNormSku = norm.sku.toLowerCase().replace(/[^a-z0-9]/g, '')
-        const cleanRowSku = r.sku.toLowerCase().replace(/[^a-z0-9]/g, '')
-        const skuMatches = cleanNormSku && cleanRowSku && cleanNormSku === cleanRowSku
-
-        const cleanNormName = norm.productName.toLowerCase().trim()
-        const cleanRowName = r.productName.toLowerCase().trim()
-        
-        const isGenericRow = cleanRowSku === 'allsku' || cleanRowName.includes('all sku') || cleanRowName.includes('voucher')
-        let isNameCompatible = false
-        if (cleanNormName === cleanRowName || isGenericRow) {
-          isNameCompatible = true
-        } else if (cleanNormName && cleanRowName) {
-          if (cleanNormName.includes(cleanRowName) || cleanRowName.includes(cleanNormName)) {
-            isNameCompatible = true
-          }
-        }
-
-        const priceMatches = Math.abs(r.hargaPromo - norm.netPricePerUnit) <= 200
-
-        return (skuMatches || (!cleanNormSku && isNameCompatible)) && priceMatches && isNameCompatible
-      })
+      let matchedRowIndex = -1
 
       // Dynamically create row if not yet in table!
       if (matchedRowIndex === -1) {
