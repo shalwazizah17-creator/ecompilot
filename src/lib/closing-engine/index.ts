@@ -693,9 +693,9 @@ export function normalizeRawOrder(
     orderNumber = String(getRowVal(row, ['orderNumber', 'Order Number', 'orderItemId', 'Order Item Id', 'lazadaId', 'Nomor Pesanan', 'Nomor Item Pesanan']) || '').trim()
     orderStatus = String(getRowVal(row, ['status', 'Status']) || 'delivered').trim()
     isCancelled = isOrderCancelled(orderStatus)
-    dateRaw = String(getRowVal(row, ['createTime', 'Create Time', 'updateTime', 'Waktu Pembuatan', 'Waktu Pembaharuan']) || '').trim()
-    sku = String(getRowVal(row, ['sellerSku', 'Seller SKU', 'sku', 'lazadaSku', 'SKU Penjual']) || '').trim()
-    productName = String(getRowVal(row, ['itemName', 'Item Name', 'productName', 'Product Name', 'Nama Item']) || sku).trim()
+    dateRaw = String(getRowVal(row, ['createTime', 'Create Time', 'updateTime', 'Waktu Pembuatan', 'Waktu Pembaharuan', 'Waktu Dibuat']) || '').trim()
+    sku = String(getRowVal(row, ['sellerSku', 'Seller SKU', 'sku', 'lazadaSku', 'SKU Penjual', 'Referensi SKU']) || '').trim()
+    productName = String(getRowVal(row, ['itemName', 'Item Name', 'productName', 'Product Name', 'Nama Item', 'Nama Produk']) || sku).trim()
     variation = String(getRowVal(row, ['variation', 'Variation', 'Variasi']) || '').trim()
     quantity = Math.max(1, parseInt(String(getRowVal(row, ['quantity', 'Quantity']) || '1').replace(/[^0-9]/g, ''), 10) || 1)
 

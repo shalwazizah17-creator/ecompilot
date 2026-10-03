@@ -409,31 +409,41 @@ export default function ClosingPage() {
       }
 
       // Carry-forward merged order-level cells if blank on multi-SKU order lines
-      const curOrderNo = row['No. Pesanan'] || row['Order ID'] || row['orderNumber'] || row['orderItemId']
-      const curDate = row['Waktu Pesanan Dibuat'] || row['Created Time'] || row['Order created time'] || row['createTime']
-      const curStatus = row['Status Pesanan'] || row['Order Status'] || row['status']
-      const curWarehouse = row['Nama Gudang'] || row['wareHouse']
+      const curOrderNo = row['No. Pesanan'] || row['Order ID'] || row['orderNumber'] || row['orderItemId'] || row['Nomor Pesanan'] || row['Nomor Item Pesanan'] || row['lazadaId']
+      const curDate = row['Waktu Pesanan Dibuat'] || row['Created Time'] || row['Order created time'] || row['createTime'] || row['Waktu Pembuatan'] || row['Waktu Pembaharuan']
+      const curStatus = row['Status Pesanan'] || row['Order Status'] || row['status'] || row['Status']
+      const curWarehouse = row['Nama Gudang'] || row['wareHouse'] || row['Gudang']
 
       if (curOrderNo) lastOrderNo = String(curOrderNo).trim()
-      else if (lastOrderNo) row['No. Pesanan'] = lastOrderNo
+      else if (lastOrderNo) {
+        row['No. Pesanan'] = lastOrderNo
+        row['orderNumber'] = lastOrderNo
+      }
 
       if (curDate) lastDateRaw = String(curDate).trim()
       else if (lastDateRaw) {
         row['Waktu Pesanan Dibuat'] = lastDateRaw
         row['Created Time'] = lastDateRaw
         row['createTime'] = lastDateRaw
+        row['Waktu Pembuatan'] = lastDateRaw
       }
 
       if (curStatus) lastOrderStatus = String(curStatus).trim()
-      else if (lastOrderStatus) row['Status Pesanan'] = lastOrderStatus
+      else if (lastOrderStatus) {
+        row['Status Pesanan'] = lastOrderStatus
+        row['status'] = lastOrderStatus
+      }
 
       if (curWarehouse) lastWarehouse = String(curWarehouse).trim()
-      else if (lastWarehouse) row['Nama Gudang'] = lastWarehouse
+      else if (lastWarehouse) {
+        row['Nama Gudang'] = lastWarehouse
+        row['wareHouse'] = lastWarehouse
+      }
 
       const norm = normalizeRawOrder(row, effectivePlatform, effectiveBranch)
 
-      // Skip empty/invalid rows that have neither SKU nor Product Name, or 0 prices
-      if ((!norm.sku && !norm.productName) || (norm.netPricePerUnit <= 0 && norm.unitOriginalPrice <= 0)) {
+      // Skip empty/invalid rows that have neither SKU nor Product Name
+      if (!norm.sku && !norm.productName) {
         return
       }
 
@@ -657,7 +667,14 @@ export default function ClosingPage() {
 
       if (file.name.endsWith('.csv')) {
         const text = await file.text()
-        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true })
+        let parsed = Papa.parse(text, { header: true, skipEmptyLines: true })
+        // Fallback for semicolon separated CSV if auto-detect fails
+        if (parsed.data.length > 0 && Object.keys((parsed.data as any)[0] || {}).length === 1) {
+          const firstKey = Object.keys((parsed.data as any)[0])[0]
+          if (firstKey && firstKey.includes(';')) {
+            parsed = Papa.parse(text, { header: true, skipEmptyLines: true, delimiter: ';' })
+          }
+        }
         rawData = parsed.data
       } else {
         const buffer = await file.arrayBuffer()
