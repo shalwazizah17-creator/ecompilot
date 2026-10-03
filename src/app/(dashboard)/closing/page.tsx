@@ -442,11 +442,6 @@ export default function ClosingPage() {
 
       const norm = normalizeRawOrder(row, effectivePlatform, effectiveBranch)
 
-      // Skip empty/invalid rows that have neither SKU nor Product Name
-      if (!norm.sku && !norm.productName) {
-        return
-      }
-
       const targetMarketLabel: string =
         norm.platform === 'TikTok Shop'
           ? 'TikTok Shop'
@@ -692,7 +687,8 @@ export default function ClosingPage() {
       setShowUploadModal(false)
       
       const pName = res.detection?.platformLabel || uploadTargetBranch || 'Shopee Pusat'
-      showToast(`Sukses! ${res.matchedOrdersCount} pesanan (${pName}) berhasil direkap menjadi ${res.totalCreatedRows || 0} baris SKU & Harga Promo.`)
+      const debugKeys = rawData.length > 0 ? Object.keys(rawData[0] || {}).slice(0, 5).join(', ') : 'NONE'
+      showToast(`[DEBUG] ${pName} | RawRows: ${rawData.length} | Keys: ${debugKeys} | Created: ${res.totalCreatedRows}`)
 
     } catch (err) {
       console.error('Failed to parse order file:', err)
